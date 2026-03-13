@@ -1,3 +1,5 @@
+import { Readable } from 'stream'
+import csvParser from 'csv-parser'
 import { ok, fail, type Result } from '@eval-harness/shared'
 import { datasetRepository } from './repository.js'
 
@@ -22,106 +24,93 @@ function escapeCsvValue(value: string): string {
   return value
 }
 
-// RFC 4180 compliant CSV row parser (handles quoted fields with double-quote escaping)
-function parseCsvRow(row: string): string[] {
-  const fields: string[] = []
-  let i = 0
-  while (i < row.length) {
-    if (row[i] === '"') {
-      // Quoted field
-      let field = ''
-      i++ // skip opening quote
-      while (i < row.length) {
-        if (row[i] === '"') {
-          if (i + 1 < row.length && row[i + 1] === '"') {
-            // Escaped double-quote
-            field += '"'
-            i += 2
-          } else {
-            // Closing quote
-            i++
-            break
-          }
-        } else {
-          field += row[i]
-          i++
-        }
-      }
-      // Skip comma after field
-      if (i < row.length && row[i] === ',') i++
-      fields.push(field)
-    } else {
-      // Unquoted field — read until comma
-      const end = row.indexOf(',', i)
-      if (end === -1) {
-        fields.push(row.slice(i))
-        break
-      } else {
-        fields.push(row.slice(i, end))
-        i = end + 1
-      }
-    }
-  }
-  // Handle trailing comma (empty last field)
-  if (row.endsWith(',')) fields.push('')
-  return fields
-}
-
 type ParsedCsvRow = {
   validRows: Record<string, string>[]
   skippedRows: { row: number; reason: string }[]
 }
 
-function parseCsvContent(
+async function parseCsvContent(
   attributes: string[],
-  csv: string,
-): Result<ParsedCsvRow> {
-  csv = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  const lines = csv.split('\n').filter((l) => l.trim() !== '')
-  if (lines.length < 1) return fail('CSV is empty')
+  csvText: string,
+): Promise<Result<ParsedCsvRow>> {
+  // Normalize line endings
+  csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
 
-  // Detect non-CSV content before attempting column validation
-  const firstLine = lines[0]
-  // Check for binary content (null bytes)
-  if (/\x00/.test(csv)) return fail('File could not be parsed as CSV')
-  // Check for JSON (starts with { or [)
-  if (/^\s*[{\[]/.test(firstLine)) return fail('File could not be parsed as CSV')
+  const trimmed = csvText.trim()
+  if (!trimmed) return fail('CSV is empty')
 
-  const headerCols = parseCsvRow(lines[0]).map(h => h.trim().toLowerCase())
+  // Detect non-CSV content before parsing
+  if (/\x00/.test(csvText)) return fail('File could not be parsed as CSV')
+  if (/^\s*[{\[]/.test(trimmed)) return fail('File could not be parsed as CSV')
 
-  // Distinct error messages for missing vs unknown columns
-  const missingCols = attributes.filter((a) => !headerCols.includes(a))
-  const unknownCols = headerCols.filter((h) => !attributes.includes(h))
-  if (missingCols.length > 0) return fail(`Missing required columns: ${missingCols.join(', ')}`)
-  if (unknownCols.length > 0) return fail(`Unknown columns: ${unknownCols.join(', ')}`)
+  // Parse with csv-parser
+  return new Promise((resolve) => {
+    const rows: Record<string, string>[] = []
+    let headers: string[] = []
 
-  const dataRows = lines.slice(1)
-  if (dataRows.length === 0) return fail('No data rows found in CSV')
+    Readable.from([csvText])
+      .pipe(
+        csvParser({
+          mapHeaders: ({ header }) => header.trim().toLowerCase(),
+        }),
+      )
+      .on('headers', (headerRow: string[]) => {
+        headers = headerRow
+      })
+      .on('data', (row: Record<string, string>) => {
+        rows.push(row)
+      })
+      .on('error', (err: Error) => {
+        resolve(fail(`CSV parse error: ${err.message}`))
+      })
+      .on('end', () => {
+        // Validate headers
+        const missingCols = attributes.filter((a) => !headers.includes(a))
+        const unknownCols = headers.filter((h) => !attributes.includes(h))
+        if (missingCols.length > 0) {
+          resolve(fail(`Missing required columns: ${missingCols.join(', ')}`))
+          return
+        }
+        if (unknownCols.length > 0) {
+          resolve(fail(`Unknown columns: ${unknownCols.join(', ')}`))
+          return
+        }
 
-  const validRows: Record<string, string>[] = []
-  const skippedRows: { row: number; reason: string }[] = []
+        if (rows.length === 0) {
+          resolve(fail('No data rows found in CSV'))
+          return
+        }
 
-  for (let i = 0; i < dataRows.length; i++) {
-    const rowNumber = i + 2 // 1-indexed, header is row 1
-    const cells = parseCsvRow(dataRows[i])
-    const values: Record<string, string> = {}
-    headerCols.forEach((h, idx) => {
-      values[h] = cells[idx] ?? ''
-    })
+        // Validate rows — skip those with empty built-in fields
+        const validRows: Record<string, string>[] = []
+        const skippedRows: { row: number; reason: string }[] = []
 
-    // Validate empty built-ins
-    const emptyBuiltIns = BUILT_IN_ATTRIBUTES.filter(
-      (attr) => attributes.includes(attr) && values[attr] === '',
-    )
-    if (emptyBuiltIns.length > 0) {
-      skippedRows.push({ row: rowNumber, reason: `Empty required field: ${emptyBuiltIns.join(', ')}` })
-      continue
-    }
+        for (let i = 0; i < rows.length; i++) {
+          const rowNumber = i + 2 // header is row 1
+          const values = rows[i]
 
-    validRows.push(values)
-  }
+          const emptyBuiltIns = BUILT_IN_ATTRIBUTES.filter(
+            (attr) => attributes.includes(attr) && (values[attr] ?? '') === '',
+          )
+          if (emptyBuiltIns.length > 0) {
+            skippedRows.push({
+              row: rowNumber,
+              reason: `Empty required field: ${emptyBuiltIns.join(', ')}`,
+            })
+            continue
+          }
 
-  return ok({ validRows, skippedRows })
+          // Only keep attributes that exist in the schema
+          const filtered: Record<string, string> = {}
+          for (const attr of attributes) {
+            filtered[attr] = values[attr] ?? ''
+          }
+          validRows.push(filtered)
+        }
+
+        resolve(ok({ validRows, skippedRows }))
+      })
+  })
 }
 
 export function createDatasetService(repo: typeof datasetRepository) {
@@ -317,7 +306,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
-        const parsed = parseCsvContent(dataset.attributes, csvContent)
+        const parsed = await parseCsvContent(dataset.attributes, csvContent)
         if (!parsed.success) return parsed
 
         return ok(parsed.data)
@@ -334,7 +323,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
-        const parsed = parseCsvContent(dataset.attributes, csvContent)
+        const parsed = await parseCsvContent(dataset.attributes, csvContent)
         if (!parsed.success) return parsed
 
         const { validRows, skippedRows } = parsed.data
