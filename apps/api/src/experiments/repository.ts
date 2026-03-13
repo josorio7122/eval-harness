@@ -1,0 +1,63 @@
+import { prisma } from '../lib/prisma.js'
+
+export const experimentRepository = {
+  findAll() {
+    return prisma.experiment.findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        dataset: { select: { name: true } },
+        graders: true,
+        _count: { select: { results: true } },
+      },
+    })
+  },
+
+  findById(id: string) {
+    return prisma.experiment.findUnique({
+      where: { id },
+      include: {
+        dataset: true,
+        graders: { include: { grader: true } },
+        results: true,
+      },
+    })
+  },
+
+  create(data: { name: string; datasetId: string; graderIds: string[] }) {
+    return prisma.experiment.create({
+      data: {
+        name: data.name,
+        datasetId: data.datasetId,
+        graders: {
+          create: data.graderIds.map((graderId) => ({ graderId })),
+        },
+      },
+    })
+  },
+
+  remove(id: string) {
+    return prisma.experiment.delete({ where: { id } })
+  },
+
+  updateStatus(id: string, status: string) {
+    return prisma.experiment.update({ where: { id }, data: { status } })
+  },
+
+  createResult(data: {
+    experimentId: string
+    datasetItemId: string
+    graderId: string
+    verdict: string
+    reason: string
+  }) {
+    return prisma.experimentResult.create({ data })
+  },
+
+  findResultsByExperimentId(experimentId: string) {
+    return prisma.experimentResult.findMany({ where: { experimentId } })
+  },
+
+  countResultsByExperimentId(experimentId: string) {
+    return prisma.experimentResult.count({ where: { experimentId } })
+  },
+}

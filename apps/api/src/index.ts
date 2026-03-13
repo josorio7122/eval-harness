@@ -7,6 +7,9 @@ import { createDatasetRouter } from './datasets/router.js'
 import { graderRepository } from './graders/repository.js'
 import { createGraderService } from './graders/service.js'
 import { createGraderRouter } from './graders/router.js'
+import { experimentRepository } from './experiments/repository.js'
+import { createExperimentService } from './experiments/service.js'
+import { createExperimentRouter } from './experiments/router.js'
 
 const app = new Hono()
 
@@ -22,8 +25,12 @@ const datasetRouter = createDatasetRouter(datasetService)
 const graderService = createGraderService(graderRepository)
 const graderRouter = createGraderRouter(graderService)
 
+const experimentService = createExperimentService(experimentRepository, datasetRepository, graderRepository)
+const experimentRouter = createExperimentRouter(experimentService)
+
 app.route('/', datasetRouter)
 app.route('/', graderRouter)
+app.route('/', experimentRouter)
 
 serve({
   fetch: app.fetch,
