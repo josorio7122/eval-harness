@@ -73,13 +73,28 @@ export function createDatasetRouter(service: DatasetService) {
   app.get('/datasets/:id/csv/template', async (c) => {
     const result = await service.getCsvTemplate(c.req.param('id'))
     if (!result.success) return c.json(result, 404)
-    return c.text(result.data, 200, { 'Content-Type': 'text/csv' })
+    const filename = `${result.data.name}-template.csv`
+    return c.text(result.data.csv, 200, {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    })
   })
 
   app.get('/datasets/:id/csv/export', async (c) => {
     const result = await service.exportCsv(c.req.param('id'))
     if (!result.success) return c.json(result, 404)
-    return c.text(result.data, 200, { 'Content-Type': 'text/csv' })
+    const filename = `${result.data.name}-export.csv`
+    return c.text(result.data.csv, 200, {
+      'Content-Type': 'text/csv',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    })
+  })
+
+  app.post('/datasets/:id/csv/preview', async (c) => {
+    const csv = await c.req.text()
+    const result = await service.previewCsv(c.req.param('id'), csv)
+    if (!result.success) return c.json(result, 400)
+    return c.json(result)
   })
 
   app.post('/datasets/:id/csv/import', async (c) => {

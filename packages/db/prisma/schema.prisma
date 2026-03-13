@@ -19,6 +19,7 @@ model DatasetItem {
   id        String             @id @default(uuid()) @db.Uuid
   datasetId String             @db.Uuid
   values    Json
+  createdAt DateTime           @default(now())
   dataset   Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
   results   ExperimentResult[]
 

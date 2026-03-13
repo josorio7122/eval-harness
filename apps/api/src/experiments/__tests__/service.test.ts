@@ -179,6 +179,7 @@ describe('rerunExperiment', () => {
       graders: [{ graderId: VALID_UUID_3 }],
     }
     mockRepo.findById.mockResolvedValue(original)
+    mockDatasetRepo.countItems.mockResolvedValue(2)
     const rerun = { id: VALID_UUID_2, name: 'exp1 (re-run)', status: 'queued', datasetId: VALID_UUID_2 }
     mockRepo.create.mockResolvedValue(rerun)
 
@@ -196,6 +197,20 @@ describe('rerunExperiment', () => {
     mockRepo.findById.mockResolvedValue(null)
     const result = await service.rerunExperiment(VALID_UUID)
     expect(result).toEqual({ success: false, error: 'Experiment not found' })
+  })
+
+  it('fails when dataset has no items', async () => {
+    const original = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'done',
+      datasetId: VALID_UUID_2,
+      graders: [{ graderId: VALID_UUID_3 }],
+    }
+    mockRepo.findById.mockResolvedValue(original)
+    mockDatasetRepo.countItems.mockResolvedValue(0)
+    const result = await service.rerunExperiment(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Dataset has no items' })
   })
 })
 
@@ -264,13 +279,13 @@ describe('runExperiment', () => {
 })
 
 describe('exportCsv', () => {
-  it('returns csv string with header and rows', async () => {
+  it('returns csv with one row per dataset item and per-grader columns', async () => {
     const experiment = {
       id: VALID_UUID,
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { items: [] },
+      dataset: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -292,8 +307,54 @@ describe('exportCsv', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
     const lines = result.data.trim().split('\n')
-    expect(lines[0]).toBe('item_input,item_expected_output,grader_name,verdict,reason')
-    expect(lines[1]).toBe('hello,world,accuracy-grader,pass,Looks good')
+    // Header: dataset attributes + {graderName}_verdict + {graderName}_reason
+    expect(lines[0]).toBe('input,expected_output,accuracy-grader_verdict,accuracy-grader_reason')
+    // One data row per item
+    expect(lines[1]).toBe('hello,world,pass,Looks good')
+    expect(lines).toHaveLength(2)
+  })
+
+  it('returns one row per item with columns for each grader', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    mockRepo.findResultsWithDetails.mockResolvedValue([
+      {
+        id: 'r1',
+        experimentId: VALID_UUID,
+        datasetItemId: 'item-1',
+        graderId: VALID_UUID_3,
+        verdict: 'pass',
+        reason: 'good',
+        datasetItem: { values: { input: 'hi', expected_output: 'hello' } },
+        grader: { name: 'grader-a' },
+      },
+      {
+        id: 'r2',
+        experimentId: VALID_UUID,
+        datasetItemId: 'item-1',
+        graderId: VALID_UUID_2,
+        verdict: 'fail',
+        reason: 'bad tone',
+        datasetItem: { values: { input: 'hi', expected_output: 'hello' } },
+        grader: { name: 'grader-b' },
+      },
+    ])
+
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const lines = result.data.trim().split('\n')
+    expect(lines[0]).toBe('input,expected_output,grader-a_verdict,grader-a_reason,grader-b_verdict,grader-b_reason')
+    expect(lines[1]).toBe('hi,hello,pass,good,fail,bad tone')
+    expect(lines).toHaveLength(2)
   })
 
   it('returns fail when experiment not found', async () => {
@@ -308,7 +369,7 @@ describe('exportCsv', () => {
       name: 'exp1',
       status: 'running',
       datasetId: VALID_UUID_2,
-      dataset: { items: [] },
+      dataset: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -317,13 +378,29 @@ describe('exportCsv', () => {
     expect(result).toEqual({ success: false, error: 'Experiment is not complete' })
   })
 
+  it('returns fail when experiment is complete but has no results', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    mockRepo.findResultsWithDetails.mockResolvedValue([])
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'No results to export' })
+  })
+
   it('escapes commas and quotes in CSV values', async () => {
     const experiment = {
       id: VALID_UUID,
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { items: [] },
+      dataset: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -349,3 +426,5 @@ describe('exportCsv', () => {
     expect(lines[1]).toContain('"Has, comma and ""quotes"""')
   })
 })
+
+

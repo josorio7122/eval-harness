@@ -37,7 +37,7 @@ app.route('/', experimentRouter)
 
 serve({
   fetch: app.fetch,
-  port: 3000
+  port: Number(process.env['API_PORT'] ?? 3001)
 }, (info) => {
   console.log(`Server is running on http://localhost:${info.port}`)
 })

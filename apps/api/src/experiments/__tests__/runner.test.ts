@@ -127,4 +127,55 @@ describe('createExperimentRunner', () => {
     const statusCalls = mockRepo.updateStatus.mock.calls.map((c) => c[1])
     expect(statusCalls[statusCalls.length - 1]).toBe('complete')
   })
+
+  it('emits error event when all cells fail', async () => {
+    mockEvaluate.mockRejectedValue(new Error('LLM down'))
+    const runner = createExperimentRunner(mockRepo, mockEvaluate)
+
+    const events: any[] = []
+    experimentEvents.on('exp-6', (e) => events.push(e))
+
+    await runner.enqueue('exp-6', datasetItems, graders)
+
+    experimentEvents.off('exp-6', (e) => events.push(e))
+
+    const errorEvent = events.find((e) => e.type === 'error')
+    expect(errorEvent).toBeDefined()
+    expect(errorEvent.error).toBe('All evaluations failed')
+  })
+
+  it('does not emit error event when only partial failures occur', async () => {
+    let callCount = 0
+    mockEvaluate.mockImplementation(async () => {
+      callCount++
+      if (callCount === 1) throw new Error('partial error')
+      return { verdict: 'pass', reason: 'ok' }
+    })
+    const runner = createExperimentRunner(mockRepo, mockEvaluate)
+
+    const events: any[] = []
+    experimentEvents.on('exp-7', (e) => events.push(e))
+
+    await runner.enqueue('exp-7', datasetItems, graders)
+
+    experimentEvents.off('exp-7', (e) => events.push(e))
+
+    const errorEvent = events.find((e) => e.type === 'error')
+    expect(errorEvent).toBeUndefined()
+  })
+
+  it('does not emit connected event from runner (router handles it)', async () => {
+    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    const runner = createExperimentRunner(mockRepo, mockEvaluate)
+
+    const events: any[] = []
+    experimentEvents.on('exp-8', (e) => events.push(e))
+
+    await runner.enqueue('exp-8', datasetItems, graders)
+
+    experimentEvents.off('exp-8', (e) => events.push(e))
+
+    const connectedEvent = events.find((e) => e.type === 'connected')
+    expect(connectedEvent).toBeUndefined()
+  })
 })

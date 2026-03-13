@@ -2,11 +2,17 @@ import { prisma } from '../lib/prisma.js'
 
 export const datasetRepository = {
   findAll() {
-    return prisma.dataset.findMany({ orderBy: { name: 'asc' } })
+    return prisma.dataset.findMany({
+      orderBy: { name: 'asc' },
+      include: { _count: { select: { items: true } } },
+    })
   },
 
   findById(id: string) {
-    return prisma.dataset.findUnique({ where: { id }, include: { items: true } })
+    return prisma.dataset.findUnique({
+      where: { id },
+      include: { items: { orderBy: { createdAt: 'asc' } } },
+    })
   },
 
   findByName(name: string) {
@@ -64,7 +70,10 @@ export const datasetRepository = {
   },
 
   findItemsByDatasetId(datasetId: string) {
-    return prisma.datasetItem.findMany({ where: { datasetId } })
+    return prisma.datasetItem.findMany({
+      where: { datasetId },
+      orderBy: { createdAt: 'asc' },
+    })
   },
 
   findItemById(id: string) {

@@ -28,7 +28,6 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
 
     await experimentQueue.add(async () => {
       await repo.updateStatus(experimentId, 'running')
-      experimentEvents.emit(experimentId, { type: 'connected', experimentId })
 
       const totalCells = datasetItems.length * graders.length
       let cellsCompleted = 0
@@ -75,6 +74,14 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
 
       const finalStatus = errorCount === totalCells ? 'failed' : 'complete'
       await repo.updateStatus(experimentId, finalStatus)
+
+      if (finalStatus === 'failed') {
+        experimentEvents.emit(experimentId, {
+          type: 'error',
+          experimentId,
+          error: 'All evaluations failed',
+        })
+      }
 
       experimentEvents.emit(experimentId, {
         type: 'completed',

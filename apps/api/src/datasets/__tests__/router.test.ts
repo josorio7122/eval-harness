@@ -18,6 +18,7 @@ const mockService = {
   getCsvTemplate: vi.fn(),
   exportCsv: vi.fn(),
   importCsv: vi.fn(),
+  previewCsv: vi.fn(),
 }
 
 const app = createDatasetRouter(mockService)
@@ -287,12 +288,13 @@ describe('DELETE /datasets/:id/items/:itemId', () => {
 // ─── GET /datasets/:id/csv/template ──────────────────────────────────────────
 
 describe('GET /datasets/:id/csv/template', () => {
-  it('returns 200 with text/csv content type', async () => {
-    mockService.getCsvTemplate.mockResolvedValue({ success: true, data: 'input,expected_output,context' })
+  it('returns 200 with text/csv content type and Content-Disposition', async () => {
+    mockService.getCsvTemplate.mockResolvedValue({ success: true, data: { csv: 'input,expected_output,context', name: 'my-ds' } })
 
     const res = await app.request('/datasets/1/csv/template')
     expect(res.status).toBe(200)
     expect(res.headers.get('Content-Type')).toContain('text/csv')
+    expect(res.headers.get('Content-Disposition')).toContain('my-ds-template.csv')
     const text = await res.text()
     expect(text).toBe('input,expected_output,context')
   })
@@ -307,12 +309,13 @@ describe('GET /datasets/:id/csv/template', () => {
 // ─── GET /datasets/:id/csv/export ────────────────────────────────────────────
 
 describe('GET /datasets/:id/csv/export', () => {
-  it('returns 200 with text/csv content type', async () => {
-    mockService.exportCsv.mockResolvedValue({ success: true, data: 'input,expected_output\nhello,world' })
+  it('returns 200 with text/csv content type and Content-Disposition', async () => {
+    mockService.exportCsv.mockResolvedValue({ success: true, data: { csv: 'input,expected_output\nhello,world', name: 'my-ds' } })
 
     const res = await app.request('/datasets/1/csv/export')
     expect(res.status).toBe(200)
     expect(res.headers.get('Content-Type')).toContain('text/csv')
+    expect(res.headers.get('Content-Disposition')).toContain('my-ds-export.csv')
     const text = await res.text()
     expect(text).toBe('input,expected_output\nhello,world')
   })
@@ -321,6 +324,37 @@ describe('GET /datasets/:id/csv/export', () => {
     mockService.exportCsv.mockResolvedValue({ success: false, error: 'Dataset not found' })
     const res = await app.request('/datasets/999/csv/export')
     expect(res.status).toBe(404)
+  })
+})
+
+// ─── POST /datasets/:id/csv/preview ──────────────────────────────────────────
+
+describe('POST /datasets/:id/csv/preview', () => {
+  it('returns 200 with preview result', async () => {
+    const preview = {
+      validRows: [{ input: 'hello', expected_output: 'world' }],
+      skippedRows: [{ row: 3, reason: 'Empty required field: input' }],
+    }
+    mockService.previewCsv.mockResolvedValue({ success: true, data: preview })
+
+    const res = await app.request('/datasets/1/csv/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: 'input,expected_output\nhello,world\n,foo',
+    })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data).toEqual(preview)
+  })
+
+  it('returns 400 when service fails', async () => {
+    mockService.previewCsv.mockResolvedValue({ success: false, error: 'Unknown columns: wrong' })
+    const res = await app.request('/datasets/1/csv/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: 'wrong,columns\nval1,val2',
+    })
+    expect(res.status).toBe(400)
   })
 })
 
