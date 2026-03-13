@@ -72,6 +72,9 @@ importers:
       '@types/node':
         specifier: ^25.5.0
         version: 25.5.0
+      '@types/pg':
+        specifier: ^8.18.0
+        version: 8.18.0
       eslint:
         specifier: ^10.0.3
         version: 10.0.3(jiti@2.6.1)

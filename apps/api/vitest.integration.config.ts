@@ -8,6 +8,6 @@ export default defineConfig({
     globalSetup: ['src/__tests__/integration/global-setup.ts'],
     setupFiles: ['src/__tests__/integration/setup.ts'],
     testTimeout: 30000,
-    sequence: { sequential: true },
+    fileParallelism: false,
   },
 })

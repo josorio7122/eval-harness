@@ -116,7 +116,7 @@ describe('createExperimentRunner', () => {
 
     const completed = events.find((e) => e.type === 'completed')
     expect(completed).toBeDefined()
-    expect(completed.status).toBe('complete')
+    expect(completed!.status).toBe('complete')
     expect(mockRepo.updateStatus).toHaveBeenCalledWith('exp-3', 'complete')
   })
 
@@ -164,7 +164,7 @@ describe('createExperimentRunner', () => {
 
     const errorEvent = events.find((e) => e.type === 'error')
     expect(errorEvent).toBeDefined()
-    expect(errorEvent.error).toBe('All evaluations failed')
+    expect(errorEvent!.error).toBe('All evaluations failed')
   })
 
   it('does not emit error event when only partial failures occur', async () => {

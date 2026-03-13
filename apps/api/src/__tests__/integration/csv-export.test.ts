@@ -5,12 +5,14 @@ import { graderRepository } from '../../graders/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
 import { createExperimentService } from '../../experiments/service.js'
 
+type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
+
 let seedCounter = 0
 
 async function seedAndRun(
   itemValues: Array<Record<string, string>>,
   graderDefs: Array<{ name: string; rubric: string }>,
-  mockEvaluate: ReturnType<typeof vi.fn>,
+  mockEvaluate: EvaluateFn,
 ) {
   const n = ++seedCounter
   const dataset = await datasetRepository.create(`csv-dataset-${n}`)
@@ -56,12 +58,14 @@ async function seedAndRun(
 }
 
 describe('CSV export (integration)', () => {
-  let mockEvaluate: ReturnType<typeof vi.fn>
+  let mockEvaluateFn: ReturnType<typeof vi.fn>
+  let mockEvaluate: EvaluateFn
   let service: ReturnType<typeof createExperimentService>
 
   beforeEach(() => {
-    mockEvaluate = vi.fn()
-    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'looks good' })
+    mockEvaluateFn = vi.fn()
+    mockEvaluateFn.mockResolvedValue({ verdict: 'pass', reason: 'looks good' })
+    mockEvaluate = mockEvaluateFn as unknown as EvaluateFn
     service = createExperimentService(experimentRepository, datasetRepository, graderRepository)
   })
 
@@ -107,7 +111,8 @@ describe('CSV export (integration)', () => {
   })
 
   it('CSV values match what was stored: input, expected_output, verdict, reason', async () => {
-    mockEvaluate.mockResolvedValue({ verdict: 'fail', reason: 'incorrect answer' })
+    mockEvaluateFn.mockResolvedValue({ verdict: 'fail', reason: 'incorrect answer' })
+    mockEvaluate = mockEvaluateFn as unknown as EvaluateFn
     service = createExperimentService(experimentRepository, datasetRepository, graderRepository)
 
     const { experiment, graders } = await seedAndRun(
@@ -138,7 +143,8 @@ describe('CSV export (integration)', () => {
   })
 
   it('RFC 4180 escaping: values with commas are quoted', async () => {
-    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'fine, good work' })
+    mockEvaluateFn.mockResolvedValue({ verdict: 'pass', reason: 'fine, good work' })
+    mockEvaluate = mockEvaluateFn as unknown as EvaluateFn
     service = createExperimentService(experimentRepository, datasetRepository, graderRepository)
 
     const { experiment } = await seedAndRun(

@@ -22,7 +22,7 @@ describe('evaluate', () => {
   it('returns pass verdict when LLM returns pass', async () => {
     mockGenerateObject.mockResolvedValue({
       object: { verdict: 'pass', reason: 'Looks good' },
-    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }, never>)
+    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }>)
 
     const result = await evaluate('Grade this response', { input: 'hello', output: 'world' })
 
@@ -33,7 +33,7 @@ describe('evaluate', () => {
   it('returns fail verdict when LLM returns fail', async () => {
     mockGenerateObject.mockResolvedValue({
       object: { verdict: 'fail', reason: 'Does not match' },
-    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }, never>)
+    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }>)
 
     const result = await evaluate('Grade this response', { input: 'hello', output: 'bad' })
 
@@ -43,7 +43,7 @@ describe('evaluate', () => {
   it('passes rubric as system prompt and item attributes as prompt', async () => {
     mockGenerateObject.mockResolvedValue({
       object: { verdict: 'pass', reason: 'ok' },
-    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }, never>)
+    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }>)
 
     await evaluate('Check quality', { input: 'foo', expected_output: 'bar' })
 

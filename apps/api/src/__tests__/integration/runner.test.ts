@@ -4,6 +4,8 @@ import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
 
+type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
+
 let seedCounter = 0
 
 async function seedExperiment(itemCount: number, graderCount: number) {
@@ -51,12 +53,14 @@ async function seedExperiment(itemCount: number, graderCount: number) {
 }
 
 describe('experiment runner (integration)', () => {
-  let mockEvaluate: ReturnType<typeof vi.fn>
+  let mockEvaluateFn: ReturnType<typeof vi.fn>
+  let mockEvaluate: EvaluateFn
   let runner: ReturnType<typeof createExperimentRunner>
 
   beforeEach(() => {
-    mockEvaluate = vi.fn()
-    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'correct' })
+    mockEvaluateFn = vi.fn()
+    mockEvaluateFn.mockResolvedValue({ verdict: 'pass', reason: 'correct' })
+    mockEvaluate = mockEvaluateFn as unknown as EvaluateFn
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
   })
 
@@ -76,7 +80,7 @@ describe('experiment runner (integration)', () => {
   })
 
   it('each result has correct verdict from mock (fail)', async () => {
-    mockEvaluate.mockResolvedValue({ verdict: 'fail', reason: 'wrong answer' })
+    mockEvaluateFn.mockResolvedValue({ verdict: 'fail', reason: 'wrong answer' })
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
@@ -99,7 +103,7 @@ describe('experiment runner (integration)', () => {
   })
 
   it('all-fail run → status = failed, all results have verdict = error', async () => {
-    mockEvaluate.mockRejectedValue(new Error('API error'))
+    mockEvaluateFn.mockRejectedValue(new Error('API error'))
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
@@ -115,7 +119,7 @@ describe('experiment runner (integration)', () => {
   })
 
   it('all-fail run → emits error event but NOT completed event', async () => {
-    mockEvaluate.mockRejectedValue(new Error('API error'))
+    mockEvaluateFn.mockRejectedValue(new Error('API error'))
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 1)
@@ -134,7 +138,7 @@ describe('experiment runner (integration)', () => {
   })
 
   it('successful run → emits completed event but NOT error event', async () => {
-    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    mockEvaluateFn.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 1)
@@ -154,7 +158,7 @@ describe('experiment runner (integration)', () => {
 
   it('partial failure → status = complete with mixed verdicts', async () => {
     let callCount = 0
-    mockEvaluate.mockImplementation(() => {
+    mockEvaluateFn.mockImplementation(() => {
       callCount++
       if (callCount === 1) {
         return Promise.reject(new Error('first call fails'))
