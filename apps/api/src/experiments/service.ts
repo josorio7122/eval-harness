@@ -58,7 +58,11 @@ export function createExperimentService(
           if (!grader) return fail('Grader not found')
         }
 
-        const created = await repo.create(input)
+        const revisions = await datasetRepo.findRevisions(input.datasetId)
+        if (revisions.length === 0) return fail('Dataset has no revisions')
+        const datasetRevisionId = revisions[0].id
+
+        const created = await repo.create({ ...input, datasetRevisionId })
         return ok(created)
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
@@ -83,13 +87,15 @@ export function createExperimentService(
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
 
-        const itemCount = await datasetRepo.countItems(experiment.datasetId)
-        if (itemCount === 0) return fail('Dataset has no items')
+        const revisions = await datasetRepo.findRevisions(experiment.datasetId)
+        if (revisions.length === 0) return fail('Dataset has no revisions')
+        const datasetRevisionId = revisions[0].id
 
         const graderIds = experiment.graders.map((eg: { graderId: string }) => eg.graderId)
         const created = await repo.create({
           name: `${experiment.name} (re-run)`,
           datasetId: experiment.datasetId,
+          datasetRevisionId,
           graderIds,
         })
         return ok(created)
@@ -107,10 +113,9 @@ export function createExperimentService(
           return fail('Experiment is not in a runnable state')
         }
 
-        const itemCount = await datasetRepo.countItems(experiment.datasetId)
-        if (itemCount === 0) return fail('Dataset has no items')
+        const datasetItems = (experiment.revision as { items: Array<{ id: string; values: Record<string, string> }> }).items
+        if (datasetItems.length === 0) return fail('Dataset has no items')
 
-        const datasetItems = (experiment.dataset as { items: Array<{ id: string; values: Record<string, string> }> }).items
         const graders = (experiment.graders as Array<{ graderId: string; grader: { id: string; rubric: string } }>).map(
           (eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }),
         )
@@ -132,8 +137,8 @@ export function createExperimentService(
         if (results.length === 0) return fail('No results to export')
 
         type DetailedResult = {
-          datasetItemId: string
-          datasetItem: { values: Record<string, string> }
+          datasetRevisionItemId: string
+          datasetRevisionItem: { values: Record<string, string> }
           grader: { name: string }
           verdict: string
           reason: string
@@ -155,27 +160,27 @@ export function createExperimentService(
         const itemIdSet = new Set<string>()
         const itemValues = new Map<string, Record<string, string>>()
         for (const r of typedResults) {
-          if (!itemIdSet.has(r.datasetItemId)) {
-            itemIdSet.add(r.datasetItemId)
-            itemIds.push(r.datasetItemId)
-            itemValues.set(r.datasetItemId, r.datasetItem.values)
+          if (!itemIdSet.has(r.datasetRevisionItemId)) {
+            itemIdSet.add(r.datasetRevisionItemId)
+            itemIds.push(r.datasetRevisionItemId)
+            itemValues.set(r.datasetRevisionItemId, r.datasetRevisionItem.values)
           }
         }
 
         // Index results by (itemId, graderName)
         const resultIndex = new Map<string, { verdict: string; reason: string }>()
         for (const r of typedResults) {
-          resultIndex.set(`${r.datasetItemId}::${r.grader.name}`, {
+          resultIndex.set(`${r.datasetRevisionItemId}::${r.grader.name}`, {
             verdict: r.verdict,
             reason: r.reason,
           })
         }
 
         // Get dataset attributes for header (input + expected_output + any extras)
-        const expWithDataset = experiment as unknown as {
-          dataset: { attributes: string[] }
+        const expWithRevision = experiment as unknown as {
+          revision: { attributes: string[] }
         }
-        const datasetAttributes: string[] = expWithDataset.dataset?.attributes ?? [
+        const datasetAttributes: string[] = expWithRevision.revision?.attributes ?? [
           'input',
           'expected_output',
         ]

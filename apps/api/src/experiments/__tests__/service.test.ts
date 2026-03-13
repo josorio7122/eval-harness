@@ -36,6 +36,8 @@ const mockDatasetRepo = {
   updateItem: vi.fn(),
   removeItem: vi.fn(),
   countItems: vi.fn(),
+  findRevisions: vi.fn(),
+  importItems: vi.fn(),
 }
 
 const mockGraderRepo = {
@@ -87,7 +89,7 @@ describe('getExperiment', () => {
 })
 
 describe('createExperiment', () => {
-  it('creates successfully', async () => {
+  it('creates successfully with datasetRevisionId', async () => {
     const dataset = {
       id: VALID_UUID_2,
       name: 'ds1',
@@ -96,6 +98,7 @@ describe('createExperiment', () => {
     }
     mockDatasetRepo.findById.mockResolvedValue(dataset)
     mockDatasetRepo.countItems.mockResolvedValue(1)
+    mockDatasetRepo.findRevisions.mockResolvedValue([{ id: 'rev-1' }])
     mockGraderRepo.findById.mockResolvedValue({ id: VALID_UUID_3, name: 'g1' })
     const created = { id: VALID_UUID, name: 'exp1', status: 'queued', datasetId: VALID_UUID_2 }
     mockRepo.create.mockResolvedValue(created)
@@ -106,6 +109,12 @@ describe('createExperiment', () => {
       graderIds: [VALID_UUID_3],
     })
     expect(result).toEqual({ success: true, data: created })
+    expect(mockRepo.create).toHaveBeenCalledWith({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      datasetRevisionId: 'rev-1',
+      graderIds: [VALID_UUID_3],
+    })
   })
 
   it('fails when dataset not found', async () => {
@@ -135,6 +144,25 @@ describe('createExperiment', () => {
     expect(result).toEqual({ success: false, error: 'Dataset has no items' })
   })
 
+  it('fails when dataset has no revisions', async () => {
+    const dataset = {
+      id: VALID_UUID_2,
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+      items: [{ id: 'item1' }],
+    }
+    mockDatasetRepo.findById.mockResolvedValue(dataset)
+    mockDatasetRepo.countItems.mockResolvedValue(1)
+    mockDatasetRepo.findRevisions.mockResolvedValue([])
+    mockGraderRepo.findById.mockResolvedValue({ id: VALID_UUID_3, name: 'g1' })
+    const result = await service.createExperiment({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+    })
+    expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
+  })
+
   it('fails when a grader is not found', async () => {
     const dataset = {
       id: VALID_UUID_2,
@@ -144,6 +172,7 @@ describe('createExperiment', () => {
     }
     mockDatasetRepo.findById.mockResolvedValue(dataset)
     mockDatasetRepo.countItems.mockResolvedValue(1)
+    mockDatasetRepo.findRevisions.mockResolvedValue([{ id: 'rev-1' }])
     mockGraderRepo.findById.mockResolvedValue(null)
     const result = await service.createExperiment({
       name: 'exp1',
@@ -170,7 +199,7 @@ describe('deleteExperiment', () => {
 })
 
 describe('rerunExperiment', () => {
-  it('creates new experiment with derived name on success', async () => {
+  it('creates new experiment with derived name and datasetRevisionId on success', async () => {
     const original = {
       id: VALID_UUID,
       name: 'exp1',
@@ -179,7 +208,7 @@ describe('rerunExperiment', () => {
       graders: [{ graderId: VALID_UUID_3 }],
     }
     mockRepo.findById.mockResolvedValue(original)
-    mockDatasetRepo.countItems.mockResolvedValue(2)
+    mockDatasetRepo.findRevisions.mockResolvedValue([{ id: 'rev-latest' }])
     const rerun = { id: VALID_UUID_2, name: 'exp1 (re-run)', status: 'queued', datasetId: VALID_UUID_2 }
     mockRepo.create.mockResolvedValue(rerun)
 
@@ -189,6 +218,7 @@ describe('rerunExperiment', () => {
     expect(mockRepo.create).toHaveBeenCalledWith({
       name: 'exp1 (re-run)',
       datasetId: VALID_UUID_2,
+      datasetRevisionId: 'rev-latest',
       graderIds: [VALID_UUID_3],
     })
   })
@@ -199,7 +229,7 @@ describe('rerunExperiment', () => {
     expect(result).toEqual({ success: false, error: 'Experiment not found' })
   })
 
-  it('fails when dataset has no items', async () => {
+  it('fails when dataset has no revisions', async () => {
     const original = {
       id: VALID_UUID,
       name: 'exp1',
@@ -208,9 +238,9 @@ describe('rerunExperiment', () => {
       graders: [{ graderId: VALID_UUID_3 }],
     }
     mockRepo.findById.mockResolvedValue(original)
-    mockDatasetRepo.countItems.mockResolvedValue(0)
+    mockDatasetRepo.findRevisions.mockResolvedValue([])
     const result = await service.rerunExperiment(VALID_UUID)
-    expect(result).toEqual({ success: false, error: 'Dataset has no items' })
+    expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
   })
 })
 
@@ -221,7 +251,7 @@ describe('runExperiment', () => {
       name: 'exp1',
       status: 'queued',
       datasetId: VALID_UUID_2,
-      dataset: { items: [{ id: 'item-1', values: { input: 'hi' } }] },
+      revision: { items: [{ id: 'item-1', itemId: 'stable-1', values: { input: 'hi' } }] },
       graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
       results: [],
     }
@@ -232,7 +262,7 @@ describe('runExperiment', () => {
     expect(result).toEqual({ success: true, data: { status: 'queued' } })
     expect(mockRunner.enqueue).toHaveBeenCalledWith(
       VALID_UUID,
-      [{ id: 'item-1', values: { input: 'hi' } }],
+      [{ id: 'item-1', itemId: 'stable-1', values: { input: 'hi' } }],
       [{ id: VALID_UUID_3, rubric: 'judge it' }],
     )
   })
@@ -250,7 +280,7 @@ describe('runExperiment', () => {
       name: 'exp1',
       status: 'running',
       datasetId: VALID_UUID_2,
-      dataset: { items: [] },
+      revision: { items: [] },
       graders: [],
       results: [],
     }
@@ -267,7 +297,7 @@ describe('runExperiment', () => {
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { items: [] },
+      revision: { items: [] },
       graders: [],
       results: [],
     }
@@ -283,11 +313,10 @@ describe('runExperiment', () => {
       name: 'exp1',
       status: 'queued',
       datasetId: VALID_UUID_2,
-      dataset: { items: [] },
+      revision: { items: [] },
       graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
       results: [],
     })
-    mockDatasetRepo.countItems.mockResolvedValue(0)
     const result = await service.runExperiment(VALID_UUID)
     expect(result).toEqual({ success: false, error: 'Dataset has no items' })
     expect(mockRunner.enqueue).not.toHaveBeenCalled()
@@ -301,7 +330,7 @@ describe('exportCsv', () => {
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      revision: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -310,11 +339,11 @@ describe('exportCsv', () => {
       {
         id: 'r1',
         experimentId: VALID_UUID,
-        datasetItemId: 'item-1',
+        datasetRevisionItemId: 'item-1',
         graderId: VALID_UUID_3,
         verdict: 'pass',
         reason: 'Looks good',
-        datasetItem: { values: { input: 'hello', expected_output: 'world' } },
+        datasetRevisionItem: { values: { input: 'hello', expected_output: 'world' } },
         grader: { name: 'accuracy-grader' },
       },
     ])
@@ -336,7 +365,7 @@ describe('exportCsv', () => {
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      revision: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -345,21 +374,21 @@ describe('exportCsv', () => {
       {
         id: 'r1',
         experimentId: VALID_UUID,
-        datasetItemId: 'item-1',
+        datasetRevisionItemId: 'item-1',
         graderId: VALID_UUID_3,
         verdict: 'pass',
         reason: 'good',
-        datasetItem: { values: { input: 'hi', expected_output: 'hello' } },
+        datasetRevisionItem: { values: { input: 'hi', expected_output: 'hello' } },
         grader: { name: 'grader-a' },
       },
       {
         id: 'r2',
         experimentId: VALID_UUID,
-        datasetItemId: 'item-1',
+        datasetRevisionItemId: 'item-1',
         graderId: VALID_UUID_2,
         verdict: 'fail',
         reason: 'bad tone',
-        datasetItem: { values: { input: 'hi', expected_output: 'hello' } },
+        datasetRevisionItem: { values: { input: 'hi', expected_output: 'hello' } },
         grader: { name: 'grader-b' },
       },
     ])
@@ -385,7 +414,7 @@ describe('exportCsv', () => {
       name: 'exp1',
       status: 'running',
       datasetId: VALID_UUID_2,
-      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      revision: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -400,7 +429,7 @@ describe('exportCsv', () => {
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      revision: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -416,7 +445,7 @@ describe('exportCsv', () => {
       name: 'exp1',
       status: 'complete',
       datasetId: VALID_UUID_2,
-      dataset: { attributes: ['input', 'expected_output'], items: [] },
+      revision: { attributes: ['input', 'expected_output'], items: [] },
       graders: [],
       results: [],
     }
@@ -425,11 +454,11 @@ describe('exportCsv', () => {
       {
         id: 'r1',
         experimentId: VALID_UUID,
-        datasetItemId: 'item-1',
+        datasetRevisionItemId: 'item-1',
         graderId: VALID_UUID_3,
         verdict: 'pass',
         reason: 'Has, comma and "quotes"',
-        datasetItem: { values: { input: 'hello, world', expected_output: 'ok' } },
+        datasetRevisionItem: { values: { input: 'hello, world', expected_output: 'ok' } },
         grader: { name: 'grader-1' },
       },
     ])

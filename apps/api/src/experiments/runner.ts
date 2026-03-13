@@ -42,7 +42,7 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
               const result = await evaluate(grader.rubric, item.values)
               await repo.createResult({
                 experimentId,
-                datasetItemId: item.id,
+                datasetRevisionItemId: item.id,
                 graderId: grader.id,
                 verdict: result.verdict,
                 reason: result.reason,
@@ -51,7 +51,7 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
               errorCount++
               await repo.createResult({
                 experimentId,
-                datasetItemId: item.id,
+                datasetRevisionItemId: item.id,
                 graderId: grader.id,
                 verdict: 'error',
                 reason: err instanceof Error ? err.message : 'Unknown error',

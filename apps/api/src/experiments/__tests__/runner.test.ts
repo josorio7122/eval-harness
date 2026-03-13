@@ -53,10 +53,10 @@ describe('createExperimentRunner', () => {
     await runner.enqueue('exp-1', datasetItems, graders)
 
     const calls = mockRepo.createResult.mock.calls.map((c) => c[0])
-    const firstCall = calls.find((c) => c.datasetItemId === 'item-1' && c.graderId === 'grader-1')
+    const firstCall = calls.find((c) => c.datasetRevisionItemId === 'item-1' && c.graderId === 'grader-1')
     expect(firstCall).toMatchObject({
       experimentId: 'exp-1',
-      datasetItemId: 'item-1',
+      datasetRevisionItemId: 'item-1',
       graderId: 'grader-1',
       verdict: 'pass',
       reason: 'great',

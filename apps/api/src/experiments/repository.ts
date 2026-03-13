@@ -16,12 +16,11 @@ export const experimentRepository = {
     return prisma.experiment.findUnique({
       where: { id },
       include: {
-        dataset: {
+        dataset: true,
+        revision: {
           include: {
-            items: {
-              orderBy: { createdAt: 'asc' }
-            }
-          }
+            items: { orderBy: { itemId: 'asc' } },
+          },
         },
         graders: { include: { grader: true } },
         results: true,
@@ -29,11 +28,12 @@ export const experimentRepository = {
     })
   },
 
-  create(data: { name: string; datasetId: string; graderIds: string[] }) {
+  create(data: { name: string; datasetId: string; datasetRevisionId: string; graderIds: string[] }) {
     return prisma.experiment.create({
       data: {
         name: data.name,
         datasetId: data.datasetId,
+        datasetRevisionId: data.datasetRevisionId,
         graders: {
           create: data.graderIds.map((graderId) => ({ graderId })),
         },
@@ -51,7 +51,7 @@ export const experimentRepository = {
 
   createResult(data: {
     experimentId: string
-    datasetItemId: string
+    datasetRevisionItemId: string
     graderId: string
     verdict: string
     reason: string
@@ -71,7 +71,7 @@ export const experimentRepository = {
     return prisma.experimentResult.findMany({
       where: { experimentId },
       include: {
-        datasetItem: true,
+        datasetRevisionItem: true,
         grader: true,
       },
     })
