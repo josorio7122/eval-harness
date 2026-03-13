@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router'
 import { Database, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { CreateDatasetDialog } from './create-dataset-dialog'
 import { useDatasets } from '@/hooks/use-datasets'
+import { EmptyState } from '@/components/shared/empty-state'
+import { ListSkeleton } from '@/components/shared/list-skeleton'
 
 export function DatasetList() {
   const navigate = useNavigate()
@@ -44,38 +45,25 @@ export function DatasetList() {
       {/* Content */}
       <div className="flex-1 overflow-auto">
         {isLoading ? (
-          // Shimmer loading rows
-          <div>
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between px-6 py-3 border-b border-border/50"
-              >
-                <Skeleton className={`h-3 ${i === 1 ? 'w-28' : i === 2 ? 'w-36' : 'w-44'}`} />
-                <Skeleton className="h-3 w-8" />
-              </div>
-            ))}
-          </div>
+          <ListSkeleton rows={3} />
         ) : !datasets || datasets.length === 0 ? (
           // Empty state
-          <div className="flex flex-col items-center justify-center gap-4 m-6 p-10 rounded-lg border border-border/50 bg-muted min-h-[220px]">
-            <Database size={32} className="text-muted-foreground/60" />
-            <div className="flex flex-col items-center gap-1">
-              <p className="text-[14px] font-medium text-muted-foreground">No datasets yet</p>
-              <p className="text-[12px] text-muted-foreground/70">
-                Create a dataset to start organizing your eval cases.
-              </p>
-            </div>
-            <CreateDatasetDialog
-              trigger={
-                <Button variant="outline" size="sm">
-                  <Plus size={14} />
-                  Create Dataset
-                </Button>
-              }
-              onCreated={handleCreated}
-            />
-          </div>
+          <EmptyState
+            icon={Database}
+            title="No datasets yet"
+            description="Create a dataset to start organizing your eval cases."
+            action={
+              <CreateDatasetDialog
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <Plus size={14} />
+                    Create Dataset
+                  </Button>
+                }
+                onCreated={handleCreated}
+              />
+            }
+          />
         ) : (
           // Dataset rows
           <div>

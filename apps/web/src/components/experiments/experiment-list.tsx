@@ -4,10 +4,11 @@ import { FlaskConical, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useExperiments } from '@/hooks/use-experiments'
 import { CreateExperimentDialog } from './create-experiment-dialog'
 import type { Experiment } from '@/hooks/use-experiments'
+import { EmptyState } from '@/components/shared/empty-state'
+import { ListSkeleton } from '@/components/shared/list-skeleton'
 
 const STATUS_BORDER_COLOR: Record<Experiment['status'], string> = {
   running: 'var(--accent-custom)',
@@ -69,44 +70,20 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
 
       {/* Rows */}
       <div className="flex-1 overflow-auto">
-        {isLoading && (
-          <>
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-              <div className="flex-1 flex flex-col gap-[6px]">
-                <Skeleton className="h-[13px] w-[140px]" />
-                <Skeleton className="h-[11px] w-[90px]" />
-              </div>
-              <Skeleton className="h-[20px] w-[56px]" />
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-              <div className="flex-1 flex flex-col gap-[6px]">
-                <Skeleton className="h-[13px] w-[140px]" />
-                <Skeleton className="h-[11px] w-[90px]" />
-              </div>
-              <Skeleton className="h-[20px] w-[56px]" />
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-              <div className="flex-1 flex flex-col gap-[6px]">
-                <Skeleton className="h-[13px] w-[140px]" />
-                <Skeleton className="h-[11px] w-[90px]" />
-              </div>
-              <Skeleton className="h-[20px] w-[56px]" />
-            </div>
-          </>
-        )}
+        {isLoading && <ListSkeleton rows={3} />}
 
         {!isLoading && experiments && experiments.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 m-4 p-8 rounded-lg border border-border/50 bg-muted">
-            <FlaskConical size={24} className="text-muted-foreground/60" />
-            <div className="text-center">
-              <p className="text-[13px] text-muted-foreground">No experiments yet</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Run your first eval</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus size={13} />
-              New experiment
-            </Button>
-          </div>
+          <EmptyState
+            icon={FlaskConical}
+            title="No experiments yet"
+            description="Run your first eval"
+            action={
+              <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus size={13} />
+                New experiment
+              </Button>
+            }
+          />
         )}
 
         {!isLoading &&

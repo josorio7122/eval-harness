@@ -4,21 +4,12 @@ import { cn } from '@/lib/utils'
 import { useGraders } from '@/hooks/use-graders'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/shared/empty-state'
+import { ListSkeleton } from '@/components/shared/list-skeleton'
 
 interface GraderListProps {
   selectedId?: string
   onCreateClick: () => void
-}
-
-function ShimmerRow() {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
-      <Skeleton className="h-3 w-36" />
-      <Skeleton className="h-3 w-48" />
-      <Skeleton className="ml-auto h-5 w-9" />
-    </div>
-  )
 }
 
 export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
@@ -53,28 +44,20 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
 
       {/* Rows */}
       <div className="flex-1 overflow-auto">
-        {isLoading && (
-          <>
-            <ShimmerRow />
-            <ShimmerRow />
-            <ShimmerRow />
-          </>
-        )}
+        {isLoading && <ListSkeleton rows={3} />}
 
         {!isLoading && graders && graders.length === 0 && (
-          <div className="flex flex-col items-center justify-center gap-3 m-4 p-8 rounded-lg border border-border/50 bg-muted/30">
-            <GraduationCap size={24} className="text-muted-foreground/60" />
-            <div className="text-center">
-              <p className="text-[13px] text-muted-foreground">No graders yet</p>
-              <p className="text-[12px] mt-1 text-muted-foreground/70">
-                Define a rubric to start evaluating
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={onCreateClick}>
-              <Plus />
-              Create grader
-            </Button>
-          </div>
+          <EmptyState
+            icon={GraduationCap}
+            title="No graders yet"
+            description="Define a rubric to start evaluating"
+            action={
+              <Button variant="outline" size="sm" onClick={onCreateClick}>
+                <Plus />
+                Create grader
+              </Button>
+            }
+          />
         )}
 
         {!isLoading &&

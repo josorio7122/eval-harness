@@ -6,7 +6,7 @@ import DatasetHeader from './dataset-header'
 import DatasetSchemaPanel from './dataset-schema-panel'
 import DatasetItemsTable from './dataset-items-table'
 import DatasetCsvDialog from './dataset-csv-dialog'
-import DatasetDeleteDialog from './dataset-delete-dialog'
+import { DatasetDeleteDialog } from './dataset-delete-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
@@ -88,7 +88,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         datasetName={dataset.name}
-        affectedExperiments={affectedExperiments}
+        affectedExperiments={affectedExperiments.map((exp) => exp.name)}
         onConfirm={async () => {
           await deleteDataset.mutateAsync(id)
           setDeleteDialogOpen(false)

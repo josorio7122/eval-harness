@@ -140,27 +140,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-}
-
-body {
-  font-family: var(--font-sans);
-  font-size: 13px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
