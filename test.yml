@@ -1,0 +1,305 @@
+# test.yml — API Endpoint Smoke Test Guide
+# Run these curl commands against http://localhost:3001
+#
+# Replace :id, :itemId, :graderId, :datasetId, etc. with real UUIDs
+# from previous responses as you work through the scenarios.
+#
+# Port: 3001 (API server default)
+
+datasets:
+
+  create:
+    description: "Create a new dataset"
+    command: |
+      curl -X POST http://localhost:3001/datasets \
+        -H "Content-Type: application/json" \
+        -d '{"name": "my-dataset"}'
+    expected_status: 201
+    expected_body: '{ "success": true, "data": { "id": "...", "name": "my-dataset", "attributes": ["input", "expected_output"] } }'
+
+  create_duplicate_name:
+    description: "Reject duplicate dataset name"
+    command: |
+      curl -X POST http://localhost:3001/datasets \
+        -H "Content-Type: application/json" \
+        -d '{"name": "my-dataset"}'
+    expected_status: 400
+    expected_body: '{ "success": false, "error": "Dataset name already exists" }'
+
+  create_empty_name:
+    description: "Reject empty dataset name"
+    command: |
+      curl -X POST http://localhost:3001/datasets \
+        -H "Content-Type: application/json" \
+        -d '{"name": ""}'
+    expected_status: 400
+
+  list:
+    description: "List all datasets"
+    command: |
+      curl http://localhost:3001/datasets
+    expected_status: 200
+
+  get:
+    description: "Get dataset by ID (includes schema attributes and items)"
+    command: |
+      curl http://localhost:3001/datasets/:id
+    expected_status: 200
+
+  rename:
+    description: "Rename a dataset"
+    command: |
+      curl -X PATCH http://localhost:3001/datasets/:id \
+        -H "Content-Type: application/json" \
+        -d '{"name": "renamed-dataset"}'
+    expected_status: 200
+
+  delete:
+    description: "Delete dataset (cascades to items + experiments)"
+    command: |
+      curl -X DELETE http://localhost:3001/datasets/:id
+    expected_status: 200
+
+  add_attribute:
+    description: "Add custom attribute to dataset schema"
+    command: |
+      curl -X POST http://localhost:3001/datasets/:id/attributes \
+        -H "Content-Type: application/json" \
+        -d '{"name": "context"}'
+    expected_status: 201
+
+  add_duplicate_attribute:
+    description: "Reject duplicate attribute name"
+    command: |
+      curl -X POST http://localhost:3001/datasets/:id/attributes \
+        -H "Content-Type: application/json" \
+        -d '{"name": "input"}'
+    expected_status: 400
+
+  remove_attribute:
+    description: "Remove custom attribute from schema"
+    command: |
+      curl -X DELETE http://localhost:3001/datasets/:id/attributes/context
+    expected_status: 200
+
+  remove_builtin_attribute:
+    description: "Reject removal of built-in attribute"
+    command: |
+      curl -X DELETE http://localhost:3001/datasets/:id/attributes/input
+    expected_status: 400
+
+dataset_items:
+
+  create:
+    description: "Add item to dataset"
+    command: |
+      curl -X POST http://localhost:3001/datasets/:id/items \
+        -H "Content-Type: application/json" \
+        -d '{"values": {"input": "What is 2+2?", "expected_output": "4"}}'
+    expected_status: 201
+
+  create_missing_builtin:
+    description: "Reject item missing required built-in attributes"
+    command: |
+      curl -X POST http://localhost:3001/datasets/:id/items \
+        -H "Content-Type: application/json" \
+        -d '{"values": {"input": "hello"}}'
+    expected_status: 400
+
+  list:
+    description: "List items in a dataset"
+    command: |
+      curl http://localhost:3001/datasets/:id/items
+    expected_status: 200
+
+  update:
+    description: "Edit a dataset item"
+    command: |
+      curl -X PATCH http://localhost:3001/datasets/:id/items/:itemId \
+        -H "Content-Type: application/json" \
+        -d '{"values": {"input": "What is 3+3?", "expected_output": "6"}}'
+    expected_status: 200
+
+  delete:
+    description: "Remove a dataset item"
+    command: |
+      curl -X DELETE http://localhost:3001/datasets/:id/items/:itemId
+    expected_status: 200
+
+  csv_template:
+    description: "Download blank CSV template for a dataset (headers only)"
+    command: |
+      curl http://localhost:3001/datasets/:id/csv/template -o template.csv
+    expected_status: 200
+    notes: "Response Content-Type: text/csv; filename: {name}-template.csv"
+
+  csv_preview:
+    description: "Preview CSV rows before importing (validates without persisting)"
+    command: |
+      curl -X POST http://localhost:3001/datasets/:id/csv/preview \
+        -H "Content-Type: text/plain" \
+        --data-binary $'input,expected_output\nWhat is 2+2?,4\nWhat is 3+3?,6'
+    expected_status: 200
+    notes: "Sends raw CSV text body (not multipart). Returns parsed rows for review."
+
+  csv_import:
+    description: "Import items from CSV (raw text body)"
+    command: |
+      curl -X POST http://localhost:3001/datasets/:id/csv/import \
+        -H "Content-Type: text/plain" \
+        --data-binary $'input,expected_output\nWhat is 2+2?,4\nWhat is 3+3?,6'
+    expected_status: 200
+    notes: "Sends raw CSV text body (not multipart). Persists all valid rows."
+
+  csv_export:
+    description: "Export all dataset items as CSV"
+    command: |
+      curl http://localhost:3001/datasets/:id/csv/export -o items.csv
+    expected_status: 200
+    notes: "Response Content-Type: text/csv; filename: {name}-export.csv"
+
+graders:
+
+  create:
+    description: "Create a new grader"
+    command: |
+      curl -X POST http://localhost:3001/graders \
+        -H "Content-Type: application/json" \
+        -d '{"name": "accuracy-check", "description": "Checks factual accuracy", "rubric": "Evaluate whether the output matches the expected output. Consider semantic equivalence, not just exact string matching."}'
+    expected_status: 201
+
+  create_empty_rubric:
+    description: "Reject grader with empty rubric"
+    command: |
+      curl -X POST http://localhost:3001/graders \
+        -H "Content-Type: application/json" \
+        -d '{"name": "bad-grader", "description": "test", "rubric": ""}'
+    expected_status: 400
+
+  create_missing_name:
+    description: "Reject grader with missing name"
+    command: |
+      curl -X POST http://localhost:3001/graders \
+        -H "Content-Type: application/json" \
+        -d '{"rubric": "Some rubric"}'
+    expected_status: 400
+
+  list:
+    description: "List all graders"
+    command: |
+      curl http://localhost:3001/graders
+    expected_status: 200
+
+  get:
+    description: "Get grader by ID"
+    command: |
+      curl http://localhost:3001/graders/:id
+    expected_status: 200
+
+  update:
+    description: "Edit a grader (partial update — all fields optional)"
+    command: |
+      curl -X PATCH http://localhost:3001/graders/:id \
+        -H "Content-Type: application/json" \
+        -d '{"name": "updated-grader", "rubric": "Updated rubric instructions"}'
+    expected_status: 200
+
+  update_description_only:
+    description: "Update only the description"
+    command: |
+      curl -X PATCH http://localhost:3001/graders/:id \
+        -H "Content-Type: application/json" \
+        -d '{"description": "Now with better context"}'
+    expected_status: 200
+
+  delete:
+    description: "Delete grader (cascades to experiments)"
+    command: |
+      curl -X DELETE http://localhost:3001/graders/:id
+    expected_status: 200
+
+  get_not_found:
+    description: "404 for non-existent grader"
+    command: |
+      curl http://localhost:3001/graders/00000000-0000-0000-0000-000000000000
+    expected_status: 404
+
+experiments:
+
+  create:
+    description: "Create an experiment"
+    command: |
+      curl -X POST http://localhost:3001/experiments \
+        -H "Content-Type: application/json" \
+        -d '{"name": "eval-run-1", "datasetId": ":datasetId", "graderIds": [":graderId"]}'
+    expected_status: 201
+
+  create_no_graders:
+    description: "Reject experiment with empty graderIds array"
+    command: |
+      curl -X POST http://localhost:3001/experiments \
+        -H "Content-Type: application/json" \
+        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": []}'
+    expected_status: 400
+
+  create_invalid_dataset:
+    description: "Reject experiment with non-existent datasetId"
+    command: |
+      curl -X POST http://localhost:3001/experiments \
+        -H "Content-Type: application/json" \
+        -d '{"name": "bad-exp", "datasetId": "00000000-0000-0000-0000-000000000000", "graderIds": [":graderId"]}'
+    expected_status: 400
+
+  list:
+    description: "List all experiments"
+    command: |
+      curl http://localhost:3001/experiments
+    expected_status: 200
+
+  get:
+    description: "Get experiment with all results"
+    command: |
+      curl http://localhost:3001/experiments/:id
+    expected_status: 200
+
+  run:
+    description: "Trigger experiment run (async — returns 202)"
+    command: |
+      curl -X POST http://localhost:3001/experiments/:id/run
+    expected_status: 202
+    notes: "Processing happens asynchronously. Listen to /events for progress."
+
+  events:
+    description: "SSE stream for real-time experiment progress"
+    command: |
+      curl -N http://localhost:3001/experiments/:id/events
+    expected_status: 200
+    notes: |
+      Streams Server-Sent Events:
+        event: connected  — subscription confirmed
+        event: progress   — item graded ({ itemId, graderId, score, reasoning })
+        event: completed  — all items processed
+        event: error      — run failed
+
+  rerun:
+    description: "Re-run experiment (creates a new experiment, preserves original)"
+    command: |
+      curl -X POST http://localhost:3001/experiments/:id/rerun
+    expected_status: 201
+    notes: "New experiment gets a derived name (e.g. 'eval-run-1 (2)'). Original is unchanged."
+
+  delete:
+    description: "Delete experiment and all its results"
+    command: |
+      curl -X DELETE http://localhost:3001/experiments/:id
+    expected_status: 200
+
+  csv_export:
+    description: "Export experiment results as CSV"
+    command: |
+      curl http://localhost:3001/experiments/:id/csv/export -o results.csv
+    expected_status: 200
+    notes: |
+      Response Content-Type: text/csv
+      Filename: experiment-{id}.csv
+      Columns include item attributes, grader scores, and reasoning per grader.
