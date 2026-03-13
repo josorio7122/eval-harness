@@ -77,9 +77,6 @@
   /* Foreground */
   --fg-secondary: hsl(240, 4%, 32%);
 
-  /* Accent (custom — separate from shadcn --accent) */
-  --accent-custom: hsl(215, 65%, 50%);
-
   /* Semantic — Pass */
   --pass: hsl(142, 60%, 40%);
   --pass-fg: hsl(142, 60%, 32%);
@@ -98,8 +95,6 @@
   --neutral: hsl(240, 3%, 55%);
   --neutral-fg: hsl(240, 4%, 42%);
 
-  /* Typography */
-  --font-sans: 'Inter', 'Inter var', system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
