@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router'
 import { GraduationCap, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useGraders } from '@/hooks/use-graders'
 
 interface GraderListProps {
@@ -9,22 +10,10 @@ interface GraderListProps {
 
 function ShimmerRow() {
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-2.5"
-      style={{ borderBottom: '1px solid var(--border-subtle)' }}
-    >
-      <div
-        className="h-[13px] w-[140px] rounded animate-pulse"
-        style={{ background: 'var(--bg-surface-2)' }}
-      />
-      <div
-        className="h-[13px] w-[200px] rounded animate-pulse"
-        style={{ background: 'var(--bg-surface-2)' }}
-      />
-      <div
-        className="ml-auto h-[20px] w-[36px] rounded animate-pulse"
-        style={{ background: 'var(--bg-surface-2)' }}
-      />
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+      <div className="h-[13px] w-[140px] rounded animate-pulse bg-secondary" />
+      <div className="h-[13px] w-[200px] rounded animate-pulse bg-secondary" />
+      <div className="ml-auto h-[20px] w-[36px] rounded animate-pulse bg-secondary" />
     </div>
   )
 }
@@ -34,38 +23,15 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
   const { data: graders, isLoading } = useGraders()
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ background: 'var(--bg-surface-1)', borderRight: '1px solid var(--border-default)' }}
-    >
+    <div className="flex flex-col h-full bg-card border-r border-border">
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: '1px solid var(--border-default)' }}
-      >
-        <span
-          className="text-[11px] font-semibold uppercase tracking-[0.05em]"
-          style={{ color: 'var(--fg-tertiary)', letterSpacing: '0.05em' }}
-        >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Graders
         </span>
         <button
           onClick={onCreateClick}
-          className="flex items-center gap-1 px-2 h-[28px] rounded text-[12px] font-medium transition-colors"
-          style={{
-            background: 'var(--bg-surface-2)',
-            color: 'var(--fg-secondary)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 'var(--radius-md)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--fg-primary)'
-            e.currentTarget.style.background = 'var(--bg-surface-3)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--fg-secondary)'
-            e.currentTarget.style.background = 'var(--bg-surface-2)'
-          }}
+          className="flex items-center gap-1 px-2 h-[28px] rounded-md text-[12px] font-medium transition-colors bg-secondary text-muted-foreground border border-border hover:bg-accent hover:text-foreground"
         >
           <Plus size={13} />
           New
@@ -73,24 +39,11 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
       </div>
 
       {/* Table header */}
-      <div
-        className="grid px-4 py-2"
-        style={{
-          gridTemplateColumns: '1fr auto',
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'var(--bg-surface-2)',
-        }}
-      >
-        <span
-          className="text-[11px] font-semibold uppercase tracking-[0.05em]"
-          style={{ color: 'var(--fg-tertiary)' }}
-        >
+      <div className="grid px-4 py-2.5 border-b border-border/50 bg-secondary" style={{ gridTemplateColumns: '1fr auto' }}>
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Name
         </span>
-        <span
-          className="text-[11px] font-semibold uppercase tracking-[0.05em]"
-          style={{ color: 'var(--fg-tertiary)' }}
-        >
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Type
         </span>
       </div>
@@ -107,33 +60,19 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
 
         {!isLoading && graders && graders.length === 0 && (
           <div
-            className="flex flex-col items-center justify-center gap-3 m-4 p-8 rounded"
-            style={{
-              background: 'var(--bg-inset)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-lg)',
-            }}
+            className="flex flex-col items-center justify-center gap-3 m-4 p-8 rounded-lg border border-border/50"
+            style={{ background: 'var(--bg-inset)' }}
           >
-            <GraduationCap size={24} style={{ color: 'var(--fg-muted)' }} />
+            <GraduationCap size={24} className="text-muted-foreground/60" />
             <div className="text-center">
-              <p className="text-[13px]" style={{ color: 'var(--fg-secondary)' }}>
-                No graders yet
-              </p>
+              <p className="text-[13px] text-muted-foreground">No graders yet</p>
               <p className="text-[12px] mt-1" style={{ color: 'var(--fg-muted)' }}>
                 Define a rubric to start evaluating
               </p>
             </div>
             <button
               onClick={onCreateClick}
-              className="flex items-center gap-1.5 px-3 h-[32px] text-[13px] font-medium transition-colors"
-              style={{
-                background: 'var(--bg-surface-2)',
-                color: 'var(--fg-primary)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--radius-md)',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+              className="flex items-center gap-1.5 px-3 h-[32px] text-[13px] font-medium transition-colors rounded-md bg-secondary text-foreground border border-border hover:bg-accent"
             >
               <Plus size={13} />
               Create grader
@@ -149,29 +88,15 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
               <div
                 key={grader.id}
                 onClick={() => navigate(`/graders/${grader.id}`)}
-                className="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors"
-                style={{
-                  borderBottom: '1px solid var(--border-subtle)',
-                  borderLeft: isSelected ? '2px solid var(--accent-custom)' : '2px solid transparent',
-                  background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
-                  paddingLeft: isSelected ? '14px' : '16px',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = 'var(--bg-surface-1)'
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = 'transparent'
-                  }
-                }}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-border/50 border-l-2',
+                  isSelected
+                    ? 'bg-secondary border-l-[var(--accent-custom)] pl-[14px]'
+                    : 'border-l-transparent hover:bg-card/80'
+                )}
               >
                 <div className="flex-1 min-w-0">
-                  <div
-                    className="text-[13px] font-medium truncate"
-                    style={{ color: 'var(--fg-primary)' }}
-                  >
+                  <div className="text-[13px] font-medium truncate text-foreground">
                     {grader.name}
                   </div>
                   {grader.description && (
@@ -184,11 +109,10 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
                   )}
                 </div>
                 <span
-                  className="shrink-0 text-[11px] font-medium px-[6px] py-[2px]"
+                  className="shrink-0 text-[11px] font-medium px-[6px] py-[2px] rounded"
                   style={{
                     background: 'var(--accent-subtle)',
                     color: 'var(--accent-custom)',
-                    borderRadius: 'var(--radius-sm)',
                     letterSpacing: '0.03em',
                   }}
                 >

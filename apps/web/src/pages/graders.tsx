@@ -10,22 +10,19 @@ export function GradersPage() {
   const [showCreate, setShowCreate] = useState(false)
 
   return (
-    <div className="flex h-full" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex h-full bg-background">
       {/* Left panel: list (30%) */}
       <div className="w-[30%] min-w-[240px] max-w-[320px] flex flex-col h-full overflow-hidden">
         <GraderList selectedId={id} onCreateClick={() => setShowCreate(true)} />
       </div>
 
       {/* Right panel: detail (70%) */}
-      <div className="flex-1 overflow-hidden" style={{ borderLeft: '1px solid var(--border-default)' }}>
+      <div className="flex-1 overflow-hidden border-l border-border">
         {id ? (
           <GraderDetail key={id} id={id} />
         ) : (
-          <div
-            className="flex flex-col items-center justify-center h-full gap-2"
-            style={{ background: 'var(--bg-base)' }}
-          >
-            <p className="text-[13px]" style={{ color: 'var(--fg-muted)' }}>
+          <div className="flex flex-col items-center justify-center h-full gap-2 bg-background">
+            <p className="text-[13px] text-muted-foreground">
               Select a grader to view details
             </p>
           </div>

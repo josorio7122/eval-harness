@@ -10,15 +10,9 @@ const navItems = [
 export function Layout() {
   return (
     <div className="flex h-screen">
-      <aside
-        className="w-[220px] flex-shrink-0 border-r"
-        style={{ borderColor: 'var(--border-default)', background: 'var(--bg-base)' }}
-      >
+      <aside className="w-[220px] flex-shrink-0 border-r border-border bg-background">
         <div className="p-4">
-          <h1
-            className="text-[16px] font-semibold tracking-tight"
-            style={{ color: 'var(--fg-primary)' }}
-          >
+          <h1 className="text-[16px] font-semibold tracking-tight text-foreground">
             Eval Harness
           </h1>
         </div>
@@ -28,15 +22,12 @@ export function Layout() {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 text-[13px] transition-colors ${
-                  isActive ? 'border-l-2' : 'border-l-2 border-transparent'
+                `flex items-center gap-3 px-4 py-2.5 text-[13px] transition-colors border-l-2 ${
+                  isActive
+                    ? 'border-l-[var(--accent-custom)] bg-card text-foreground'
+                    : 'border-transparent text-muted-foreground hover:bg-card hover:text-foreground'
                 }`
               }
-              style={({ isActive }) => ({
-                color: isActive ? 'var(--fg-primary)' : 'var(--fg-secondary)',
-                borderLeftColor: isActive ? 'var(--accent-custom)' : 'transparent',
-                background: isActive ? 'var(--bg-surface-1)' : 'transparent',
-              })}
             >
               <item.icon size={16} />
               {item.label}
@@ -44,7 +35,7 @@ export function Layout() {
           ))}
         </nav>
       </aside>
-      <main className="flex-1 overflow-auto" style={{ background: 'var(--bg-base)' }}>
+      <main className="flex-1 overflow-auto bg-background">
         <Outlet />
       </main>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FlaskConical, Plus } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useExperiments } from '@/hooks/use-experiments'
 import { CreateExperimentDialog } from './create-experiment-dialog'
 import type { Experiment } from '@/hooks/use-experiments'
@@ -39,24 +40,12 @@ function progressPct(exp: Experiment): number {
 
 function ShimmerRow() {
   return (
-    <div
-      className="flex items-center gap-3 px-4 py-3"
-      style={{ borderBottom: '1px solid var(--border-subtle)' }}
-    >
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div
-          className="h-[13px] w-[140px] rounded animate-pulse"
-          style={{ background: 'var(--bg-surface-2)' }}
-        />
-        <div
-          className="h-[11px] w-[90px] rounded animate-pulse"
-          style={{ background: 'var(--bg-surface-2)' }}
-        />
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50">
+      <div className="flex-1 flex flex-col gap-[6px]">
+        <div className="h-[13px] w-[140px] rounded animate-pulse bg-secondary" />
+        <div className="h-[11px] w-[90px] rounded animate-pulse bg-secondary" />
       </div>
-      <div
-        className="h-[20px] w-[56px] rounded animate-pulse"
-        style={{ background: 'var(--bg-surface-2)' }}
-      />
+      <div className="h-[20px] w-[56px] rounded animate-pulse bg-secondary" />
     </div>
   )
 }
@@ -75,38 +64,15 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
   }
 
   return (
-    <div
-      className="flex flex-col h-full"
-      style={{ background: 'var(--bg-surface-1)', borderRight: '1px solid var(--border-default)' }}
-    >
+    <div className="flex flex-col h-full bg-card border-r border-border">
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3"
-        style={{ borderBottom: '1px solid var(--border-default)' }}
-      >
-        <span
-          className="text-[11px] font-semibold uppercase tracking-[0.05em]"
-          style={{ color: 'var(--fg-tertiary)' }}
-        >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Experiments
         </span>
         <button
           onClick={() => setCreateOpen(true)}
-          className="flex items-center gap-1 px-2 h-[28px] rounded text-[12px] font-medium transition-colors"
-          style={{
-            background: 'var(--bg-surface-2)',
-            color: 'var(--fg-secondary)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 'var(--radius-md)',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--fg-primary)'
-            e.currentTarget.style.background = 'var(--bg-surface-3)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--fg-secondary)'
-            e.currentTarget.style.background = 'var(--bg-surface-2)'
-          }}
+          className="flex items-center gap-1 px-2 h-[28px] rounded-md text-[12px] font-medium transition-colors bg-secondary text-muted-foreground border border-border hover:bg-accent hover:text-foreground"
         >
           <Plus size={13} />
           New
@@ -125,33 +91,19 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
 
         {!isLoading && experiments && experiments.length === 0 && (
           <div
-            className="flex flex-col items-center justify-center gap-3 m-4 p-8 rounded"
-            style={{
-              background: 'var(--bg-inset)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-lg)',
-            }}
+            className="flex flex-col items-center justify-center gap-3 m-4 p-8 rounded-lg border border-border/50"
+            style={{ background: 'var(--bg-inset)' }}
           >
-            <FlaskConical size={24} style={{ color: 'var(--fg-muted)' }} />
+            <FlaskConical size={24} className="text-muted-foreground/60" />
             <div className="text-center">
-              <p className="text-[13px]" style={{ color: 'var(--fg-secondary)' }}>
-                No experiments yet
-              </p>
+              <p className="text-[13px] text-muted-foreground">No experiments yet</p>
               <p className="text-[12px] mt-1" style={{ color: 'var(--fg-muted)' }}>
                 Run your first eval
               </p>
             </div>
             <button
               onClick={() => setCreateOpen(true)}
-              className="flex items-center gap-1.5 px-3 h-[32px] text-[13px] font-medium transition-colors"
-              style={{
-                background: 'var(--bg-surface-2)',
-                color: 'var(--fg-primary)',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 'var(--radius-md)',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+              className="flex items-center gap-1.5 px-3 h-[32px] text-[13px] font-medium transition-colors rounded-md bg-secondary text-foreground border border-border hover:bg-accent"
             >
               <Plus size={13} />
               New experiment
@@ -172,28 +124,21 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
               <div
                 key={exp.id}
                 onClick={() => navigate(`/experiments/${exp.id}`)}
-                className="relative cursor-pointer transition-colors px-4 py-2.5"
+                className={cn(
+                  'relative cursor-pointer transition-colors px-4 border-b border-border/50 border-l-2',
+                  exp.status === 'running' ? 'pt-2.5 pb-3' : 'py-2.5',
+                  isSelected
+                    ? 'bg-secondary pl-[14px]'
+                    : 'border-l-transparent hover:bg-card/80'
+                )}
                 style={{
-                  borderBottom: '1px solid var(--border-subtle)',
-                  borderLeft: isSelected ? `2px solid ${borderColor}` : '2px solid transparent',
-                  background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
-                  paddingLeft: isSelected ? '14px' : '16px',
-                  paddingBottom: exp.status === 'running' ? '12px' : undefined,
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) e.currentTarget.style.background = 'var(--bg-surface-1)'
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) e.currentTarget.style.background = 'transparent'
+                  borderLeftColor: isSelected ? borderColor : 'transparent',
                 }}
               >
                 {/* Row content */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <div
-                      className="text-[13px] font-medium truncate"
-                      style={{ color: 'var(--fg-primary)' }}
-                    >
+                    <div className="text-[13px] font-medium truncate text-foreground">
                       {exp.name}
                     </div>
                     <div className="flex items-center gap-2 mt-[2px]">
@@ -233,7 +178,7 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
                     </div>
                   </div>
 
-                  {/* Status badge */}
+                  {/* Status badge — dynamic color must stay inline */}
                   <span
                     className="shrink-0 text-[11px] font-medium"
                     style={{ color: STATUS_COLOR[exp.status] }}
@@ -245,14 +190,7 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
                 {/* Running: progress bar at bottom */}
                 {exp.status === 'running' && (
                   <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      height: '2px',
-                      background: 'var(--bg-surface-3)',
-                    }}
+                    className="absolute bottom-0 left-0 right-0 h-[2px] bg-accent"
                   >
                     <div
                       style={{

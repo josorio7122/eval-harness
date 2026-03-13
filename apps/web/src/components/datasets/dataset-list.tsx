@@ -15,11 +15,8 @@ export function DatasetList() {
   return (
     <div className="flex flex-col h-full">
       {/* Page header */}
-      <div
-        className="flex items-center justify-between px-6 py-4 border-b"
-        style={{ borderColor: 'var(--border-default)' }}
-      >
-        <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)' }}>Datasets</h2>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h2 className="text-[16px] font-semibold text-foreground">Datasets</h2>
         <CreateDatasetDialog
           trigger={
             <Button
@@ -41,33 +38,13 @@ export function DatasetList() {
       {/* Table header */}
       {!isLoading && datasets && datasets.length > 0 && (
         <div
-          className="grid px-6 py-2.5 border-b"
-          style={{
-            gridTemplateColumns: '1fr auto',
-            borderColor: 'var(--border-subtle)',
-            background: 'var(--bg-surface-1)',
-          }}
+          className="grid px-6 py-2.5 border-b border-border/50 bg-card"
+          style={{ gridTemplateColumns: '1fr auto' }}
         >
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: 'var(--fg-tertiary)',
-            }}
-          >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Name
           </span>
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-              color: 'var(--fg-tertiary)',
-            }}
-          >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Items / Attrs
           </span>
         </div>
@@ -81,44 +58,26 @@ export function DatasetList() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="flex items-center justify-between px-6 py-3 border-b"
-                style={{ borderColor: 'var(--border-subtle)' }}
+                className="flex items-center justify-between px-6 py-3 border-b border-border/50"
               >
                 <div
-                  className="h-[13px] rounded animate-pulse"
-                  style={{
-                    width: `${120 + i * 40}px`,
-                    background: 'var(--bg-surface-2)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}
+                  className="h-[13px] rounded-sm animate-pulse bg-secondary"
+                  style={{ width: `${120 + i * 40}px` }}
                 />
-                <div
-                  className="h-[13px] w-8 rounded animate-pulse"
-                  style={{
-                    background: 'var(--bg-surface-2)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}
-                />
+                <div className="h-[13px] w-8 rounded-sm animate-pulse bg-secondary" />
               </div>
             ))}
           </div>
         ) : !datasets || datasets.length === 0 ? (
           // Empty state
           <div
-            className="flex flex-col items-center justify-center gap-4 m-6 p-10 rounded"
-            style={{
-              background: 'var(--bg-inset)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: 'var(--radius-lg)',
-              minHeight: '220px',
-            }}
+            className="flex flex-col items-center justify-center gap-4 m-6 p-10 rounded-lg border border-border/50"
+            style={{ background: 'var(--bg-inset)', minHeight: '220px' }}
           >
-            <Database size={32} style={{ color: 'var(--fg-muted)' }} />
+            <Database size={32} className="text-muted-foreground/60" />
             <div className="flex flex-col items-center gap-1">
-              <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--fg-secondary)' }}>
-                No datasets yet
-              </p>
-              <p style={{ fontSize: '12px', color: 'var(--fg-tertiary)' }}>
+              <p className="text-[14px] font-medium text-muted-foreground">No datasets yet</p>
+              <p className="text-[12px]" style={{ color: 'var(--fg-tertiary)' }}>
                 Create a dataset to start organizing your eval cases.
               </p>
             </div>
@@ -146,25 +105,14 @@ export function DatasetList() {
               <button
                 key={dataset.id}
                 onClick={() => navigate(`/datasets/${dataset.id}`)}
-                className="w-full flex items-center justify-between px-6 py-3 border-b text-left transition-colors"
-                style={{
-                  borderColor: 'var(--border-subtle)',
-                  background: 'transparent',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'var(--bg-surface-1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent'
-                }}
+                className="w-full flex items-center justify-between px-6 py-3 border-b border-border/50 text-left transition-colors bg-transparent hover:bg-card cursor-pointer"
               >
-                <span style={{ fontSize: '13px', color: 'var(--fg-primary)', fontWeight: 500 }}>
+                <span className="text-[13px] font-medium text-foreground">
                   {dataset.name}
                 </span>
                 <span
+                  className="text-[12px]"
                   style={{
-                    fontSize: '12px',
                     color: 'var(--fg-tertiary)',
                     fontFamily: 'var(--font-mono)',
                     fontVariantNumeric: 'tabular-nums',
