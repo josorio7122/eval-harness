@@ -20,7 +20,7 @@ export async function setup() {
   await client.end()
 
   const dbPkgDir = path.resolve(__dirname, '../../../../../packages/db')
-  execSync(`pnpm exec prisma db push --skip-generate`, {
+  execSync(`pnpm exec prisma db push`, {
     cwd: dbPkgDir,
     env: { ...process.env, DATABASE_URL: TEST_URL },
     stdio: 'pipe',
