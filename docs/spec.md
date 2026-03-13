@@ -11,8 +11,7 @@ When this system is complete, a user can manage datasets of structured test case
 - **DatasetList:** When the user navigates to the dataset area, they see a list of all existing datasets, each identified by its user-given name.
 - **DatasetCreate:** When the user submits a name for a new dataset, that dataset appears in the list immediately. It starts with two built-in attributes — `input` and `expected_output` — and no items.
 - **DatasetRename:** When the user edits the name of a dataset and confirms, the list reflects the new name immediately. All items in that dataset are preserved.
-- **DatasetDelete:** When the user deletes a dataset, it is removed from the list immediately. All items belonging to that dataset and all experiments referencing that dataset (with their results) are also deleted. The operation is not reversible within the session.
-- **DatasetDeleteExperimentWarning:** When the user attempts to delete a dataset that is referenced by one or more experiments, the system surfaces a warning before proceeding. The warning communicates that the associated experiments and all their results will also be deleted. The user must explicitly confirm the deletion. If the user does not confirm, no deletion occurs.
+- **DatasetDelete:** When the user deletes a dataset, it is removed from the list immediately. All items belonging to that dataset and all experiments referencing that dataset (with their results) are also deleted. The frontend confirms the action before proceeding. The operation is not reversible within the session.
 - **DatasetOpen:** When the user selects a dataset from the list, they see that dataset's schema (its attributes) and all of its items.
 
 **Schema (attributes)**
@@ -164,7 +163,6 @@ These describe what the user provides and what the system surfaces — not inter
 - **DuplicateAttributeName:** The user attempts to add an attribute whose name already exists in this dataset's schema → the attribute is not added and the user sees an inline validation message indicating the name is already in use.
 - **RemoveBuiltInAttribute:** The user attempts to remove `input` or `expected_output` → the request is rejected and the user sees a message indicating these attributes are required and cannot be removed.
 - **ItemMissingBuiltIns:** The user submits a new or edited item without a value for `input` or `expected_output` → the system either prevents submission with a validation message, or stores an empty string for the missing attribute — this behavior is left to the implementor to decide consistently, but the item is always stored with both attributes present.
-- **DatasetDeleteExperimentNoConfirm:** The user dismisses or cancels the warning about associated experiments → the dataset is not deleted and the system returns to its previous state unchanged.
 - **ImportNotCSV:** The user provides a file that is not valid CSV → the import is rejected before preview and the user sees a message indicating the file could not be parsed.
 - **ImportMissingBuiltIns:** The CSV header does not contain `input` or `expected_output` → the import is rejected before preview with a message listing the missing required columns.
 - **ImportUnknownColumns:** The CSV header contains column names not in the dataset's schema → the import is rejected before preview. The user sees the unrecognized column names and is reminded to download the template.

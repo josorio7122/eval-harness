@@ -48,7 +48,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   const runExp = useRunExperiment()
   const rerunExp = useRerunExperiment()
   const deleteExp = useDeleteExperiment()
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
 
   // SSE: live cell updates while running
@@ -98,10 +98,6 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   }
 
   async function handleDelete() {
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      return
-    }
     await deleteExp.mutateAsync(id)
     navigate('/experiments')
   }
@@ -267,36 +263,112 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
 
           {/* Delete */}
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteDialog(true)}
             disabled={deleteExp.isPending}
             className="flex items-center gap-1.5 h-[28px] px-3 text-[12px] font-medium transition-colors disabled:opacity-50"
             style={{
-              background: confirmDelete ? 'var(--fail-subtle)' : 'var(--bg-surface-2)',
-              color: confirmDelete ? 'var(--fail-fg)' : 'var(--fg-secondary)',
-              border: confirmDelete
-                ? '1px solid var(--fail)'
-                : '1px solid var(--border-strong)',
+              background: 'var(--bg-surface-2)',
+              color: 'var(--fg-secondary)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 'var(--radius-md)',
             }}
             onMouseEnter={(e) => {
-              if (!confirmDelete) {
-                e.currentTarget.style.color = 'var(--fail-fg)'
-                e.currentTarget.style.background = 'var(--fail-subtle)'
-              }
+              e.currentTarget.style.color = 'var(--fail-fg)'
+              e.currentTarget.style.background = 'var(--fail-subtle)'
+              e.currentTarget.style.borderColor = 'var(--fail)'
             }}
             onMouseLeave={(e) => {
-              if (!confirmDelete) {
-                e.currentTarget.style.color = 'var(--fg-secondary)'
-                e.currentTarget.style.background = 'var(--bg-surface-2)'
-              }
-              setConfirmDelete(false)
+              e.currentTarget.style.color = 'var(--fg-secondary)'
+              e.currentTarget.style.background = 'var(--bg-surface-2)'
+              e.currentTarget.style.borderColor = 'var(--border-strong)'
             }}
           >
             <Trash2 size={12} />
-            {confirmDelete ? 'Confirm' : 'Delete'}
+            Delete
           </button>
         </div>
       </div>
+
+      {/* Delete Experiment Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDeleteDialog(false)
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface-1)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              width: '400px',
+              maxWidth: '90vw',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+              Delete experiment "{experiment.name}"?
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--fg-secondary)', margin: 0 }}>
+              This will permanently delete this experiment and all its results.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setShowDeleteDialog(false)}
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  background: 'transparent',
+                  color: 'var(--fg-secondary)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowDeleteDialog(false)
+                  await handleDelete()
+                }}
+                disabled={deleteExp.isPending}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  background: 'var(--fail-subtle)',
+                  color: 'var(--fail-fg)',
+                  border: '1px solid var(--fail)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  opacity: deleteExp.isPending ? 0.6 : 1,
+                }}
+              >
+                <Trash2 size={12} />
+                {deleteExp.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Running progress bar */}
       {isRunning && (

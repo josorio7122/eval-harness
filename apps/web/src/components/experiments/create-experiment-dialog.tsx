@@ -150,7 +150,7 @@ export function CreateExperimentDialog({
               <option value="" disabled>
                 Select a dataset…
               </option>
-              {datasets?.map((ds) => (
+              {datasets?.filter((ds) => (ds._count?.items ?? 0) > 0).map((ds) => (
                 <option key={ds.id} value={ds.id}>
                   {ds.name}
                 </option>

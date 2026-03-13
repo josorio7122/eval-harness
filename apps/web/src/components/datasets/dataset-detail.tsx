@@ -44,6 +44,8 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState('')
+  const [renameError, setRenameError] = useState('')
+  const [removeAttrError, setRemoveAttrError] = useState('')
 
   useEffect(() => {
     if (dataset) setNameValue(dataset.name)
@@ -62,7 +64,12 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
     setEditingName(false)
     const trimmed = nameValue.trim()
     if (!trimmed || trimmed === dataset.name) return
-    await updateDataset.mutateAsync({ id, name: trimmed })
+    try {
+      await updateDataset.mutateAsync({ id, name: trimmed })
+      setRenameError('')
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : 'Failed to rename dataset.')
+    }
   }
 
   function cancelNameEdit() {
@@ -155,7 +162,10 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
           <input
             ref={nameInputRef}
             value={nameValue}
-            onChange={(e) => setNameValue(e.target.value)}
+            onChange={(e) => {
+              setNameValue(e.target.value)
+              setRenameError('')
+            }}
             onBlur={commitNameEdit}
             onKeyDown={(e) => {
               if (e.key === 'Enter') commitNameEdit()
@@ -313,6 +323,21 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
         </div>
       </div>
 
+      {/* Rename error */}
+      {renameError && (
+        <div
+          style={{
+            padding: '6px 24px',
+            fontSize: '12px',
+            color: 'var(--error-fg)',
+            background: 'var(--fail-subtle)',
+            borderBottom: '1px solid var(--fail)',
+          }}
+        >
+          {renameError}
+        </div>
+      )}
+
       {/* Delete Dataset Confirmation Dialog */}
       {deleteDialogOpen && (
         <div
@@ -349,7 +374,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
             {affectedExperiments.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <p style={{ fontSize: '12px', color: 'var(--error-fg)', margin: 0 }}>
-                  The following experiments reference this dataset and will also be deleted:
+                  The following experiments reference this dataset and will also be deleted along with all their evaluation results:
                 </p>
                 <ul
                   style={{
@@ -374,7 +399,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
               </div>
             ) : (
               <p style={{ fontSize: '12px', color: 'var(--fg-secondary)', margin: 0 }}>
-                This action cannot be undone.
+                All items and revision history will be permanently deleted.
               </p>
             )}
 
@@ -548,7 +573,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '11px', color: 'var(--fg-tertiary)' }}>
-                    Preview — {csvPreview.totalRows} rows
+                    Preview — {csvPreview.validRowCount} rows
                   </span>
                 </div>
                 {csvPreview.skippedRows && csvPreview.skippedRows.length > 0 && (
@@ -619,9 +644,9 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
                     </tbody>
                   </table>
                 </div>
-                {csvPreview.totalRows > 5 && (
+                {csvPreview.validRowCount > 5 && (
                   <span style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
-                    …and {csvPreview.totalRows - 5} more rows
+                    …and {csvPreview.validRowCount - 5} more rows
                   </span>
                 )}
               </div>
@@ -750,6 +775,21 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
             />
           </div>
 
+          {/* Attribute remove error */}
+          {removeAttrError && (
+            <div
+              style={{
+                padding: '6px 16px',
+                fontSize: '11px',
+                color: 'var(--error-fg)',
+                background: 'var(--fail-subtle)',
+                borderBottom: '1px solid var(--fail)',
+              }}
+            >
+              {removeAttrError}
+            </div>
+          )}
+
           {/* Attribute list */}
           <div className="flex-1 overflow-auto">
             {dataset.attributes.length === 0 ? (
@@ -781,7 +821,14 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
                 <AttributeRow
                   key={attr}
                   name={attr}
-                  onDelete={() => removeAttr.mutate({ datasetId: id, name: attr })}
+                  protected={attr === 'input' || attr === 'expected_output'}
+                  onDelete={() => {
+                    setRemoveAttrError('')
+                    removeAttr.mutate(
+                      { datasetId: id, name: attr },
+                      { onError: (err) => setRemoveAttrError(err instanceof Error ? err.message : 'Failed to remove attribute.') },
+                    )
+                  }}
                 />
               ))
             )}
@@ -967,7 +1014,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
 
 // ── Attribute Row ──────────────────────────────────────────────────────────────
 
-function AttributeRow({ name, onDelete }: { name: string; onDelete: () => void }) {
+function AttributeRow({ name, onDelete, protected: isProtected }: { name: string; onDelete: () => void; protected?: boolean }) {
   const [hovered, setHovered] = useState(false)
 
   return (
@@ -989,7 +1036,7 @@ function AttributeRow({ name, onDelete }: { name: string; onDelete: () => void }
       >
         {name}
       </span>
-      {hovered && (
+      {hovered && !isProtected && (
         <button
           onClick={onDelete}
           style={{

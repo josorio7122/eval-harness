@@ -20,6 +20,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
   const [rubric, setRubric] = useState('')
   const [isDirty, setIsDirty] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [validationError, setValidationError] = useState('')
   const rubricRef = useRef<HTMLTextAreaElement>(null)
 
   const affectedExperiments = (allExperiments ?? []).filter(
@@ -64,6 +65,15 @@ export function GraderDetail({ id }: GraderDetailProps) {
 
   async function handleSave() {
     if (!grader) return
+    if (!name.trim()) {
+      setValidationError('Name is required.')
+      return
+    }
+    if (!rubric.trim()) {
+      setValidationError('Rubric is required.')
+      return
+    }
+    setValidationError('')
     await updateGrader.mutateAsync({
       id: grader.id,
       name: name.trim(),
@@ -122,6 +132,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
               onChange={e => {
                 setName(e.target.value)
                 markDirty('name', e.target.value)
+                setValidationError('')
               }}
               className="h-[32px] px-3 text-[13px] font-medium outline-none transition-colors w-full"
               style={{
@@ -190,6 +201,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
             onChange={e => {
               setRubric(e.target.value)
               markDirty('rubric', e.target.value)
+              setValidationError('')
               autoGrow()
             }}
             placeholder="Describe the grading criteria and scoring instructions..."
@@ -208,6 +220,13 @@ export function GraderDetail({ id }: GraderDetailProps) {
             onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
           />
         </div>
+
+        {/* Validation error */}
+        {validationError && (
+          <p className="text-[12px]" style={{ color: 'var(--error-fg)' }}>
+            {validationError}
+          </p>
+        )}
 
         {/* Error */}
         {(updateGrader.isError || deleteGrader.isError) && (
@@ -309,7 +328,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
             {affectedExperiments.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <p style={{ fontSize: '12px', color: 'var(--error-fg)', margin: 0 }}>
-                  The following experiments use this grader and will also be permanently deleted:
+                  The following experiments use this grader and will also be permanently deleted along with all their evaluation results:
                 </p>
                 <ul
                   style={{

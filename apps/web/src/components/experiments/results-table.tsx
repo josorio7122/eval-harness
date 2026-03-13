@@ -98,12 +98,14 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
 
   return (
     <div style={{ flex: 1, overflow: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' }}>
-      {/* Aggregate stats — filter-aware */}
-      <AggregateStats
-        experiment={experiment}
-        filteredResults={filteredResults}
-        filteredItemCount={filteredItems.length}
-      />
+      {/* Aggregate stats — filter-aware, only when results exist */}
+      {results.length > 0 && (
+        <AggregateStats
+          experiment={experiment}
+          filteredResults={filteredResults}
+          filteredItemCount={filteredItems.length}
+        />
+      )}
 
       {/* Filter controls */}
       <div

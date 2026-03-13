@@ -164,7 +164,7 @@ export interface CsvPreviewRow {
 export interface CsvPreview {
   headers: string[]
   rows: CsvPreviewRow[]
-  totalRows: number
+  validRowCount: number
   skippedRows?: { row: number; reason: string }[]
   warnings?: string[]
 }
@@ -191,6 +191,37 @@ export function usePreviewCsv() {
       const json = await res.json()
       return json.data ?? json
     },
+  })
+}
+
+export interface Revision {
+  id: string
+  schemaVersion: number
+  isCurrent: boolean
+  itemCount: number
+  experimentCount: number
+  attributes: string[]
+  createdAt: string
+}
+
+export interface RevisionDetail extends Revision {
+  items: Array<{ id: string; itemId: string; values: Record<string, string> }>
+  experiments: Array<{ id: string; name: string; status: string }>
+}
+
+export function useRevisions(datasetId: string | undefined) {
+  return useQuery({
+    queryKey: ['datasets', datasetId, 'revisions'],
+    queryFn: () => api.get<Revision[]>(`/datasets/${datasetId}/revisions`),
+    enabled: !!datasetId,
+  })
+}
+
+export function useRevision(datasetId: string | undefined, revisionId: string | undefined) {
+  return useQuery({
+    queryKey: ['datasets', datasetId, 'revisions', revisionId],
+    queryFn: () => api.get<RevisionDetail>(`/datasets/${datasetId}/revisions/${revisionId}`),
+    enabled: !!datasetId && !!revisionId,
   })
 }
 

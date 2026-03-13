@@ -30,7 +30,7 @@ type Dataset = {
 
 **Relationships:**
 - Has many `DatasetRevision`s (one-to-many, cascade delete)
-- Referenced by many `Experiment`s. On deletion, all referencing experiments and their results are cascade-deleted. User must confirm if experiments exist
+- Referenced by many `Experiment`s. On deletion, all referencing experiments and their results are cascade-deleted
 
 ---
 

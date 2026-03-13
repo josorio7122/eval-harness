@@ -31,6 +31,10 @@ export interface Experiment {
   graders?: ExperimentGrader[]
   results?: ExperimentResult[]
   _count?: { results: number }
+  revision?: {
+    schemaVersion: number
+    createdAt: string
+  }
 }
 
 export function useExperiments() {
@@ -97,7 +101,7 @@ export function useExperimentSSE(
   const [progress, setProgress] = useState({ cellsCompleted: 0, totalCells: 0 })
 
   useEffect(() => {
-    if (!experimentId || (status !== 'running' && status !== 'queued')) return
+    if (!experimentId || status !== 'running') return
 
     const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
     const es = new EventSource(`${apiUrl}/experiments/${experimentId}/events`)
