@@ -24,8 +24,6 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
     datasetItems: Array<{ id: string; values: Record<string, string> }>,
     graders: Array<{ id: string; rubric: string }>,
   ): Promise<void> {
-    await repo.updateStatus(experimentId, 'queued')
-
     await experimentQueue.add(async () => {
       await repo.updateStatus(experimentId, 'running')
 
@@ -83,15 +81,15 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
           experimentId,
           error: 'All evaluations failed',
         })
+      } else {
+        experimentEvents.emit(experimentId, {
+          type: 'completed',
+          experimentId,
+          cellsCompleted,
+          totalCells,
+          status: finalStatus,
+        })
       }
-
-      experimentEvents.emit(experimentId, {
-        type: 'completed',
-        experimentId,
-        cellsCompleted,
-        totalCells,
-        status: finalStatus,
-      })
     })
   },
 })

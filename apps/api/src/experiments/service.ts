@@ -131,7 +131,7 @@ export function createExperimentService(
       try {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
-        if (experiment.status !== 'complete') return fail('Experiment is not complete')
+        if (experiment.status === 'queued' || experiment.status === 'running') return fail('Experiment has not finished running')
 
         const results = await repo.findResultsWithDetails(id)
         if (results.length === 0) return fail('No results to export')

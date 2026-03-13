@@ -419,7 +419,7 @@ describe('exportCsv', () => {
     expect(result).toEqual({ success: false, error: 'Experiment not found' })
   })
 
-  it('returns fail when experiment is not complete', async () => {
+  it('returns fail when experiment is running', async () => {
     const experiment = {
       id: VALID_UUID,
       name: 'exp1',
@@ -431,7 +431,55 @@ describe('exportCsv', () => {
     }
     mockRepo.findById.mockResolvedValue(experiment)
     const result = await service.exportCsv(VALID_UUID)
-    expect(result).toEqual({ success: false, error: 'Experiment is not complete' })
+    expect(result).toEqual({ success: false, error: 'Experiment has not finished running' })
+  })
+
+  it('returns fail when experiment is queued', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'queued',
+      datasetId: VALID_UUID_2,
+      revision: { attributes: ['input', 'expected_output'], items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Experiment has not finished running' })
+  })
+
+  it('exports CSV for failed experiment with error verdicts', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'failed',
+      datasetId: VALID_UUID_2,
+      revision: { attributes: ['input', 'expected_output'], items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    mockRepo.findResultsWithDetails.mockResolvedValue([
+      {
+        id: 'r1',
+        experimentId: VALID_UUID,
+        datasetRevisionItemId: 'item-1',
+        graderId: VALID_UUID_3,
+        verdict: 'error',
+        reason: 'API error',
+        datasetRevisionItem: { values: { input: 'hello', expected_output: 'world' } },
+        grader: { name: 'accuracy-grader' },
+      },
+    ])
+
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const lines = result.data.trim().split('\n')
+    expect(lines[0]).toBe('input,expected_output,accuracy-grader_verdict,accuracy-grader_reason')
+    expect(lines[1]).toBe('hello,world,error,API error')
+    expect(lines).toHaveLength(2)
   })
 
   it('returns fail when experiment is complete but has no results', async () => {

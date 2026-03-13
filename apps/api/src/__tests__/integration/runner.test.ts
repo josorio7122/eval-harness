@@ -114,6 +114,44 @@ describe('experiment runner (integration)', () => {
     expect(found!.status).toBe('failed')
   })
 
+  it('all-fail run → emits error event but NOT completed event', async () => {
+    mockEvaluate.mockRejectedValue(new Error('API error'))
+    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+
+    const { experiment, items, graders } = await seedExperiment(2, 1)
+
+    const emittedTypes: string[] = []
+    const { experimentEvents } = await import('../../experiments/runner.js')
+    const listener = (event: { type: string }) => emittedTypes.push(event.type)
+    experimentEvents.on(experiment.id, listener)
+
+    await runner.enqueue(experiment.id, items, graders)
+
+    experimentEvents.off(experiment.id, listener)
+
+    expect(emittedTypes).toContain('error')
+    expect(emittedTypes).not.toContain('completed')
+  })
+
+  it('successful run → emits completed event but NOT error event', async () => {
+    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+
+    const { experiment, items, graders } = await seedExperiment(2, 1)
+
+    const emittedTypes: string[] = []
+    const { experimentEvents } = await import('../../experiments/runner.js')
+    const listener = (event: { type: string }) => emittedTypes.push(event.type)
+    experimentEvents.on(experiment.id, listener)
+
+    await runner.enqueue(experiment.id, items, graders)
+
+    experimentEvents.off(experiment.id, listener)
+
+    expect(emittedTypes).toContain('completed')
+    expect(emittedTypes).not.toContain('error')
+  })
+
   it('partial failure → status = complete with mixed verdicts', async () => {
     let callCount = 0
     mockEvaluate.mockImplementation(() => {

@@ -25,15 +25,15 @@ const graders = [
 ]
 
 describe('createExperimentRunner', () => {
-  it('sets status to queued then running', async () => {
+  it('sets status to running then complete on success', async () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
     await runner.enqueue('exp-1', datasetItems, graders)
 
     const statusCalls = mockRepo.updateStatus.mock.calls.map((c) => c[1])
-    expect(statusCalls[0]).toBe('queued')
-    expect(statusCalls).toContain('running')
+    expect(statusCalls[0]).toBe('running')
+    expect(statusCalls).toContain('complete')
   })
 
   it('creates a result for every (item, grader) cell', async () => {

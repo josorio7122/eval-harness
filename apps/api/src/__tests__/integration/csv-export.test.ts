@@ -176,6 +176,6 @@ describe('CSV export (integration)', () => {
 
     const result = await service.exportCsv(experiment.id)
     expect(result.success).toBe(false)
-    expect((result as { success: false; error: string }).error).toMatch(/not complete/i)
+    expect((result as { success: false; error: string }).error).toMatch(/not finished running/i)
   })
 })
