@@ -209,6 +209,18 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
                           {exp.dataset.name}
                         </span>
                       )}
+                      {exp.revision && (
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontFamily: 'var(--font-mono)',
+                            color: 'var(--fg-tertiary)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          v{exp.revision.schemaVersion}
+                        </span>
+                      )}
                       {exp.graders && exp.graders.length > 0 && (
                         <span
                           className="text-[11px]"

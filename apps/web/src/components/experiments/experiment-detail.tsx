@@ -161,6 +161,32 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
           </span>
         )}
 
+        {/* Revision metadata */}
+        {experiment.revision && (
+          <>
+            <span
+              style={{
+                fontSize: '12px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--fg-tertiary)',
+                flexShrink: 0,
+              }}
+            >
+              Schema v{experiment.revision.schemaVersion}
+            </span>
+            <span
+              style={{
+                fontSize: '12px',
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--fg-tertiary)',
+                flexShrink: 0,
+              }}
+            >
+              Pinned {new Date(experiment.revision.createdAt).toLocaleDateString()}
+            </span>
+          </>
+        )}
+
         {/* Status badge */}
         <span
           className="shrink-0 text-[11px] font-medium"

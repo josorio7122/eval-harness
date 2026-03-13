@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Trash2, Pencil, Download, Upload, FileDown, Loader2 } 
 import { Button } from '@/components/ui/button'
 import { AddAttributeDialog } from './add-attribute-dialog'
 import { AddItemDialog, EditItemDialog } from './add-item-dialog'
+import { RevisionHistory } from './revision-history'
 import {
   useDataset,
   useUpdateDataset,
@@ -36,6 +37,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
   const { data: allExperiments } = useExperiments()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [activeTab, setActiveTab] = useState<'items' | 'history'>('items')
   const [editItem, setEditItem] = useState<DatasetItem | undefined>(undefined)
   const [editOpen, setEditOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -719,7 +721,55 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
         </div>
       )}
 
-      {/* Two-panel split */}
+      {/* Tab strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0',
+          borderBottom: '1px solid var(--border-default)',
+          paddingLeft: '20px',
+        }}
+      >
+        {(['items', 'history'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              height: '36px',
+              padding: '0 14px',
+              fontSize: '11px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === tab
+                ? '2px solid var(--accent)'
+                : '2px solid transparent',
+              color: activeTab === tab
+                ? 'var(--fg-primary)'
+                : 'var(--fg-tertiary)',
+              cursor: 'pointer',
+              marginBottom: '-1px',
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== tab) e.currentTarget.style.color = 'var(--fg-secondary)'
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== tab) e.currentTarget.style.color = 'var(--fg-tertiary)'
+            }}
+          >
+            {tab === 'items' ? 'Items' : 'History'}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'history' ? (
+        <RevisionHistory datasetId={id} />
+      ) : (
+      /* Two-panel split */
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Schema panel (30%) */}
         <div
@@ -994,6 +1044,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Edit item dialog — controlled externally */}
       {editItem && (
