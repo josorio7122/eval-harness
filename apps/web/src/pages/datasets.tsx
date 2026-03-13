@@ -1,9 +1,9 @@
+import { useParams } from 'react-router'
+import { DatasetList } from '@/components/datasets/dataset-list'
+import { DatasetDetail } from '@/components/datasets/dataset-detail'
+
 export function DatasetsPage() {
-  return (
-    <div className="p-6">
-      <h2 className="text-[16px] font-semibold" style={{ color: 'var(--fg-primary)' }}>
-        Datasets
-      </h2>
-    </div>
-  )
+  const { id } = useParams<{ id: string }>()
+
+  return id ? <DatasetDetail id={id} /> : <DatasetList />
 }
