@@ -9,14 +9,24 @@ let seedCounter = 0
 async function seedExperiment(itemCount: number, graderCount: number) {
   const n = ++seedCounter
   const dataset = await datasetRepository.create(`runner-dataset-${n}`)
-  const items: Array<{ id: string; values: Record<string, string> }> = []
+
   for (let i = 1; i <= itemCount; i++) {
-    const item = await datasetRepository.createItem(dataset.id, {
+    await datasetRepository.createItem(dataset.id, {
       input: `question-${i}`,
       expected_output: `answer-${i}`,
     })
-    items.push(item as { id: string; values: Record<string, string> })
   }
+
+  // Get items from the latest revision
+  const latestData = await datasetRepository.findById(dataset.id)
+  const items = latestData!.items.map((item) => ({
+    id: item.id,
+    values: item.values as Record<string, string>,
+  }))
+
+  // Get revision ID
+  const revisions = await datasetRepository.findRevisions(dataset.id)
+  const revisionId = revisions[0].id
 
   const graders: Array<{ id: string; rubric: string }> = []
   for (let i = 1; i <= graderCount; i++) {
@@ -32,6 +42,7 @@ async function seedExperiment(itemCount: number, graderCount: number) {
   const experiment = await experimentRepository.create({
     name: `runner-exp-${n}`,
     datasetId: dataset.id,
+    datasetRevisionId: revisionId,
     graderIds,
   })
   await experimentRepository.updateStatus(experiment.id, 'running')

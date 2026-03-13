@@ -15,11 +15,20 @@ async function seedAndRun(
   const n = ++seedCounter
   const dataset = await datasetRepository.create(`csv-dataset-${n}`)
 
-  const items: Array<{ id: string; values: Record<string, string> }> = []
   for (const values of itemValues) {
-    const item = await datasetRepository.createItem(dataset.id, values)
-    items.push(item as { id: string; values: Record<string, string> })
+    await datasetRepository.createItem(dataset.id, values)
   }
+
+  // Get items from the latest revision
+  const latestData = await datasetRepository.findById(dataset.id)
+  const items = latestData!.items.map((item) => ({
+    id: item.id,
+    values: item.values as Record<string, string>,
+  }))
+
+  // Get revision ID
+  const revisions = await datasetRepository.findRevisions(dataset.id)
+  const revisionId = revisions[0].id
 
   const graders: Array<{ id: string; rubric: string }> = []
   for (const def of graderDefs) {
@@ -35,6 +44,7 @@ async function seedAndRun(
   const experiment = await experimentRepository.create({
     name: `csv-exp-${n}`,
     datasetId: dataset.id,
+    datasetRevisionId: revisionId,
     graderIds,
   })
   await experimentRepository.updateStatus(experiment.id, 'running')
@@ -155,9 +165,11 @@ describe('CSV export (integration)', () => {
       description: 'test',
       rubric: 'rubric',
     })
+    const revisions = await datasetRepository.findRevisions(dataset.id)
     const experiment = await experimentRepository.create({
       name: `csv-incomplete-exp-${seedCounter}`,
       datasetId: dataset.id,
+      datasetRevisionId: revisions[0].id,
       graderIds: [grader.id],
     })
     // Status is 'queued' (default), not 'complete'

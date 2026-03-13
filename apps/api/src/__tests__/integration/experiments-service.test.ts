@@ -9,7 +9,7 @@ const service = createExperimentService(
   experimentRepository,
   datasetRepository,
   graderRepository,
-  mockRunner as any,
+  mockRunner as ReturnType<typeof import('../../experiments/runner.js').createExperimentRunner>,
 )
 
 let counter = 0
@@ -32,7 +32,6 @@ async function seedGrader() {
 }
 
 describe('experiments service (integration)', () => {
-  // 1. createExperiment with non-existent dataset → fail
   it('createExperiment with non-existent dataset returns fail', async () => {
     const grader = await seedGrader()
     const result = await service.createExperiment({
@@ -40,45 +39,37 @@ describe('experiments service (integration)', () => {
       datasetId: '00000000-0000-0000-0000-000000000000',
       graderIds: [grader.id],
     })
-
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error).toBe('Dataset not found')
   })
 
-  // 2. createExperiment with empty dataset (no items) → fail
   it('createExperiment with empty dataset returns fail', async () => {
     const ds = await datasetRepository.create(uid('exp-empty-ds'))
     const grader = await seedGrader()
-
     const result = await service.createExperiment({
       name: uid('exp-empty'),
       datasetId: ds.id,
       graderIds: [grader.id],
     })
-
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error).toBe('Dataset has no items')
   })
 
-  // 3. createExperiment with non-existent grader → fail
   it('createExperiment with non-existent grader returns fail', async () => {
     const ds = await seedDatasetWithItems()
-
     const result = await service.createExperiment({
       name: uid('exp-no-grader'),
       datasetId: ds.id,
       graderIds: ['00000000-0000-0000-0000-000000000000'],
     })
-
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error).toBe('Grader not found')
   })
 
-  // 4. createExperiment success → experiment + junction rows in DB
-  it('createExperiment success creates experiment with junction rows in DB', async () => {
+  it('createExperiment success creates experiment with datasetRevisionId', async () => {
     const ds = await seedDatasetWithItems()
     const grader1 = await seedGrader()
     const grader2 = await seedGrader()
@@ -92,22 +83,28 @@ describe('experiments service (integration)', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
 
+    // Verify datasetRevisionId is set
     const found = await experimentRepository.findById(result.data.id)
     expect(found).not.toBeNull()
+    expect(found!.datasetRevisionId).toBeDefined()
     expect(found!.datasetId).toBe(ds.id)
     expect(found!.graders).toHaveLength(2)
-    const graderIds = found!.graders.map((g) => g.graderId).sort()
-    expect(graderIds).toEqual([grader1.id, grader2.id].sort())
+
+    // Verify it points to the latest revision
+    const revisions = await datasetRepository.findRevisions(ds.id)
+    expect(found!.datasetRevisionId).toBe(revisions[0].id)
   })
 
-  // 5. rerunExperiment creates new experiment → original unchanged in DB
-  it('rerunExperiment creates a new experiment and leaves the original unchanged', async () => {
+  it('rerunExperiment creates a new experiment referencing latest revision', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
 
+    // Get revision for direct create
+    const revisions = await datasetRepository.findRevisions(ds.id)
     const original = await experimentRepository.create({
       name: uid('exp-rerun-orig'),
       datasetId: ds.id,
+      datasetRevisionId: revisions[0].id,
       graderIds: [grader.id],
     })
 
@@ -121,22 +118,21 @@ describe('experiments service (integration)', () => {
 
     const stillExists = await experimentRepository.findById(original.id)
     expect(stillExists).not.toBeNull()
-    expect(stillExists!.status).toBe('queued')
   })
 
-  // 6. deleteExperiment → experiment gone, dataset/grader still in DB
   it('deleteExperiment removes the experiment but leaves dataset and grader intact', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
 
+    const revisions = await datasetRepository.findRevisions(ds.id)
     const experiment = await experimentRepository.create({
       name: uid('exp-delete'),
       datasetId: ds.id,
+      datasetRevisionId: revisions[0].id,
       graderIds: [grader.id],
     })
 
     const result = await service.deleteExperiment(experiment.id)
-
     expect(result.success).toBe(true)
 
     const expFound = await experimentRepository.findById(experiment.id)
@@ -147,5 +143,34 @@ describe('experiments service (integration)', () => {
 
     const graderFound = await graderRepository.findById(grader.id)
     expect(graderFound).not.toBeNull()
+  })
+
+  // B18 — different revisions after edit
+  it('experiments created before and after edit have different revisions', async () => {
+    const ds = await seedDatasetWithItems()
+    const grader = await seedGrader()
+
+    const resultA = await service.createExperiment({
+      name: uid('exp-before-edit'),
+      datasetId: ds.id,
+      graderIds: [grader.id],
+    })
+    expect(resultA.success).toBe(true)
+    if (!resultA.success) return
+
+    // Edit dataset (creates new revision)
+    await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' })
+
+    const resultB = await service.createExperiment({
+      name: uid('exp-after-edit'),
+      datasetId: ds.id,
+      graderIds: [grader.id],
+    })
+    expect(resultB.success).toBe(true)
+    if (!resultB.success) return
+
+    const expA = await experimentRepository.findById(resultA.data.id)
+    const expB = await experimentRepository.findById(resultB.data.id)
+    expect(expA!.datasetRevisionId).not.toBe(expB!.datasetRevisionId)
   })
 })

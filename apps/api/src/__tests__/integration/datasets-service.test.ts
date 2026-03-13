@@ -22,6 +22,7 @@ describe('datasets service (integration)', () => {
     expect(found).not.toBeNull()
     expect(found!.name).toBe(name)
     expect(found!.attributes).toEqual(['input', 'expected_output'])
+    expect(found!.schemaVersion).toBe(1)
   })
 
   // 2. createDataset duplicate name → returns fail('Dataset name already exists')
@@ -45,9 +46,11 @@ describe('datasets service (integration)', () => {
     const result = await service.addAttribute(ds.id, { name: 'context' })
 
     expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.schemaVersion).toBe(2)
 
-    const found1 = await datasetRepository.findItemById(item1.id)
-    const found2 = await datasetRepository.findItemById(item2.id)
+    const found1 = await datasetRepository.findItemById(item1.itemId)
+    const found2 = await datasetRepository.findItemById(item2.itemId)
     expect((found1!.values as Record<string, string>).context).toBe('')
     expect((found2!.values as Record<string, string>).context).toBe('')
   })
@@ -74,7 +77,7 @@ describe('datasets service (integration)', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
 
-    const found = await datasetRepository.findItemById(result.data.id)
+    const found = await datasetRepository.findItemById(result.data.itemId)
     expect(found).not.toBeNull()
     expect(found!.values).toEqual({ input: 'hello', expected_output: 'world' })
   })
@@ -95,10 +98,12 @@ describe('datasets service (integration)', () => {
     expect(items).toHaveLength(0)
   })
 
-  // 7. importCsv creates items → items exist in DB with correct values
+  // 7. importCsv creates items → items exist in DB with correct values, single new revision
   it('importCsv creates items in DB with correct values', async () => {
     const ds = await datasetRepository.create(uid('svc-csv-ok'))
     const csv = `input,expected_output\nhello,world\nfoo,bar`
+
+    const revisionsBefore = await datasetRepository.findRevisions(ds.id)
 
     const result = await service.importCsv(ds.id, csv)
 
@@ -116,6 +121,9 @@ describe('datasets service (integration)', () => {
         { input: 'foo', expected_output: 'bar' },
       ]),
     )
+
+    const revisionsAfter = await datasetRepository.findRevisions(ds.id)
+    expect(revisionsAfter.length).toBe(revisionsBefore.length + 1)
   })
 
   // 8. importCsv with mixed-case headers → items created (case-insensitive)

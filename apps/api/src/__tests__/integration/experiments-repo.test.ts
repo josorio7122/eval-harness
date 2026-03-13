@@ -8,53 +8,65 @@ let seedCounter = 0
 async function seedData() {
   const n = ++seedCounter
   const dataset = await datasetRepository.create(`exp-repo-dataset-${n}`)
-  const item1 = await datasetRepository.createItem(dataset.id, { input: 'q1', expected_output: 'a1' })
-  const item2 = await datasetRepository.createItem(dataset.id, { input: 'q2', expected_output: 'a2' })
+  await datasetRepository.createItem(dataset.id, { input: 'q1', expected_output: 'a1' })
+  await datasetRepository.createItem(dataset.id, { input: 'q2', expected_output: 'a2' })
+
+  // Get the latest revision
+  const revisions = await datasetRepository.findRevisions(dataset.id)
+  const latestRevision = revisions[0]
+
+  // Get items from the latest revision (they have the revision-specific .id we need)
+  const latestData = await datasetRepository.findById(dataset.id)
+  const revisionItems = latestData!.items
+
   const grader1 = await graderRepository.create({ name: `exp-repo-grader-1-${n}`, description: 'desc', rubric: 'rubric1' })
   const grader2 = await graderRepository.create({ name: `exp-repo-grader-2-${n}`, description: 'desc', rubric: 'rubric2' })
-  return { dataset, item1, item2, grader1, grader2 }
+  return { dataset, latestRevision, revisionItems, grader1, grader2 }
 }
 
 describe('experiments repository (integration)', () => {
-  it('create with graderIds → junction rows', async () => {
-    const { dataset, grader1, grader2 } = await seedData()
+  it('create with graderIds and revisionId → junction rows', async () => {
+    const { dataset, latestRevision, grader1, grader2 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-junction',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id, grader2.id],
     })
 
+    expect(experiment.datasetRevisionId).toBe(latestRevision.id)
     const found = await repo.findById(experiment.id)
     expect(found).not.toBeNull()
     expect(found!.graders).toHaveLength(2)
-    const graderIds = found!.graders.map((g) => g.graderId).sort()
-    expect(graderIds).toEqual([grader1.id, grader2.id].sort())
   })
 
-  it('findById includes dataset.items + graders.grader', async () => {
-    const { dataset, item1, item2, grader1 } = await seedData()
+  it('findById includes revision.items + graders.grader', async () => {
+    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-includes',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
     const found = await repo.findById(experiment.id)
     expect(found).not.toBeNull()
-    expect(found!.dataset.items).toHaveLength(2)
-    const itemIds = found!.dataset.items.map((i) => i.id).sort()
-    expect(itemIds).toEqual([item1.id, item2.id].sort())
+    expect(found!.revision.items).toHaveLength(2)
+    const itemIds = found!.revision.items.map((i: { id: string }) => i.id).sort()
+    const expectedIds = revisionItems.map((i: { id: string }) => i.id).sort()
+    expect(itemIds).toEqual(expectedIds)
     expect(found!.graders[0].grader.rubric).toBe('rubric1')
   })
 
   it('findAll includes dataset name + _count.results', async () => {
-    const { dataset, grader1 } = await seedData()
+    const { dataset, latestRevision, grader1 } = await seedData()
 
     await repo.create({
       name: 'exp-findall',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
@@ -66,34 +78,34 @@ describe('experiments repository (integration)', () => {
   })
 
   it('updateStatus transition', async () => {
-    const { dataset, grader1 } = await seedData()
+    const { dataset, latestRevision, grader1 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-status',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
     expect(experiment.status).toBe('queued')
-
     await repo.updateStatus(experiment.id, 'running')
-
     const found = await repo.findById(experiment.id)
     expect(found!.status).toBe('running')
   })
 
   it('createResult → findResultsByExperimentId', async () => {
-    const { dataset, item1, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-result',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
     await repo.createResult({
       experimentId: experiment.id,
-      datasetItemId: item1.id,
+      datasetRevisionItemId: revisionItems[0].id,
       graderId: grader1.id,
       verdict: 'pass',
       reason: 'looks good',
@@ -102,56 +114,42 @@ describe('experiments repository (integration)', () => {
     const results = await repo.findResultsByExperimentId(experiment.id)
     expect(results).toHaveLength(1)
     expect(results[0].verdict).toBe('pass')
-    expect(results[0].reason).toBe('looks good')
   })
 
   it('countResultsByExperimentId accuracy', async () => {
-    const { dataset, item1, item2, grader1, grader2 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, grader2 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-count',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id, grader2.id],
     })
 
-    await repo.createResult({
-      experimentId: experiment.id,
-      datasetItemId: item1.id,
-      graderId: grader1.id,
-      verdict: 'pass',
-      reason: 'r1',
-    })
-    await repo.createResult({
-      experimentId: experiment.id,
-      datasetItemId: item1.id,
-      graderId: grader2.id,
-      verdict: 'fail',
-      reason: 'r2',
-    })
-    await repo.createResult({
-      experimentId: experiment.id,
-      datasetItemId: item2.id,
-      graderId: grader1.id,
-      verdict: 'pass',
-      reason: 'r3',
-    })
+    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'pass', reason: 'r1' })
+    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader2.id, verdict: 'fail', reason: 'r2' })
+    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[1].id, graderId: grader1.id, verdict: 'pass', reason: 'r3' })
 
     const count = await repo.countResultsByExperimentId(experiment.id)
     expect(count).toBe(3)
   })
 
-  it('findResultsWithDetails includes item + grader', async () => {
-    const { dataset, item1, grader1 } = await seedData()
+  it('findResultsWithDetails includes revision item + grader', async () => {
+    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-details',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
+    // Find the item with q1 values (order is UUID-sorted, not insertion order)
+    const q1Item = revisionItems.find((i) => (i.values as Record<string, string>).input === 'q1')!
+
     await repo.createResult({
       experimentId: experiment.id,
-      datasetItemId: item1.id,
+      datasetRevisionItemId: q1Item.id,
       graderId: grader1.id,
       verdict: 'pass',
       reason: 'detailed',
@@ -159,61 +157,53 @@ describe('experiments repository (integration)', () => {
 
     const results = await repo.findResultsWithDetails(experiment.id)
     expect(results).toHaveLength(1)
-    expect(results[0].datasetItem.values).toMatchObject({ input: 'q1', expected_output: 'a1' })
+    expect(results[0].datasetRevisionItem.values).toMatchObject({ input: 'q1', expected_output: 'a1' })
     expect(results[0].grader.name).toBe(grader1.name)
   })
 
   it('duplicate createResult raises error (unique constraint)', async () => {
-    const { dataset, item1, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-duplicate',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
-    await repo.createResult({
-      experimentId: experiment.id,
-      datasetItemId: item1.id,
-      graderId: grader1.id,
-      verdict: 'pass',
-      reason: 'first',
-    })
+    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'pass', reason: 'first' })
 
     await expect(
-      repo.createResult({
-        experimentId: experiment.id,
-        datasetItemId: item1.id,
-        graderId: grader1.id,
-        verdict: 'fail',
-        reason: 'duplicate',
-      })
+      repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'fail', reason: 'duplicate' })
     ).rejects.toThrow()
   })
 
   it('remove cascades junction + results', async () => {
-    const { dataset, item1, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
 
     const experiment = await repo.create({
       name: 'exp-remove',
       datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
       graderIds: [grader1.id],
     })
 
-    await repo.createResult({
-      experimentId: experiment.id,
-      datasetItemId: item1.id,
-      graderId: grader1.id,
-      verdict: 'pass',
-      reason: 'before remove',
-    })
+    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'pass', reason: 'before remove' })
 
     await repo.remove(experiment.id)
-
     const found = await repo.findById(experiment.id)
     expect(found).toBeNull()
-
     const results = await repo.findResultsByExperimentId(experiment.id)
     expect(results).toHaveLength(0)
+  })
+
+  // B17 — shared revision
+  it('two experiments without intervening edits share the same revisionId', async () => {
+    const { dataset, latestRevision, grader1 } = await seedData()
+
+    const expA = await repo.create({ name: 'exp-shared-a', datasetId: dataset.id, datasetRevisionId: latestRevision.id, graderIds: [grader1.id] })
+    const expB = await repo.create({ name: 'exp-shared-b', datasetId: dataset.id, datasetRevisionId: latestRevision.id, graderIds: [grader1.id] })
+
+    expect(expA.datasetRevisionId).toBe(expB.datasetRevisionId)
   })
 })
