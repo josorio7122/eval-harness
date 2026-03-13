@@ -122,6 +122,17 @@ export function createDatasetService(repo: typeof datasetRepository) {
       }
     },
 
+    async listItems(datasetId: string): Promise<Result<Awaited<ReturnType<typeof repo.findItemsByDatasetId>>>> {
+      try {
+        const dataset = await repo.findById(datasetId)
+        if (!dataset) return fail('Dataset not found')
+        const items = await repo.findItemsByDatasetId(datasetId)
+        return ok(items)
+      } catch (e) {
+        return fail(e instanceof Error ? e.message : 'Unknown error')
+      }
+    },
+
     async createItem(
       datasetId: string,
       input: { values: Record<string, string> },
