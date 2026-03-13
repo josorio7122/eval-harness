@@ -107,8 +107,23 @@ export function useExperimentSSE(
     const es = new EventSource(`${apiUrl}/experiments/${experimentId}/events`)
 
     es.addEventListener('progress', (e) => {
-      const data = JSON.parse(e.data)
-      setProgress({ cellsCompleted: data.cellsCompleted, totalCells: data.totalCells })
+      const progressData = JSON.parse(e.data)
+      setProgress({ cellsCompleted: progressData.cellsCompleted, totalCells: progressData.totalCells })
+
+      if (progressData.result) {
+        qc.setQueryData(
+          ['experiments', experimentId],
+          (old: Experiment | undefined) => {
+            if (!old) return old
+            const existingIds = new Set(old.results?.map((r) => r.id) ?? [])
+            if (existingIds.has(progressData.result.id)) return old
+            return {
+              ...old,
+              results: [...(old.results ?? []), progressData.result],
+            }
+          },
+        )
+      }
     })
 
     es.addEventListener('completed', () => {
