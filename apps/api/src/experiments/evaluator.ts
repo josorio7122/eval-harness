@@ -1,5 +1,5 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 
 const verdictSchema = z.object({
@@ -21,12 +21,12 @@ export const evaluate = async (
     .map(([key, value]) => `${key}: ${value}`)
     .join('\n')
 
-  const result = await generateObject({
+  const result = await generateText({
     model: openrouter(model),
-    schema: verdictSchema,
+    output: Output.object({ schema: verdictSchema }),
     system: rubric,
     prompt,
   })
 
-  return result.object
+  return result.output
 }
