@@ -1,213 +1,265 @@
 #!/usr/bin/env bash
+# e2e-test.sh — Full experiment lifecycle E2E test with real LLM evaluation.
+# Requires OPENROUTER_API_KEY. Tests: create dataset → add items → create graders →
+# create experiment → run → poll → verify SSE → verify results → export CSV → cleanup.
+
 set -euo pipefail
 
-API_URL="${API_URL:-http://localhost:3001}"
-
-# Check prerequisites
-if [ -z "${OPENROUTER_API_KEY:-}" ]; then
-  echo "⚠️  OPENROUTER_API_KEY not set — skipping e2e test"
-  echo "   Set it to run the full experiment lifecycle test"
-  exit 0
-fi
-
-echo "🧪 E2E Test: Full Experiment Lifecycle"
-echo "   API: $API_URL"
-echo ""
-
+BASE="${API_URL:-http://localhost:3001}"
 PASS=0
 FAIL=0
+STEP=0
 
-check() {
-  local name="$1" expected="$2" actual="$3"
-  if [ "$actual" = "$expected" ]; then
-    echo "  ✅ $name"
-    PASS=$((PASS+1))
+# ─── Colors ──────────────────────────────────────────────────────────────
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+# ─── Helpers ─────────────────────────────────────────────────────────────
+pass() {
+  PASS=$((PASS + 1))
+  STEP=$((STEP + 1))
+  echo -e "  ${GREEN}✅ ${STEP}. PASS${RESET} — $1"
+}
+
+fail() {
+  FAIL=$((FAIL + 1))
+  STEP=$((STEP + 1))
+  echo -e "  ${RED}❌ ${STEP}. FAIL${RESET} — $1"
+}
+
+section() {
+  echo ""
+  echo -e "${CYAN}${BOLD}══════════════════════════════════════════${RESET}"
+  echo -e "${CYAN}${BOLD}  $1${RESET}"
+  echo -e "${CYAN}${BOLD}══════════════════════════════════════════${RESET}"
+}
+
+assert_status() {
+  local label="$1" expected="$2" actual="$3"
+  if [[ "$actual" == "$expected" ]]; then
+    pass "$label (status $actual)"
   else
-    echo "  ❌ $name (expected $expected, got $actual)"
-    FAIL=$((FAIL+1))
+    fail "$label (expected $expected, got $actual)"
   fi
 }
 
-# --- Step 1: Create Dataset ---
-echo "📦 Creating dataset..."
-RES=$(curl -s -w '\n%{http_code}' -X POST "$API_URL/datasets" \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "e2e-test-dataset"}')
-BODY=$(echo "$RES" | sed '$d')
-STATUS=$(echo "$RES" | tail -1)
-check "Create dataset" "201" "$STATUS"
-DATASET_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+body_of() { echo "$1" | awk 'NR>1{print prev} {prev=$0}'; }
+status_of() { echo "$1" | tail -n 1; }
 
-# --- Step 2: Add 3 items ---
-echo "📝 Adding items..."
+curl_json() {
+  local method="$1" path="$2" data="${3:-}"
+  if [[ -n "$data" ]]; then
+    curl -s -w "\n%{http_code}" -X "$method" \
+      -H "Content-Type: application/json" \
+      -d "$data" "${BASE}${path}"
+  else
+    curl -s -w "\n%{http_code}" -X "$method" "${BASE}${path}"
+  fi
+}
+
+curl_get() {
+  curl -s -w "\n%{http_code}" "${BASE}${1}"
+}
+
+# ─── Prerequisite check ─────────────────────────────────────────────────
+if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
+  echo -e "${YELLOW}⚠️  OPENROUTER_API_KEY not set — skipping lifecycle test${RESET}"
+  echo "   Set it to run the full experiment lifecycle test."
+  exit 0
+fi
+
+echo ""
+echo -e "${BOLD}E2E Lifecycle Test — Full Experiment with Real LLM${RESET}"
+echo -e "Target: ${BASE}"
+echo ""
+
+if ! curl -s --max-time 3 "${BASE}/datasets" > /dev/null 2>&1; then
+  echo -e "${RED}ERROR: Server not reachable at ${BASE}${RESET}"
+  echo "Start the server first: pnpm dev"
+  exit 1
+fi
+echo -e "${GREEN}Server is reachable ✓${RESET}"
+
+# ─── Cleanup trap ────────────────────────────────────────────────────────
+SSE_PID=""
+SSE_FILE=""
+DATASET_ID=""
+GRADER1_ID=""
+GRADER2_ID=""
+EXP_ID=""
+
+cleanup() {
+  echo ""
+  echo -e "${YELLOW}Cleaning up test data...${RESET}"
+  [[ -n "$SSE_PID" ]] && kill "$SSE_PID" 2>/dev/null || true
+  [[ -n "$SSE_FILE" ]] && rm -f "$SSE_FILE"
+  [[ -n "$EXP_ID" ]] && curl -s -X DELETE "${BASE}/experiments/${EXP_ID}" > /dev/null 2>&1 || true
+  [[ -n "$GRADER1_ID" ]] && curl -s -X DELETE "${BASE}/graders/${GRADER1_ID}" > /dev/null 2>&1 || true
+  [[ -n "$GRADER2_ID" ]] && curl -s -X DELETE "${BASE}/graders/${GRADER2_ID}" > /dev/null 2>&1 || true
+  [[ -n "$DATASET_ID" ]] && curl -s -X DELETE "${BASE}/datasets/${DATASET_ID}" > /dev/null 2>&1 || true
+  echo -e "${GREEN}Cleanup complete ✓${RESET}"
+}
+trap cleanup EXIT
+
+# ─── DATASET ─────────────────────────────────────────────────────────────
+section "DATASET SETUP"
+
+R=$(curl_json POST /datasets "{\"name\":\"e2e-lifecycle-$$\"}")
+B=$(body_of "$R"); S=$(status_of "$R")
+assert_status "Create dataset" 201 "$S"
+DATASET_ID=$(echo "$B" | jq -r '.id')
+echo "    → DATASET_ID: $DATASET_ID"
+
 for i in 1 2 3; do
-  RES=$(curl -s -w '\n%{http_code}' -X POST "$API_URL/datasets/$DATASET_ID/items" \
-    -H 'Content-Type: application/json' \
-    -d "{\"values\": {\"input\": \"What is ${i}+${i}?\", \"expected_output\": \"$((i*2))\"}}")
-  STATUS=$(echo "$RES" | tail -1)
-  check "Create item $i" "201" "$STATUS"
+  R=$(curl_json POST "/datasets/${DATASET_ID}/items" \
+    "{\"values\":{\"input\":\"What is ${i}+${i}?\",\"expected_output\":\"$((i*2))\"}}")
+  S=$(status_of "$R")
+  assert_status "Create item $i" 201 "$S"
 done
 
-# --- Step 3: Create 2 graders ---
-echo "📋 Creating graders..."
-RES=$(curl -s -w '\n%{http_code}' -X POST "$API_URL/graders" \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "e2e-accuracy", "description": "Checks math accuracy", "rubric": "The user message contains an input question and expected output. Evaluate whether the expected output is the correct answer to the input question. If yes, verdict is pass. If no, verdict is fail."}')
-BODY=$(echo "$RES" | sed '$d')
-STATUS=$(echo "$RES" | tail -1)
-check "Create grader 1" "201" "$STATUS"
-GRADER1_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+# ─── GRADERS ─────────────────────────────────────────────────────────────
+section "GRADERS"
 
-RES=$(curl -s -w '\n%{http_code}' -X POST "$API_URL/graders" \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "e2e-clarity", "description": "Checks answer clarity", "rubric": "The user message contains an input question and expected output. Evaluate whether the expected output is clear and unambiguous as an answer. A simple number is clear. Verdict should be pass for clear answers."}')
-BODY=$(echo "$RES" | sed '$d')
-STATUS=$(echo "$RES" | tail -1)
-check "Create grader 2" "201" "$STATUS"
-GRADER2_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+R=$(curl_json POST /graders \
+  "{\"name\":\"e2e-accuracy-$$\",\"description\":\"Checks math accuracy\",\"rubric\":\"The user message contains an input question and expected output. Evaluate whether the expected output is the correct answer to the input question. If yes, verdict is pass. If no, verdict is fail.\"}")
+B=$(body_of "$R"); S=$(status_of "$R")
+assert_status "Create accuracy grader" 201 "$S"
+GRADER1_ID=$(echo "$B" | jq -r '.id')
+echo "    → GRADER1_ID: $GRADER1_ID"
 
-# --- Step 4: Create experiment ---
-echo "🔬 Creating experiment..."
-RES=$(curl -s -w '\n%{http_code}' -X POST "$API_URL/experiments" \
-  -H 'Content-Type: application/json' \
-  -d "{\"name\": \"e2e-run\", \"datasetId\": \"$DATASET_ID\", \"graderIds\": [\"$GRADER1_ID\", \"$GRADER2_ID\"]}")
-BODY=$(echo "$RES" | sed '$d')
-STATUS=$(echo "$RES" | tail -1)
-check "Create experiment" "201" "$STATUS"
-EXP_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
+R=$(curl_json POST /graders \
+  "{\"name\":\"e2e-clarity-$$\",\"description\":\"Checks answer clarity\",\"rubric\":\"The user message contains an input question and expected output. Evaluate whether the expected output is clear and unambiguous as an answer. A simple number is clear. Verdict should be pass for clear answers.\"}")
+B=$(body_of "$R"); S=$(status_of "$R")
+assert_status "Create clarity grader" 201 "$S"
+GRADER2_ID=$(echo "$B" | jq -r '.id')
+echo "    → GRADER2_ID: $GRADER2_ID"
 
-# --- Step 5a: Start SSE listener before running ---
-echo "📡 Starting SSE listener..."
+# ─── EXPERIMENT ──────────────────────────────────────────────────────────
+section "EXPERIMENT"
+
+R=$(curl_json POST /experiments \
+  "{\"name\":\"e2e-run-$$\",\"datasetId\":\"${DATASET_ID}\",\"graderIds\":[\"${GRADER1_ID}\",\"${GRADER2_ID}\"]}")
+B=$(body_of "$R"); S=$(status_of "$R")
+assert_status "Create experiment" 201 "$S"
+EXP_ID=$(echo "$B" | jq -r '.id')
+echo "    → EXP_ID: $EXP_ID"
+
+# ─── SSE LISTENER ────────────────────────────────────────────────────────
+section "SSE + RUN"
+
 SSE_FILE=$(mktemp)
-curl -s -N "$API_URL/experiments/$EXP_ID/events" > "$SSE_FILE" 2>/dev/null &
+curl -s -N "${BASE}/experiments/${EXP_ID}/events" > "$SSE_FILE" 2>/dev/null &
 SSE_PID=$!
-sleep 1  # let connection establish
+sleep 1
 
-# --- Step 5: Run experiment ---
-echo "🚀 Running experiment..."
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/experiments/$EXP_ID/run")
-check "Run experiment (202 Accepted)" "202" "$STATUS"
+R=$(curl_json POST "/experiments/${EXP_ID}/run")
+S=$(status_of "$R")
+assert_status "Run experiment" 202 "$S"
 
-# --- Step 6: Wait for completion via polling ---
-echo "⏳ Waiting for experiment to complete (timeout: 120s)..."
-TIMEOUT=120
-ELAPSED=0
-COMPLETED=false
-while [ $ELAPSED -lt $TIMEOUT ]; do
+# ─── POLL ────────────────────────────────────────────────────────────────
+echo "    → Polling experiment status (timeout: 120s)..."
+POLL_TIMEOUT=120
+POLL_ELAPSED=0
+EXP_STATUS="unknown"
+while [[ $POLL_ELAPSED -lt $POLL_TIMEOUT ]]; do
   sleep 2
-  ELAPSED=$((ELAPSED+2))
-  POLL_STATUS=$(curl -s "$API_URL/experiments/$EXP_ID" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])" 2>/dev/null)
-  if [ "$POLL_STATUS" = "complete" ] || [ "$POLL_STATUS" = "failed" ]; then
-    COMPLETED=true
+  POLL_ELAPSED=$((POLL_ELAPSED + 2))
+  R=$(curl_get "/experiments/${EXP_ID}")
+  B=$(body_of "$R")
+  EXP_STATUS=$(echo "$B" | jq -r '.status')
+  if [[ "$EXP_STATUS" == "complete" || "$EXP_STATUS" == "failed" ]]; then
     break
   fi
 done
 
-if [ "$COMPLETED" = true ]; then
-  echo "  ✅ Experiment finished in ${ELAPSED}s (status: $POLL_STATUS)"
-  PASS=$((PASS+1))
+if [[ "$EXP_STATUS" == "complete" || "$EXP_STATUS" == "failed" ]]; then
+  pass "Experiment finished in ${POLL_ELAPSED}s (status: $EXP_STATUS)"
 else
-  echo "  ❌ Experiment timed out after ${TIMEOUT}s"
-  FAIL=$((FAIL+1))
+  fail "Experiment timed out after ${POLL_TIMEOUT}s (status: $EXP_STATUS)"
 fi
 
-# --- Step 6.5: Verify SSE progress events ---
-sleep 2  # give SSE a moment to flush
-kill $SSE_PID 2>/dev/null || true
+# ─── SSE VERIFICATION ───────────────────────────────────────────────────
+section "SSE VERIFICATION"
 
-echo "📡 Verifying SSE progress events..."
+sleep 2
+kill "$SSE_PID" 2>/dev/null || true
+SSE_PID=""
+
 PROGRESS_COUNT=$(grep -c 'event: progress' "$SSE_FILE" 2>/dev/null || echo "0")
-echo "  Progress events received: $PROGRESS_COUNT"
+echo "    → Progress events received: $PROGRESS_COUNT"
 
-# Display each progress event
-grep 'data:.*cellsCompleted' "$SSE_FILE" | while read -r line; do
-  CELLS=$(echo "$line" | python3 -c "import sys,json; d=json.loads(sys.stdin.readline().replace('data: ','')); print(f\"{d['cellsCompleted']}/{d['totalCells']}\")" 2>/dev/null)
-  echo "  📊 Progress: $CELLS"
+grep 'data:.*cellsCompleted' "$SSE_FILE" 2>/dev/null | while read -r line; do
+  CELLS=$(echo "$line" | sed 's/^data: //' | jq -r '"\(.cellsCompleted)/\(.totalCells)"' 2>/dev/null)
+  echo "    → 📊 Progress: $CELLS"
 done
 
-# Expect 6 progress events (3 items × 2 graders)
-check "SSE progress events = 6 (3 items × 2 graders)" "6" "$PROGRESS_COUNT"
+[[ "$PROGRESS_COUNT" == "6" ]] \
+  && pass "SSE progress events = 6 (3 items × 2 graders)" \
+  || fail "SSE progress events expected 6, got $PROGRESS_COUNT"
 
-# Verify connected event was received
-if grep -q 'event: connected' "$SSE_FILE" 2>/dev/null; then
-  echo "  ✅ SSE connected event received"
-  PASS=$((PASS+1))
+grep -q 'event: connected' "$SSE_FILE" 2>/dev/null \
+  && pass "SSE connected event received" \
+  || fail "SSE connected event missing"
+
+# ─── RESULTS ─────────────────────────────────────────────────────────────
+section "RESULTS"
+
+R=$(curl_get "/experiments/${EXP_ID}")
+B=$(body_of "$R")
+FINAL_STATUS=$(echo "$B" | jq -r '.status')
+assert_status "Experiment status = complete" "complete" "$FINAL_STATUS"
+
+RESULT_COUNT=$(echo "$B" | jq '.results | length')
+[[ "$RESULT_COUNT" == "6" ]] \
+  && pass "Result count = 6 (3 items × 2 graders)" \
+  || fail "Result count expected 6, got $RESULT_COUNT"
+
+PASS_COUNT=$(echo "$B" | jq '[.results[] | select(.verdict == "pass")] | length')
+PASS_RATE=$((PASS_COUNT * 100 / RESULT_COUNT))
+echo "    → Pass rate: ${PASS_RATE}% ($PASS_COUNT/$RESULT_COUNT)"
+[[ "$PASS_RATE" -ge 0 && "$PASS_RATE" -le 100 ]] \
+  && pass "Pass rate is valid (${PASS_RATE}%)" \
+  || fail "Pass rate out of range: $PASS_RATE"
+
+# ─── CSV EXPORT ──────────────────────────────────────────────────────────
+section "CSV EXPORT"
+
+R=$(curl_get "/experiments/${EXP_ID}/csv/export")
+B=$(body_of "$R"); S=$(status_of "$R")
+assert_status "CSV export" 200 "$S"
+
+CSV_HEADER=$(echo "$B" | head -1)
+echo "    → Header: $CSV_HEADER"
+
+if echo "$CSV_HEADER" | grep -q "input" && \
+   echo "$CSV_HEADER" | grep -q "expected_output" && \
+   echo "$CSV_HEADER" | grep -q "_verdict" && \
+   echo "$CSV_HEADER" | grep -q "_reason"; then
+  pass "CSV headers contain expected columns"
 else
-  echo "  ❌ SSE connected event missing"
-  FAIL=$((FAIL+1))
+  fail "CSV headers missing expected columns"
 fi
 
-rm -f "$SSE_FILE"
+CSV_ROW_COUNT=$(echo "$B" | tail -n +2 | wc -l | tr -d ' ')
+[[ "$CSV_ROW_COUNT" == "3" ]] \
+  && pass "CSV row count = 3" \
+  || fail "CSV row count expected 3, got $CSV_ROW_COUNT"
 
-# --- Step 7: Verify experiment status and results ---
-echo "📊 Verifying results..."
-RES=$(curl -s "$API_URL/experiments/$EXP_ID")
-EXP_STATUS=$(echo "$RES" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])")
-check "Experiment status = complete" "complete" "$EXP_STATUS"
+# ─── SUMMARY ─────────────────────────────────────────────────────────────
+# (cleanup happens via trap)
 
-RESULT_COUNT=$(echo "$RES" | python3 -c "import sys,json; print(len(json.load(sys.stdin)['data']['results']))")
-check "Result count = 6 (3 items × 2 graders)" "6" "$RESULT_COUNT"
+section "SUMMARY"
 
-# --- Step 8: Compute aggregate pass rate ---
-PASS_RATE=$(echo "$RES" | python3 -c "
-import sys,json
-results = json.load(sys.stdin)['data']['results']
-passes = sum(1 for r in results if r['verdict'] == 'pass')
-pct = round(passes / len(results) * 100)
-print(pct)
-")
-echo "  📈 Pass rate: ${PASS_RATE}%"
-if [ "$PASS_RATE" -ge 0 ] && [ "$PASS_RATE" -le 100 ]; then
-  echo "  ✅ Pass rate is valid (0-100%)"
-  PASS=$((PASS+1))
-else
-  echo "  ❌ Pass rate out of range: $PASS_RATE"
-  FAIL=$((FAIL+1))
-fi
-
-# --- Step 9: Export CSV ---
-echo "📄 Exporting CSV..."
-RES=$(curl -s -w '\n%{http_code}' "$API_URL/experiments/$EXP_ID/csv/export")
-CSV_BODY=$(echo "$RES" | sed '$d')
-STATUS=$(echo "$RES" | tail -1)
-check "CSV export status" "200" "$STATUS"
-
-CSV_HEADER=$(echo "$CSV_BODY" | head -1)
-echo "  CSV header: $CSV_HEADER"
-
-# Check header contains attribute columns and grader columns
-if echo "$CSV_HEADER" | grep -q "input" && echo "$CSV_HEADER" | grep -q "expected_output" && echo "$CSV_HEADER" | grep -q "_verdict" && echo "$CSV_HEADER" | grep -q "_reason"; then
-  echo "  ✅ CSV headers contain expected columns"
-  PASS=$((PASS+1))
-else
-  echo "  ❌ CSV headers missing expected columns"
-  FAIL=$((FAIL+1))
-fi
-
-CSV_ROW_COUNT=$(echo "$CSV_BODY" | tail -n +2 | wc -l | tr -d ' ')
-check "CSV row count = 3" "3" "$CSV_ROW_COUNT"
-
-# --- Step 10: Cleanup ---
-echo "🧹 Cleaning up..."
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$API_URL/experiments/$EXP_ID")
-check "Delete experiment" "200" "$STATUS"
-
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$API_URL/graders/$GRADER1_ID")
-check "Delete grader 1" "200" "$STATUS"
-
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$API_URL/graders/$GRADER2_ID")
-check "Delete grader 2" "200" "$STATUS"
-
-STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "$API_URL/datasets/$DATASET_ID")
-check "Delete dataset" "200" "$STATUS"
-
-# --- Summary ---
+TOTAL=$((PASS + FAIL))
 echo ""
-echo "================================"
-TOTAL=$((PASS+FAIL))
-echo "E2E TOTAL: $TOTAL | PASS: $PASS | FAIL: $FAIL"
-echo "================================"
-
-if [ $FAIL -gt 0 ]; then
+if [[ "$FAIL" -eq 0 ]]; then
+  echo -e "${GREEN}${BOLD}🎉 ${PASS}/${TOTAL} tests passed${RESET}"
+  exit 0
+else
+  echo -e "${RED}${BOLD}💥 ${PASS}/${TOTAL} tests passed — ${FAIL} failed${RESET}"
   exit 1
 fi
