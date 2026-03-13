@@ -65,6 +65,13 @@ describe('createExperimentRunner', () => {
 
   it('emits progress events for each cell', async () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    mockRepo.createResult.mockResolvedValue({
+      id: 'result-1',
+      datasetRevisionItemId: 'item-1',
+      graderId: 'grader-1',
+      verdict: 'pass',
+      reason: 'ok',
+    })
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
     const events: any[] = []
@@ -78,6 +85,18 @@ describe('createExperimentRunner', () => {
     expect(progressEvents.length).toBe(4)
     expect(progressEvents[progressEvents.length - 1].cellsCompleted).toBe(4)
     expect(progressEvents[progressEvents.length - 1].totalCells).toBe(4)
+
+    // Each progress event must include the saved result
+    progressEvents.forEach((evt) => {
+      expect(evt.result).toBeDefined()
+      expect(evt.result).toMatchObject({
+        id: expect.any(String),
+        datasetRevisionItemId: expect.any(String),
+        graderId: expect.any(String),
+        verdict: expect.any(String),
+        reason: expect.any(String),
+      })
+    })
   })
 
   it('emits completed event with status complete when all pass', async () => {
