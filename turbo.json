@@ -1,6 +1,8 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalDependencies": [".env"],
+  "globalPassThroughEnv": ["DATABASE_URL", "API_PORT", "OPENROUTER_API_KEY", "LLM_JUDGE_MODEL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -18,8 +20,8 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$"]
     },
-    "check-types": {
-      "dependsOn": ["^check-types"]
+    "typecheck": {
+      "dependsOn": ["^typecheck"]
     }
   }
 }

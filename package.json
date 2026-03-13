@@ -2,13 +2,15 @@
   "name": "eval-harness",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "build": "dotenv -- turbo run build",
+    "dev": "dotenv -- turbo run dev",
+    "lint": "dotenv -- turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types"
+    "test": "dotenv -- turbo run test",
+    "typecheck": "dotenv -- turbo run typecheck"
   },
   "devDependencies": {
+    "dotenv-cli": "^11.0.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.7.4",
     "turbo": "^2.8.16",
