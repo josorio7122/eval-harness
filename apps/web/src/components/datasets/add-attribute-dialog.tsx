@@ -28,34 +28,19 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
 
   return (
     <>
-      <span onClick={() => setOpen(true)} style={{ cursor: 'pointer', display: 'contents' }}>
+      <span onClick={() => setOpen(true)} className="cursor-pointer contents">
         {trigger}
       </span>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent
-          className="sm:max-w-sm"
-          style={{
-            background: 'var(--bg-surface-1)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-lg)',
-          }}
-        >
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}>
-              Add Attribute
-            </DialogTitle>
+            <DialogTitle>Add Attribute</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="attr-name"
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: 'var(--fg-tertiary)',
-                }}
+                className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
               >
                 Attribute Name
               </label>
@@ -65,22 +50,10 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
-                style={{
-                  background: 'var(--bg-surface-2)',
-                  borderColor: 'var(--border-strong)',
-                  color: 'var(--fg-primary)',
-                  fontSize: '13px',
-                }}
               />
             </div>
             {addAttr.isError && (
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--error-fg)',
-                  margin: 0,
-                }}
-              >
+              <p className="text-destructive text-xs">
                 {addAttr.error instanceof Error ? addAttr.error.message : 'Failed to add attribute'}
               </p>
             )}
@@ -90,19 +63,14 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
                 variant="ghost"
                 size="sm"
                 onClick={() => setOpen(false)}
-                style={{ color: 'var(--fg-secondary)' }}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
+                variant="outline"
                 size="sm"
                 disabled={!name.trim() || addAttr.isPending}
-                style={{
-                  background: 'var(--bg-surface-2)',
-                  color: 'var(--fg-primary)',
-                  borderColor: 'var(--border-strong)',
-                }}
               >
                 {addAttr.isPending ? 'Adding…' : 'Add'}
               </Button>

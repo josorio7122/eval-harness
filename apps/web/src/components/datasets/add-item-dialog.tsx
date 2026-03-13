@@ -31,7 +31,7 @@ export function AddItemDialog({ datasetId, attributes, trigger }: AddItemDialogP
 
   return (
     <>
-      <span onClick={openDialog} style={{ cursor: 'pointer', display: 'contents' }}>
+      <span onClick={openDialog} className="cursor-pointer contents">
         {trigger}
       </span>
       <Dialog open={open} onOpenChange={setOpen}>
@@ -127,22 +127,13 @@ function ItemDialogContent({
   pendingLabel,
 }: ItemDialogContentProps) {
   return (
-    <DialogContent
-      className="sm:max-w-md"
-      style={{
-        background: 'var(--bg-surface-1)',
-        border: '1px solid var(--border-default)',
-        borderRadius: 'var(--radius-lg)',
-      }}
-    >
+    <DialogContent className="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}>
-          {title}
-        </DialogTitle>
+        <DialogTitle>{title}</DialogTitle>
       </DialogHeader>
       <form onSubmit={onSubmit} className="flex flex-col gap-4 mt-2">
         {attributes.length === 0 ? (
-          <p style={{ color: 'var(--fg-secondary)', fontSize: '13px' }}>
+          <p className="text-sm text-muted-foreground">
             No attributes defined. Add attributes first.
           </p>
         ) : (
@@ -150,13 +141,7 @@ function ItemDialogContent({
             <div key={attr} className="flex flex-col gap-1.5">
               <label
                 htmlFor={`item-${attr}`}
-                style={{
-                  fontSize: '10px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: 'var(--fg-tertiary)',
-                }}
+                className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
               >
                 {attr}
               </label>
@@ -164,36 +149,20 @@ function ItemDialogContent({
                 id={`item-${attr}`}
                 value={values[attr] ?? ''}
                 onChange={(e) => onChange({ ...values, [attr]: e.target.value })}
-                style={{
-                  background: 'var(--bg-surface-2)',
-                  borderColor: 'var(--border-strong)',
-                  color: 'var(--fg-primary)',
-                  fontSize: '13px',
-                  fontFamily: 'var(--font-mono)',
-                }}
+                className="font-mono text-sm"
               />
             </div>
           ))
         )}
         <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            style={{ color: 'var(--fg-secondary)' }}
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>
           <Button
             type="submit"
+            variant="outline"
             size="sm"
             disabled={attributes.length === 0 || isPending}
-            style={{
-              background: 'var(--bg-surface-2)',
-              color: 'var(--fg-primary)',
-              borderColor: 'var(--border-strong)',
-            }}
           >
             {isPending ? pendingLabel : submitLabel}
           </Button>
