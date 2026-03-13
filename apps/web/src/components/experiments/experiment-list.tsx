@@ -56,32 +56,13 @@ export function ExperimentList() {
       {/* Page header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <h2 className="text-[16px] font-semibold text-foreground">Experiments</h2>
-        <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus size={14} />
-          New Experiment
-        </Button>
+        {!isLoading && experiments && experiments.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus size={14} />
+            New Experiment
+          </Button>
+        )}
       </div>
-
-      {/* Table header */}
-      {!isLoading && experiments && experiments.length > 0 && (
-        <div
-          className="grid px-6 py-2.5 border-b border-border/50 bg-card"
-          style={{ gridTemplateColumns: '1fr 1fr 80px 100px' }}
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Name
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Dataset
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Graders
-          </span>
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-right">
-            Status
-          </span>
-        </div>
-      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto">
@@ -100,14 +81,31 @@ export function ExperimentList() {
             }
           />
         ) : (
-          <div>
+          <div className="m-6 rounded-lg border border-border/50 overflow-hidden">
+            <div
+              className="grid px-6 py-2.5 border-b border-border/50 bg-muted"
+              style={{ gridTemplateColumns: '1fr 1fr 80px 100px' }}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Name
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Dataset
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Graders
+              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-right">
+                Status
+              </span>
+            </div>
             {experiments.map((exp) => {
               const pct = progressPct(exp)
               return (
                 <button
                   key={exp.id}
                   onClick={() => navigate(`/experiments/${exp.id}`)}
-                  className="relative w-full grid items-center px-6 py-3 border-b border-border/50 text-left transition-colors bg-transparent hover:bg-card cursor-pointer"
+                  className="relative w-full grid items-center px-6 py-3 border-b border-border/50 last:border-b-0 text-left transition-colors bg-transparent hover:bg-card cursor-pointer"
                   style={{ gridTemplateColumns: '1fr 1fr 80px 100px' }}
                 >
                   <span className="text-sm font-medium text-foreground truncate">{exp.name}</span>
