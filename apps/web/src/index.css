@@ -50,7 +50,7 @@
   --card-foreground: hsl(240, 10%, 3.9%);
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(240, 10%, 3.9%);
-  --primary: hsl(215, 60%, 48%);
+  --primary: hsl(215, 65%, 50%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(240, 4.8%, 95.9%);
   --secondary-foreground: hsl(240, 5.9%, 10%);
@@ -62,49 +62,27 @@
   --destructive-foreground: hsl(0, 0%, 100%);
   --border: hsl(240, 5.9%, 90%);
   --input: hsl(240, 5.9%, 90%);
-  --ring: hsl(215, 60%, 48%);
+  --ring: hsl(215, 65%, 50%);
   --radius: 0.375rem;
 
   --sidebar: hsl(0, 0%, 98%);
   --sidebar-foreground: hsl(240, 5.9%, 10%);
-  --sidebar-primary: hsl(215, 60%, 48%);
+  --sidebar-primary: hsl(215, 65%, 50%);
   --sidebar-primary-foreground: hsl(0, 0%, 100%);
   --sidebar-accent: hsl(240, 4.8%, 95.9%);
   --sidebar-accent-foreground: hsl(240, 5.9%, 10%);
   --sidebar-border: hsl(240, 5.9%, 90%);
-  --sidebar-ring: hsl(215, 60%, 48%);
-
-  /* ─── Custom Design System ─── */
+  --sidebar-ring: hsl(215, 65%, 50%);
 
   /* Foreground */
-  --fg-primary: hsl(240, 10%, 3.9%);
   --fg-secondary: hsl(240, 4%, 32%);
-  --fg-tertiary: hsl(240, 4%, 46%);
-  --fg-muted: hsl(240, 3%, 60%);
-  --fg-inverted: hsl(0, 0%, 100%);
-
-  /* Backgrounds */
-  --bg-base: hsl(0, 0%, 100%);
-  --bg-surface-1: hsl(0, 0%, 98%);
-  --bg-surface-2: hsl(240, 4.8%, 95.9%);
-  --bg-surface-3: hsl(240, 4%, 90%);
-  --bg-inset: hsl(240, 6%, 96%);
-
-  /* Borders */
-  --border-subtle: hsl(240, 6%, 94%);
-  --border-default: hsl(240, 5.9%, 90%);
-  --border-strong: hsl(240, 6%, 82%);
-  --border-focus: hsl(215, 60%, 48%);
 
   /* Accent (custom — separate from shadcn --accent) */
-  --accent-custom: hsl(215, 60%, 48%);
-  --accent-subtle: hsla(215, 60%, 48%, 0.08);
-  --accent-strong: hsl(215, 60%, 38%);
+  --accent-custom: hsl(215, 65%, 50%);
 
   /* Semantic — Pass */
-  --pass: hsl(142, 52%, 36%);
-  --pass-subtle: hsla(142, 52%, 36%, 0.08);
-  --pass-fg: hsl(142, 52%, 28%);
+  --pass: hsl(142, 60%, 40%);
+  --pass-fg: hsl(142, 60%, 32%);
 
   /* Semantic — Fail */
   --fail: hsl(0, 72%, 51%);
@@ -112,28 +90,16 @@
   --fail-fg: hsl(0, 60%, 40%);
 
   /* Semantic — Error */
-  --error: hsl(38, 85%, 42%);
-  --error-subtle: hsla(38, 85%, 42%, 0.08);
-  --error-fg: hsl(38, 85%, 30%);
+  --error: hsl(38, 90%, 45%);
+  --error-subtle: hsla(38, 90%, 45%, 0.08);
+  --error-fg: hsl(38, 85%, 35%);
 
   /* Semantic — Neutral */
   --neutral: hsl(240, 3%, 55%);
-  --neutral-subtle: hsla(240, 3%, 55%, 0.12);
   --neutral-fg: hsl(240, 4%, 42%);
 
   /* Typography */
   --font-sans: 'Inter', 'Inter var', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
-
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
 }
 
 @layer base {
