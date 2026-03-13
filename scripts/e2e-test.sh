@@ -91,7 +91,7 @@ TIMEOUT=120
 ELAPSED=0
 COMPLETED=false
 while [ $ELAPSED -lt $TIMEOUT ]; do
-  if grep -q '"completed"\|"error"' "$TMPFILE" 2>/dev/null; then
+  if grep -q 'event: completed\|event: error' "$TMPFILE" 2>/dev/null; then
     COMPLETED=true
     break
   fi
