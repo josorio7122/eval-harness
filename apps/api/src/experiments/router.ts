@@ -51,28 +51,20 @@ export function createExperimentRouter(service: ExperimentService) {
   app.get('/experiments/:id/events', async (c) => {
     const id = c.req.param('id')
     return streamSSE(c, async (stream) => {
-      const handler = (event: unknown) => {
-        const e = event as { type: string }
-        stream.writeSSE({ data: JSON.stringify(event), event: e.type })
-      }
-
-      experimentEvents.on(id, handler)
-
       await stream.writeSSE({ data: JSON.stringify({ experimentId: id }), event: 'connected' })
 
       await new Promise<void>((resolve) => {
-        const completeHandler = (event: unknown) => {
+        const handler = (event: unknown) => {
           const e = event as { type: string }
+          stream.writeSSE({ data: JSON.stringify(event), event: e.type })
           if (e.type === 'completed' || e.type === 'error') {
-            experimentEvents.off(id, completeHandler)
+            experimentEvents.off(id, handler)
             resolve()
           }
         }
-        experimentEvents.on(id, completeHandler)
-
+        experimentEvents.on(id, handler)
         stream.onAbort(() => {
           experimentEvents.off(id, handler)
-          experimentEvents.off(id, completeHandler)
           resolve()
         })
       })
