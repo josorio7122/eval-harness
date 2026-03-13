@@ -83,7 +83,7 @@ model ExperimentResult {
   reason                String              @default("")
   experiment            Experiment          @relation(fields: [experimentId], references: [id], onDelete: Cascade)
   datasetRevisionItem   DatasetRevisionItem @relation(fields: [datasetRevisionItemId], references: [id], onDelete: Cascade)
-  grader                Grader              @relation(fields: [graderId], references: [id], onDelete: Cascade)
+  grader                Grader              @relation(fields: [graderId], references: [id], onDelete: Restrict)
 
   @@unique([experimentId, datasetRevisionItemId, graderId])
   @@index([experimentId])

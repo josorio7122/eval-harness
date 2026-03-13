@@ -1,5 +1,6 @@
 import { Readable } from 'stream'
 import csvParser from 'csv-parser'
+import { json2csv } from 'json-2-csv'
 import { ok, fail, type Result } from '@eval-harness/shared'
 import { datasetRepository } from './repository.js'
 
@@ -14,14 +15,6 @@ function normalizeItemValues(
     normalized[attr] = Object.prototype.hasOwnProperty.call(values, attr) ? values[attr] : ''
   }
   return normalized
-}
-
-// RFC 4180 compliant CSV value escaping
-function escapeCsvValue(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-  return value
 }
 
 type ParsedCsvRow = {
@@ -273,7 +266,8 @@ export function createDatasetService(repo: typeof datasetRepository) {
       try {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
-        return ok({ csv: dataset.attributes.join(','), name: dataset.name })
+        const csv = (await json2csv([], { keys: dataset.attributes })).trimEnd()
+        return ok({ csv, name: dataset.name })
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
       }
@@ -283,16 +277,17 @@ export function createDatasetService(repo: typeof datasetRepository) {
       try {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
-
         const items = await repo.findItemsByDatasetId(datasetId)
-        const header = dataset.attributes.join(',')
-        const rows = items.map((item) =>
-          dataset.attributes
-            .map((attr) => escapeCsvValue((item.values as Record<string, string>)[attr] ?? ''))
-            .join(','),
-        )
-
-        return ok({ csv: [header, ...rows].join('\n'), name: dataset.name })
+        const records = items.map((item) => {
+          const values = item.values as Record<string, string>
+          const row: Record<string, string> = {}
+          for (const attr of dataset.attributes) {
+            row[attr] = values[attr] ?? ''
+          }
+          return row
+        })
+        const csv = (await json2csv(records, { keys: dataset.attributes })).trimEnd()
+        return ok({ csv, name: dataset.name })
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
       }

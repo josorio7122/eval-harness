@@ -15,15 +15,16 @@ async function createRevision(
     schemaVersionDelta: number
     attributes: string[]
     items: Array<{ itemId: string; values: Record<string, string>; createdAt?: Date }>
+    currentSchemaVersion?: number
   },
 ) {
-  const latest = await getLatestRevision(datasetId)
-  const newSchemaVersion = (latest?.schemaVersion ?? 0) + options.schemaVersionDelta
+  const baseVersion = options.currentSchemaVersion ?? (await getLatestRevision(datasetId))?.schemaVersion ?? 0
+  const newSchemaVersion = baseVersion + options.schemaVersionDelta
 
   return prisma.datasetRevision.create({
     data: {
       datasetId,
-      schemaVersion: latest ? newSchemaVersion : options.schemaVersionDelta,
+      schemaVersion: newSchemaVersion,
       attributes: options.attributes,
       items: {
         create: options.items.map((item) => ({
@@ -118,6 +119,7 @@ export const datasetRepository = {
       schemaVersionDelta: 1,
       attributes: newAttributes,
       items: newItems,
+      currentSchemaVersion: latest.schemaVersion,
     })
 
     const dataset = await prisma.dataset.findUniqueOrThrow({ where: { id } })
@@ -145,6 +147,7 @@ export const datasetRepository = {
       schemaVersionDelta: 1,
       attributes: newAttributes,
       items: newItems,
+      currentSchemaVersion: latest.schemaVersion,
     })
 
     const dataset = await prisma.dataset.findUniqueOrThrow({ where: { id } })

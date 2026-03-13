@@ -1,3 +1,4 @@
+import { json2csv } from 'json-2-csv'
 import { ok, fail, type Result } from '@eval-harness/shared'
 import { experimentRepository } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
@@ -5,13 +6,6 @@ import { graderRepository } from '../graders/repository.js'
 import type { createExperimentRunner } from './runner.js'
 
 type Runner = ReturnType<typeof createExperimentRunner>
-
-function escapeCsvValue(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`
-  }
-  return value
-}
 
 export function createExperimentService(
   repo: typeof experimentRepository,
@@ -120,7 +114,8 @@ export function createExperimentService(
           (eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }),
         )
 
-        void runner!.enqueue(id, datasetItems, graders)
+        if (!runner) return fail('Runner not configured')
+        void runner.enqueue(id, datasetItems, graders)
         return ok({ status: 'queued' })
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
@@ -185,25 +180,27 @@ export function createExperimentService(
           'expected_output',
         ]
 
-        // Build header: dataset attributes + {graderName}_verdict + {graderName}_reason per grader
-        const graderCols = graderNames.flatMap((g) => [
-          `${g}_verdict`,
-          `${g}_reason`,
-        ])
-        const header = [...datasetAttributes, ...graderCols].map(escapeCsvValue).join(',')
+        // Build column list
+        const graderCols = graderNames.flatMap((g) => [`${g}_verdict`, `${g}_reason`])
+        const columns = [...datasetAttributes, ...graderCols]
 
-        // Build one row per dataset item
-        const rows = itemIds.map((itemId) => {
+        // Build records
+        const records = itemIds.map((itemId) => {
           const values = itemValues.get(itemId) ?? {}
-          const attrCells = datasetAttributes.map((attr) => escapeCsvValue(values[attr] ?? ''))
-          const graderCells = graderNames.flatMap((graderName) => {
+          const row: Record<string, string> = {}
+          for (const attr of datasetAttributes) {
+            row[attr] = values[attr] ?? ''
+          }
+          for (const graderName of graderNames) {
             const r = resultIndex.get(`${itemId}::${graderName}`)
-            return [escapeCsvValue(r?.verdict ?? ''), escapeCsvValue(r?.reason ?? '')]
-          })
-          return [...attrCells, ...graderCells].join(',')
+            row[`${graderName}_verdict`] = r?.verdict ?? ''
+            row[`${graderName}_reason`] = r?.reason ?? ''
+          }
+          return row
         })
 
-        return ok([header, ...rows].join('\n'))
+        const csv = (await json2csv(records, { keys: columns })).trimEnd()
+        return ok(csv)
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
       }
