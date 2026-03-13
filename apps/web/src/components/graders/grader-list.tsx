@@ -71,7 +71,7 @@ export function GraderList() {
                 <span className="text-sm text-muted-foreground truncate pr-4">
                   {grader.description || '—'}
                 </span>
-                <Badge variant="secondary">LLM</Badge>
+                <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">LLM</Badge>
               </button>
             ))}
           </div>

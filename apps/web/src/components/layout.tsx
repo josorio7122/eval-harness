@@ -24,7 +24,7 @@ export function Layout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-2.5 text-[13px] transition-colors border-l-2 ${
                   isActive
-                    ? 'border-l-[var(--accent-custom)] bg-card text-foreground'
+                    ? 'border-l-primary bg-primary/8 text-primary font-medium'
                     : 'border-transparent text-muted-foreground hover:bg-card hover:text-foreground'
                 }`
               }

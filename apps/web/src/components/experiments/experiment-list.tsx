@@ -9,18 +9,30 @@ import type { Experiment } from '@/hooks/use-experiments'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/list-skeleton'
 
-const STATUS_BADGE_VARIANT: Record<Experiment['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  running: 'default',
-  complete: 'secondary',
-  failed: 'destructive',
-  queued: 'outline',
-}
-
 const STATUS_LABEL: Record<Experiment['status'], string> = {
   running: 'Running',
   complete: 'Complete',
   failed: 'Failed',
   queued: 'Queued',
+}
+
+function StatusBadge({ status }: { status: Experiment['status'] }) {
+  if (status === 'running') {
+    return <Badge className="bg-primary/10 text-primary border-primary/20">Running</Badge>
+  }
+  if (status === 'complete') {
+    return (
+      <Badge className="bg-[var(--pass)]/10 text-[var(--pass-fg)] border-[var(--pass)]/20">
+        Complete
+      </Badge>
+    )
+  }
+  if (status === 'failed') {
+    return (
+      <Badge className="bg-destructive/10 text-destructive border-destructive/20">Failed</Badge>
+    )
+  }
+  return <Badge variant="outline">{STATUS_LABEL[status]}</Badge>
 }
 
 function progressPct(exp: Experiment): number {
@@ -106,9 +118,7 @@ export function ExperimentList() {
                     {exp.graders?.length ?? 0}
                   </span>
                   <div className="flex justify-end">
-                    <Badge variant={STATUS_BADGE_VARIANT[exp.status]}>
-                      {STATUS_LABEL[exp.status]}
-                    </Badge>
+                    <StatusBadge status={exp.status} />
                   </div>
 
                   {/* Progress bar for running experiments */}

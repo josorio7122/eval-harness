@@ -25,15 +25,27 @@ function formatDate(dateStr: string): string {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const variantMap: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    complete: 'default',
-    running: 'secondary',
-    failed: 'destructive',
-    queued: 'outline',
+  if (status === 'running') {
+    return (
+      <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">{status}</Badge>
+    )
   }
-  const variant = variantMap[status] ?? 'outline'
+  if (status === 'complete') {
+    return (
+      <Badge className="text-[10px] bg-[var(--pass)]/10 text-[var(--pass-fg)] border-[var(--pass)]/20">
+        {status}
+      </Badge>
+    )
+  }
+  if (status === 'failed') {
+    return (
+      <Badge className="text-[10px] bg-destructive/10 text-destructive border-destructive/20">
+        {status}
+      </Badge>
+    )
+  }
   return (
-    <Badge variant={variant} className="text-[10px]">
+    <Badge variant="outline" className="text-[10px]">
       {status}
     </Badge>
   )
