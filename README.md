@@ -75,6 +75,35 @@ API runs on http://localhost:3001, frontend on http://localhost:5173
 | `pnpm typecheck` | Type-check all packages |
 | `pnpm format` | Format with Prettier |
 
+## Try It Out
+
+The `test-data/` directory includes everything you need to see the harness in action: a sample dataset, four pre-written graders, and a seed script that sets it all up in one command.
+
+### Quick start (automated)
+
+With the dev server running:
+
+```bash
+./test-data/seed.sh
+```
+
+This creates a "Customer Support QA" dataset with 30 test cases, adds four graders (Helpfulness, Tone & Empathy, Accuracy, Completeness), and prints the IDs you need to create your first experiment. Open the UI at http://localhost:5173, create an experiment using the seeded dataset and graders, and hit Run.
+
+### What's included
+
+**[customer-support-dataset.csv](test-data/customer-support-dataset.csv)** — 30 customer support interactions across billing, account, technical, product, and policy categories. Each row has an `input` (customer message), `expected_output` (ideal response), `category`, and `difficulty` (easy/medium/hard). You can also import this CSV manually from the Datasets page in the UI.
+
+**[recommended-evals.md](test-data/recommended-evals.md)** — Four grader rubrics designed for this dataset. Each grader evaluates a different dimension of response quality:
+
+| Grader | What it evaluates |
+|--------|-------------------|
+| Helpfulness | Does the response actually answer the question with actionable next steps? |
+| Tone & Empathy | Is the tone professional and calibrated to the customer's emotional state? |
+| Accuracy | Are all facts consistent with the expected output — no contradictions or fabrications? |
+| Completeness | Does the response address every part of the question without omitting key details? |
+
+You can use these rubrics as-is or adapt them for your own datasets. The seed script creates all four automatically, or you can copy them from the markdown file and create graders manually in the UI.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md) — data model, backend layers, frontend structure

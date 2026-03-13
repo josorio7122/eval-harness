@@ -11,7 +11,7 @@ export const fail = <E = string>(error: E): Result<never, E> => ({ success: fals
  * to fail(error.message). Use in service methods that compose repo calls and business logic —
  * repos throw on not-found, tryCatch converts to Result.
  */
-export async function tryCatch<T>(fn: () => Promise<Result<T>>): Promise<Result<T>> {
+export async function tryCatch<T>(fn: () => Promise<Result<T>>) {
   try {
     return await fn()
   } catch (e) {

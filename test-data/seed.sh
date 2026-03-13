@@ -33,9 +33,9 @@ post() {
 assert_success() {
   local response="$1"
   local context="$2"
-  local success
-  success=$(echo "$response" | jq -r '.success // false')
-  if [ "$success" != "true" ]; then
+  local error
+  error=$(echo "$response" | jq -r '.error // empty')
+  if [ -n "$error" ]; then
     echo "ERROR: $context failed." >&2
     echo "Response: $response" >&2
     exit 1
@@ -49,7 +49,7 @@ echo "Creating dataset 'Customer Support QA'..."
 DATASET_RESPONSE=$(post "/datasets" '{"name": "Customer Support QA"}')
 assert_success "$DATASET_RESPONSE" "Create dataset"
 
-DATASET_ID=$(echo "$DATASET_RESPONSE" | jq -r '.data.id')
+DATASET_ID=$(echo "$DATASET_RESPONSE" | jq -r '.id')
 echo "  ✓ Dataset created: $DATASET_ID"
 
 # ── Step 2: Add custom attributes ────────────────────────────────────────────
@@ -93,7 +93,7 @@ HELPFULNESS_BODY=$(jq -n \
 
 G1_RESPONSE=$(post "/graders" "$HELPFULNESS_BODY")
 assert_success "$G1_RESPONSE" "Create grader 'Helpfulness'"
-G1_ID=$(echo "$G1_RESPONSE" | jq -r '.data.id')
+G1_ID=$(echo "$G1_RESPONSE" | jq -r '.id')
 echo "  ✓ Grader 'Helpfulness' created: $G1_ID"
 
 # Grader 2: Tone & Empathy
@@ -105,7 +105,7 @@ TONE_BODY=$(jq -n \
 
 G2_RESPONSE=$(post "/graders" "$TONE_BODY")
 assert_success "$G2_RESPONSE" "Create grader 'Tone & Empathy'"
-G2_ID=$(echo "$G2_RESPONSE" | jq -r '.data.id')
+G2_ID=$(echo "$G2_RESPONSE" | jq -r '.id')
 echo "  ✓ Grader 'Tone & Empathy' created: $G2_ID"
 
 # Grader 3: Accuracy
@@ -117,7 +117,7 @@ ACCURACY_BODY=$(jq -n \
 
 G3_RESPONSE=$(post "/graders" "$ACCURACY_BODY")
 assert_success "$G3_RESPONSE" "Create grader 'Accuracy'"
-G3_ID=$(echo "$G3_RESPONSE" | jq -r '.data.id')
+G3_ID=$(echo "$G3_RESPONSE" | jq -r '.id')
 echo "  ✓ Grader 'Accuracy' created: $G3_ID"
 
 # Grader 4: Completeness
@@ -129,7 +129,7 @@ COMPLETENESS_BODY=$(jq -n \
 
 G4_RESPONSE=$(post "/graders" "$COMPLETENESS_BODY")
 assert_success "$G4_RESPONSE" "Create grader 'Completeness'"
-G4_ID=$(echo "$G4_RESPONSE" | jq -r '.data.id')
+G4_ID=$(echo "$G4_RESPONSE" | jq -r '.id')
 echo "  ✓ Grader 'Completeness' created: $G4_ID"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
