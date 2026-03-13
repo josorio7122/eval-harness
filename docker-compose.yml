@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: eval-harness-db
+    environment:
+      POSTGRES_USER: eval
+      POSTGRES_PASSWORD: eval
+      POSTGRES_DB: eval_harness
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

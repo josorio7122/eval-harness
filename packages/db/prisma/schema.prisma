@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Dataset {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @unique
+  attributes  String[]      @default(["input", "expected_output"])
+  items       DatasetItem[]
+  experiments Experiment[]
+}
+
+model DatasetItem {
+  id        String             @id @default(uuid()) @db.Uuid
+  datasetId String             @db.Uuid
+  values    Json
+  dataset   Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  results   ExperimentResult[]
+
+  @@index([datasetId])
+}
+
+model Grader {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String             @unique
+  description String             @default("")
+  rubric      String
+  experiments ExperimentGrader[]
+  results     ExperimentResult[]
+}
+
+model Experiment {
+  id        String             @id @default(uuid()) @db.Uuid
+  name      String
+  datasetId String             @db.Uuid
+  status    String             @default("queued")
+  dataset   Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  graders   ExperimentGrader[]
+  results   ExperimentResult[]
+
+  @@index([datasetId])
+}
+
+model ExperimentGrader {
+  experimentId String     @db.Uuid
+  graderId     String     @db.Uuid
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  grader       Grader     @relation(fields: [graderId], references: [id], onDelete: Cascade)
+
+  @@id([experimentId, graderId])
+  @@index([graderId])
+}
+
+model ExperimentResult {
+  id            String      @id @default(uuid()) @db.Uuid
+  experimentId  String      @db.Uuid
+  datasetItemId String      @db.Uuid
+  graderId      String      @db.Uuid
+  verdict       String
+  reason        String      @default("")
+  experiment    Experiment  @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  datasetItem   DatasetItem @relation(fields: [datasetItemId], references: [id], onDelete: Cascade)
+  grader        Grader      @relation(fields: [graderId], references: [id], onDelete: Cascade)
+
+  @@unique([experimentId, datasetItemId, graderId])
+  @@index([experimentId])
+  @@index([datasetItemId])
+  @@index([graderId])
+}
