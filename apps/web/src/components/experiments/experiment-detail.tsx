@@ -1,0 +1,318 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router'
+import { ArrowLeft, Play, RotateCcw, Trash2, Loader2 } from 'lucide-react'
+import {
+  useExperiment,
+  useRunExperiment,
+  useRerunExperiment,
+  useDeleteExperiment,
+  useExperimentSSE,
+} from '@/hooks/use-experiments'
+import { AggregateStats } from './aggregate-stats'
+import { ResultsTable } from './results-table'
+
+interface ExperimentDetailProps {
+  id: string
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  queued: 'var(--neutral-fg)',
+  running: 'var(--accent)',
+  complete: 'var(--pass-fg)',
+  failed: 'var(--error-fg)',
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  queued: 'Queued',
+  running: 'Running',
+  complete: 'Complete',
+  failed: 'Failed',
+}
+
+export function ExperimentDetail({ id }: ExperimentDetailProps) {
+  const navigate = useNavigate()
+  const { data: experiment, isLoading } = useExperiment(id)
+  const runExp = useRunExperiment()
+  const rerunExp = useRerunExperiment()
+  const deleteExp = useDeleteExperiment()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // SSE: live cell updates while running
+  const progress = useExperimentSSE(id, experiment?.status)
+
+  const isRunning = experiment?.status === 'running' || experiment?.status === 'queued'
+  const isComplete = experiment?.status === 'complete'
+
+  const hasResults =
+    experiment?.results && experiment.results.length > 0
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full">
+        <div
+          className="flex items-center gap-3 px-6 py-4 border-b"
+          style={{ borderColor: 'var(--border-default)' }}
+        >
+          <div
+            className="h-4 w-40 animate-pulse rounded"
+            style={{ background: 'var(--bg-surface-2)', borderRadius: 'var(--radius-sm)' }}
+          />
+        </div>
+        <div
+          className="flex flex-col gap-3 p-6"
+          style={{ flex: 1 }}
+        >
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-[44px] rounded animate-pulse"
+              style={{ background: 'var(--bg-surface-2)', borderRadius: 'var(--radius-md)' }}
+            />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!experiment) {
+    return (
+      <div className="p-6" style={{ color: 'var(--fg-secondary)' }}>
+        Experiment not found.
+      </div>
+    )
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    await deleteExp.mutateAsync(id)
+    navigate('/experiments')
+  }
+
+  const totalCells =
+    (experiment.dataset?.items?.length ?? 0) * (experiment.graders?.length ?? 0)
+  const completedCells =
+    isRunning && progress.totalCells > 0
+      ? progress.cellsCompleted
+      : experiment.results?.length ?? 0
+  const progressPct = totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-6 py-4 flex-shrink-0"
+        style={{ borderBottom: '1px solid var(--border-default)' }}
+      >
+        <button
+          onClick={() => navigate('/experiments')}
+          className="flex items-center gap-1 transition-colors"
+          style={{
+            color: 'var(--fg-tertiary)',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '2px 4px',
+            borderRadius: 'var(--radius-sm)',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--fg-secondary)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-tertiary)')}
+        >
+          <ArrowLeft size={14} />
+        </button>
+        <span
+          style={{
+            fontSize: '10px',
+            fontWeight: 600,
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            color: 'var(--fg-tertiary)',
+          }}
+        >
+          /
+        </span>
+        <h2
+          style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)', flex: 1, minWidth: 0 }}
+          className="truncate"
+        >
+          {experiment.name}
+        </h2>
+
+        {/* Dataset name */}
+        {experiment.dataset && (
+          <span
+            className="text-[12px] shrink-0"
+            style={{ color: 'var(--fg-tertiary)' }}
+          >
+            {experiment.dataset.name}
+          </span>
+        )}
+
+        {/* Status badge */}
+        <span
+          className="shrink-0 text-[11px] font-medium"
+          style={{ color: STATUS_COLOR[experiment.status] ?? 'var(--neutral-fg)' }}
+        >
+          {STATUS_LABEL[experiment.status] ?? experiment.status}
+        </span>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Run button — only when queued */}
+          {experiment.status === 'queued' && (
+            <button
+              onClick={() => runExp.mutate(id)}
+              disabled={runExp.isPending}
+              className="flex items-center gap-1.5 h-[28px] px-3 text-[12px] font-medium transition-colors disabled:opacity-50"
+              style={{
+                background: 'var(--bg-surface-2)',
+                color: 'var(--fg-primary)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius-md)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+            >
+              {runExp.isPending ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Play size={12} />
+              )}
+              Run
+            </button>
+          )}
+
+          {/* Running: live progress indicator */}
+          {isRunning && (
+            <div
+              className="flex items-center gap-1.5 h-[28px] px-3 text-[12px]"
+              style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
+            >
+              <Loader2 size={12} className="animate-spin" />
+              {completedCells}/{totalCells}
+            </div>
+          )}
+
+          {/* Re-run — only when complete or failed */}
+          {(isComplete || experiment.status === 'failed') && (
+            <button
+              onClick={() => rerunExp.mutate(id)}
+              disabled={rerunExp.isPending}
+              className="flex items-center gap-1.5 h-[28px] px-3 text-[12px] font-medium transition-colors disabled:opacity-50"
+              style={{
+                background: 'var(--bg-surface-2)',
+                color: 'var(--fg-secondary)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius-md)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+            >
+              {rerunExp.isPending ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <RotateCcw size={12} />
+              )}
+              Re-run
+            </button>
+          )}
+
+          {/* Delete */}
+          <button
+            onClick={handleDelete}
+            disabled={deleteExp.isPending}
+            className="flex items-center gap-1.5 h-[28px] px-3 text-[12px] font-medium transition-colors disabled:opacity-50"
+            style={{
+              background: confirmDelete ? 'var(--fail-subtle)' : 'var(--bg-surface-2)',
+              color: confirmDelete ? 'var(--fail-fg)' : 'var(--fg-secondary)',
+              border: confirmDelete
+                ? '1px solid var(--fail)'
+                : '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-md)',
+            }}
+            onMouseEnter={(e) => {
+              if (!confirmDelete) {
+                e.currentTarget.style.color = 'var(--fail-fg)'
+                e.currentTarget.style.background = 'var(--fail-subtle)'
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!confirmDelete) {
+                e.currentTarget.style.color = 'var(--fg-secondary)'
+                e.currentTarget.style.background = 'var(--bg-surface-2)'
+              }
+              setConfirmDelete(false)
+            }}
+          >
+            <Trash2 size={12} />
+            {confirmDelete ? 'Confirm' : 'Delete'}
+          </button>
+        </div>
+      </div>
+
+      {/* Running progress bar */}
+      {isRunning && (
+        <div
+          style={{
+            height: '2px',
+            background: 'var(--bg-surface-2)',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${progressPct}%`,
+              background: 'var(--accent)',
+              transition: 'width 400ms ease-out',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Aggregate stats — when complete or has results */}
+      {(isComplete || hasResults) && (
+        <AggregateStats experiment={experiment} />
+      )}
+
+      {/* Results table — when running (partial) or complete */}
+      {(isRunning || isComplete || hasResults) ? (
+        <ResultsTable experiment={experiment} />
+      ) : (
+        /* Empty / queued state */
+        <div
+          className="flex flex-col items-center justify-center gap-3 m-6 p-10"
+          style={{
+            flex: 1,
+            background: 'var(--bg-inset)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-lg)',
+          }}
+        >
+          {experiment.status === 'failed' ? (
+            <>
+              <p className="text-[13px]" style={{ color: 'var(--error-fg)' }}>
+                Experiment failed
+              </p>
+              <p className="text-[12px]" style={{ color: 'var(--fg-muted)' }}>
+                Re-run to retry.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[13px]" style={{ color: 'var(--fg-secondary)' }}>
+                Ready to run
+              </p>
+              <p className="text-[12px]" style={{ color: 'var(--fg-muted)' }}>
+                Press Run to start evaluating.
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
