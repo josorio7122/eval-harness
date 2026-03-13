@@ -1,95 +1,90 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { GraduationCap, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { useGraders } from '@/hooks/use-graders'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/list-skeleton'
+import { CreateGraderDialog } from './create-grader-dialog'
 
-interface GraderListProps {
-  selectedId?: string
-  onCreateClick: () => void
-}
-
-export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
+export function GraderList() {
   const navigate = useNavigate()
   const { data: graders, isLoading } = useGraders()
+  const [showCreate, setShowCreate] = useState(false)
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Graders
-        </span>
-        <Button variant="outline" size="sm" onClick={onCreateClick}>
-          <Plus />
-          New
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h2 className="text-[16px] font-semibold text-foreground">Graders</h2>
+        <Button variant="outline" size="sm" onClick={() => setShowCreate(true)}>
+          <Plus size={14} />
+          New Grader
         </Button>
       </div>
 
       {/* Table header */}
-      <div
-        className="grid px-4 py-2.5 border-b border-border/50 bg-muted"
-        style={{ gridTemplateColumns: '1fr auto' }}
-      >
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Name
-        </span>
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Type
-        </span>
-      </div>
+      {!isLoading && graders && graders.length > 0 && (
+        <div
+          className="grid px-6 py-2.5 border-b border-border/50 bg-card"
+          style={{ gridTemplateColumns: '1fr 1fr 80px' }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Name
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Description
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Type
+          </span>
+        </div>
+      )}
 
-      {/* Rows */}
+      {/* Content */}
       <div className="flex-1 overflow-auto">
-        {isLoading && <ListSkeleton rows={3} />}
-
-        {!isLoading && graders && graders.length === 0 && (
+        {isLoading ? (
+          <ListSkeleton rows={3} />
+        ) : !graders || graders.length === 0 ? (
           <EmptyState
             icon={GraduationCap}
             title="No graders yet"
             description="Define a rubric to start evaluating"
             action={
-              <Button variant="outline" size="sm" onClick={onCreateClick}>
-                <Plus />
+              <Button variant="outline" size="sm" onClick={() => setShowCreate(true)}>
+                <Plus size={14} />
                 Create grader
               </Button>
             }
           />
-        )}
-
-        {!isLoading &&
-          graders &&
-          graders.map((grader) => {
-            const isSelected = grader.id === selectedId
-            return (
-              <div
+        ) : (
+          <div>
+            {graders.map((grader) => (
+              <button
                 key={grader.id}
                 onClick={() => navigate(`/graders/${grader.id}`)}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-border/50 border-l-2',
-                  isSelected
-                    ? 'bg-accent border-l-primary pl-[14px]'
-                    : 'border-l-transparent hover:bg-accent',
-                )}
+                className="w-full grid items-center px-6 py-3 border-b border-border/50 text-left transition-colors bg-transparent hover:bg-card cursor-pointer"
+                style={{ gridTemplateColumns: '1fr 1fr 80px' }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13px] font-medium truncate text-foreground">
-                    {grader.name}
-                  </div>
-                  {grader.description && (
-                    <div className="text-[12px] truncate mt-[1px] text-muted-foreground">
-                      {grader.description}
-                    </div>
-                  )}
-                </div>
+                <span className="text-sm font-medium text-foreground truncate">{grader.name}</span>
+                <span className="text-sm text-muted-foreground truncate pr-4">
+                  {grader.description || '—'}
+                </span>
                 <Badge variant="secondary">LLM</Badge>
-              </div>
-            )
-          })}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      <CreateGraderDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(id) => {
+          if (id) navigate(`/graders/${id}`)
+        }}
+      />
     </div>
   )
 }

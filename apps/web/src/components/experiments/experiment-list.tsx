@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FlaskConical, Plus } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useExperiments } from '@/hooks/use-experiments'
@@ -9,13 +8,6 @@ import { CreateExperimentDialog } from './create-experiment-dialog'
 import type { Experiment } from '@/hooks/use-experiments'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/list-skeleton'
-
-const STATUS_BORDER_COLOR: Record<Experiment['status'], string> = {
-  running: 'var(--accent-custom)',
-  complete: 'var(--pass)',
-  failed: 'var(--error)',
-  queued: 'var(--neutral)',
-}
 
 const STATUS_BADGE_VARIANT: Record<Experiment['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
   running: 'default',
@@ -31,10 +23,6 @@ const STATUS_LABEL: Record<Experiment['status'], string> = {
   queued: 'Queued',
 }
 
-function hasFails(exp: Experiment): boolean {
-  return (exp.results ?? []).some((r) => r.verdict === 'fail' || r.verdict === 'error')
-}
-
 function progressPct(exp: Experiment): number {
   const total = (exp.dataset?.items?.length ?? 0) * (exp.graders?.length ?? 0)
   const done = exp._count?.results ?? exp.results?.length ?? 0
@@ -42,11 +30,7 @@ function progressPct(exp: Experiment): number {
   return Math.round((done / total) * 100)
 }
 
-interface ExperimentListProps {
-  selectedId?: string
-}
-
-export function ExperimentList({ selectedId }: ExperimentListProps) {
+export function ExperimentList() {
   const navigate = useNavigate()
   const { data: experiments, isLoading } = useExperiments()
   const [createOpen, setCreateOpen] = useState(false)
@@ -56,101 +40,91 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Experiments
-        </span>
+    <div className="flex flex-col h-full">
+      {/* Page header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <h2 className="text-[16px] font-semibold text-foreground">Experiments</h2>
         <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-          <Plus size={13} />
-          New
+          <Plus size={14} />
+          New Experiment
         </Button>
       </div>
 
-      {/* Rows */}
-      <div className="flex-1 overflow-auto">
-        {isLoading && <ListSkeleton rows={3} />}
+      {/* Table header */}
+      {!isLoading && experiments && experiments.length > 0 && (
+        <div
+          className="grid px-6 py-2.5 border-b border-border/50 bg-card"
+          style={{ gridTemplateColumns: '1fr 1fr 80px 100px' }}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Name
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Dataset
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Graders
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground text-right">
+            Status
+          </span>
+        </div>
+      )}
 
-        {!isLoading && experiments && experiments.length === 0 && (
+      {/* Content */}
+      <div className="flex-1 overflow-auto">
+        {isLoading ? (
+          <ListSkeleton rows={3} />
+        ) : !experiments || experiments.length === 0 ? (
           <EmptyState
             icon={FlaskConical}
             title="No experiments yet"
             description="Run your first eval"
             action={
               <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus size={13} />
+                <Plus size={14} />
                 New experiment
               </Button>
             }
           />
+        ) : (
+          <div>
+            {experiments.map((exp) => {
+              const pct = progressPct(exp)
+              return (
+                <button
+                  key={exp.id}
+                  onClick={() => navigate(`/experiments/${exp.id}`)}
+                  className="relative w-full grid items-center px-6 py-3 border-b border-border/50 text-left transition-colors bg-transparent hover:bg-card cursor-pointer"
+                  style={{ gridTemplateColumns: '1fr 1fr 80px 100px' }}
+                >
+                  <span className="text-sm font-medium text-foreground truncate">{exp.name}</span>
+                  <span className="text-sm text-muted-foreground truncate pr-4">
+                    {exp.dataset?.name ?? '—'}
+                  </span>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {exp.graders?.length ?? 0}
+                  </span>
+                  <div className="flex justify-end">
+                    <Badge variant={STATUS_BADGE_VARIANT[exp.status]}>
+                      {STATUS_LABEL[exp.status]}
+                    </Badge>
+                  </div>
+
+                  {/* Progress bar for running experiments */}
+                  {exp.status === 'running' && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-secondary">
+                      <div
+                        className="h-0.5 bg-primary transition-all duration-[400ms] ease-out"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
         )}
-
-        {!isLoading &&
-          experiments &&
-          experiments.map((exp) => {
-            const isSelected = exp.id === selectedId
-            const fails = hasFails(exp)
-            const borderColor =
-              exp.status === 'complete' && fails ? 'var(--fail)' : STATUS_BORDER_COLOR[exp.status]
-            const pct = progressPct(exp)
-
-            return (
-              <div
-                key={exp.id}
-                onClick={() => navigate(`/experiments/${exp.id}`)}
-                className={cn(
-                  'relative cursor-pointer transition-colors px-4 border-b border-border/50 border-l-2',
-                  exp.status === 'running' ? 'pt-2.5 pb-3' : 'py-2.5',
-                  isSelected ? 'bg-secondary pl-[14px]' : 'border-l-transparent hover:bg-accent',
-                )}
-                style={{
-                  borderLeftColor: isSelected ? borderColor : 'transparent',
-                }}
-              >
-                {/* Row content */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate text-foreground">
-                      {exp.name}
-                    </div>
-                    <div className="flex items-center gap-2 mt-[2px]">
-                      {exp.dataset && (
-                        <span className="text-[11px] truncate text-muted-foreground">
-                          {exp.dataset.name}
-                        </span>
-                      )}
-                      {exp.revision && (
-                        <span className="text-[11px] font-mono text-muted-foreground shrink-0">
-                          v{exp.revision.schemaVersion}
-                        </span>
-                      )}
-                      {exp.graders && exp.graders.length > 0 && (
-                        <span className="text-[11px] font-mono tabular-nums text-muted-foreground/70 shrink-0">
-                          {exp.graders.length}g
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Status badge */}
-                  <Badge variant={STATUS_BADGE_VARIANT[exp.status]} className="shrink-0">
-                    {STATUS_LABEL[exp.status]}
-                  </Badge>
-                </div>
-
-                {/* Running: progress bar at bottom */}
-                {exp.status === 'running' && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-secondary">
-                    <div
-                      className="h-0.5 bg-primary transition-all duration-[400ms] ease-out"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                )}
-              </div>
-            )
-          })}
       </div>
 
       <CreateExperimentDialog
