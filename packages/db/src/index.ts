@@ -1,4 +1,4 @@
-export { PrismaClient } from '../generated/prisma/index.js'
+export { PrismaClient } from '../generated/prisma/client.js'
 export type {
   Dataset,
   DatasetItem,
@@ -6,4 +6,4 @@ export type {
   Experiment,
   ExperimentGrader,
   ExperimentResult,
-} from '../generated/prisma/index.js'
+} from '../generated/prisma/client.js'
