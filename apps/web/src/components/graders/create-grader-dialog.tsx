@@ -12,15 +12,25 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [rubric, setRubric] = useState('')
+  const [prevOpen, setPrevOpen] = useState(open)
   const nameRef = useRef<HTMLInputElement>(null)
   const createGrader = useCreateGrader()
 
+  // Reset form when dialog opens (derived-state pattern)
+  if (open && !prevOpen) {
+    setPrevOpen(true)
+    setName('')
+    setDescription('')
+    setRubric('')
+  } else if (!open && prevOpen) {
+    setPrevOpen(false)
+  }
+
+  // Focus name input after dialog opens (DOM side-effect only, no setState)
   useEffect(() => {
     if (open) {
-      setName('')
-      setDescription('')
-      setRubric('')
-      setTimeout(() => nameRef.current?.focus(), 50)
+      const timer = setTimeout(() => nameRef.current?.focus(), 50)
+      return () => clearTimeout(timer)
     }
   }, [open])
 
@@ -76,11 +86,11 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
               color: 'var(--fg-muted)',
               borderRadius: 'var(--radius-md)',
             }}
-            onMouseEnter={e => {
+            onMouseEnter={(e) => {
               e.currentTarget.style.color = 'var(--fg-primary)'
               e.currentTarget.style.background = 'var(--bg-surface-2)'
             }}
-            onMouseLeave={e => {
+            onMouseLeave={(e) => {
               e.currentTarget.style.color = 'var(--fg-muted)'
               e.currentTarget.style.background = 'transparent'
             }}
@@ -93,16 +103,13 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
         <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <label
-              className="text-[12px] font-medium"
-              style={{ color: 'var(--fg-secondary)' }}
-            >
+            <label className="text-[12px] font-medium" style={{ color: 'var(--fg-secondary)' }}>
               Name <span style={{ color: 'var(--error-fg)' }}>*</span>
             </label>
             <input
               ref={nameRef}
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Relevance grader"
               required
               className="h-[32px] px-3 text-[13px] outline-none transition-colors"
@@ -112,17 +119,14 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--fg-primary)',
               }}
-              onFocus={e => (e.target.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--border-focus)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border-strong)')}
             />
           </div>
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <label
-              className="text-[12px] font-medium"
-              style={{ color: 'var(--fg-secondary)' }}
-            >
+            <label className="text-[12px] font-medium" style={{ color: 'var(--fg-secondary)' }}>
               Description{' '}
               <span className="text-[11px] font-normal" style={{ color: 'var(--fg-muted)' }}>
                 (optional)
@@ -130,7 +134,7 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
             </label>
             <input
               value={description}
-              onChange={e => setDescription(e.target.value)}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="What does this grader evaluate?"
               className="h-[32px] px-3 text-[13px] outline-none transition-colors"
               style={{
@@ -139,22 +143,19 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--fg-primary)',
               }}
-              onFocus={e => (e.target.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--border-focus)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border-strong)')}
             />
           </div>
 
           {/* Rubric */}
           <div className="flex flex-col gap-1.5">
-            <label
-              className="text-[12px] font-medium"
-              style={{ color: 'var(--fg-secondary)' }}
-            >
+            <label className="text-[12px] font-medium" style={{ color: 'var(--fg-secondary)' }}>
               Rubric <span style={{ color: 'var(--error-fg)' }}>*</span>
             </label>
             <textarea
               value={rubric}
-              onChange={e => setRubric(e.target.value)}
+              onChange={(e) => setRubric(e.target.value)}
               placeholder="Describe the grading criteria..."
               required
               rows={5}
@@ -167,8 +168,8 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
                 fontFamily: 'var(--font-mono)',
                 lineHeight: 1.6,
               }}
-              onFocus={e => (e.target.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--border-focus)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border-strong)')}
             />
           </div>
 
@@ -193,11 +194,11 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
                 border: '1px solid var(--border-strong)',
                 borderRadius: 'var(--radius-md)',
               }}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 e.currentTarget.style.color = 'var(--fg-primary)'
                 e.currentTarget.style.background = 'var(--bg-surface-2)'
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e) => {
                 e.currentTarget.style.color = 'var(--fg-secondary)'
                 e.currentTarget.style.background = 'transparent'
               }}
@@ -214,12 +215,12 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
                 border: '1px solid transparent',
                 borderRadius: 'var(--radius-md)',
               }}
-              onMouseEnter={e => {
+              onMouseEnter={(e) => {
                 if (!createGrader.isPending) {
                   e.currentTarget.style.opacity = '0.85'
                 }
               }}
-              onMouseLeave={e => {
+              onMouseLeave={(e) => {
                 e.currentTarget.style.opacity = '1'
               }}
             >

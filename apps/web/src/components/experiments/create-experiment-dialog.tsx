@@ -10,35 +10,39 @@ interface CreateExperimentDialogProps {
   onCreated?: (id: string) => void
 }
 
-export function CreateExperimentDialog({
-  open,
-  onClose,
-  onCreated,
-}: CreateExperimentDialogProps) {
+export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExperimentDialogProps) {
   const [name, setName] = useState('')
   const [datasetId, setDatasetId] = useState('')
   const [graderIds, setGraderIds] = useState<string[]>([])
   const nameRef = useRef<HTMLInputElement>(null)
 
+  const [prevOpen, setPrevOpen] = useState(open)
   const createExperiment = useCreateExperiment()
   const { data: datasets } = useDatasets()
   const { data: graders } = useGraders()
 
+  // Reset form when dialog opens (derived-state pattern)
+  if (open && !prevOpen) {
+    setPrevOpen(true)
+    setName('')
+    setDatasetId('')
+    setGraderIds([])
+  } else if (!open && prevOpen) {
+    setPrevOpen(false)
+  }
+
+  // Focus name input after dialog opens (DOM side-effect only, no setState)
   useEffect(() => {
     if (open) {
-      setName('')
-      setDatasetId('')
-      setGraderIds([])
-      setTimeout(() => nameRef.current?.focus(), 50)
+      const timer = setTimeout(() => nameRef.current?.focus(), 50)
+      return () => clearTimeout(timer)
     }
   }, [open])
 
   if (!open) return null
 
   function toggleGrader(id: string) {
-    setGraderIds((prev) =>
-      prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id],
-    )
+    setGraderIds((prev) => (prev.includes(id) ? prev.filter((g) => g !== id) : [...prev, id]))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -150,11 +154,13 @@ export function CreateExperimentDialog({
               <option value="" disabled>
                 Select a dataset…
               </option>
-              {datasets?.filter((ds) => (ds._count?.items ?? 0) > 0).map((ds) => (
-                <option key={ds.id} value={ds.id}>
-                  {ds.name}
-                </option>
-              ))}
+              {datasets
+                ?.filter((ds) => (ds._count?.items ?? 0) > 0)
+                .map((ds) => (
+                  <option key={ds.id} value={ds.id}>
+                    {ds.name}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -194,8 +200,7 @@ export function CreateExperimentDialog({
                         background: selected ? 'var(--accent-subtle)' : 'transparent',
                       }}
                       onMouseEnter={(e) => {
-                        if (!selected)
-                          e.currentTarget.style.background = 'var(--bg-surface-3)'
+                        if (!selected) e.currentTarget.style.background = 'var(--bg-surface-3)'
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = selected

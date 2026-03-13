@@ -23,18 +23,25 @@ export function GraderDetail({ id }: GraderDetailProps) {
   const [validationError, setValidationError] = useState('')
   const rubricRef = useRef<HTMLTextAreaElement>(null)
 
-  const affectedExperiments = (allExperiments ?? []).filter(
-    (exp) => exp.graders?.some((eg) => eg.graderId === id),
+  const affectedExperiments = (allExperiments ?? []).filter((exp) =>
+    exp.graders?.some((eg) => eg.graderId === id),
   )
 
-  // Sync server data → local state (only when not dirty)
-  useEffect(() => {
-    if (grader && !isDirty) {
-      setName(grader.name)
-      setDescription(grader.description ?? '')
-      setRubric(grader.rubric ?? '')
-    }
-  }, [grader, isDirty])
+  const [syncedGraderId, setSyncedGraderId] = useState(grader?.id)
+  const [syncedIsDirty, setSyncedIsDirty] = useState(isDirty)
+  const justBecameClean = syncedIsDirty && !isDirty
+  const graderIdChanged = grader?.id !== syncedGraderId
+
+  // Sync server data → local state (only when not dirty, derived-state pattern)
+  if (grader && !isDirty && (graderIdChanged || justBecameClean)) {
+    setSyncedGraderId(grader.id)
+    setSyncedIsDirty(isDirty)
+    setName(grader.name)
+    setDescription(grader.description ?? '')
+    setRubric(grader.rubric ?? '')
+  } else if (isDirty !== syncedIsDirty) {
+    setSyncedIsDirty(isDirty)
+  }
 
   // Auto-grow textarea
   const autoGrow = useCallback(() => {
@@ -129,7 +136,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
             </label>
             <input
               value={name}
-              onChange={e => {
+              onChange={(e) => {
                 setName(e.target.value)
                 markDirty('name', e.target.value)
                 setValidationError('')
@@ -141,8 +148,8 @@ export function GraderDetail({ id }: GraderDetailProps) {
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--fg-primary)',
               }}
-              onFocus={e => (e.target.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--border-focus)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border-strong)')}
             />
           </div>
 
@@ -156,7 +163,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
             </label>
             <input
               value={description}
-              onChange={e => {
+              onChange={(e) => {
                 setDescription(e.target.value)
                 markDirty('description', e.target.value)
               }}
@@ -168,8 +175,8 @@ export function GraderDetail({ id }: GraderDetailProps) {
                 borderRadius: 'var(--radius-md)',
                 color: 'var(--fg-primary)',
               }}
-              onFocus={e => (e.target.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
+              onFocus={(e) => (e.target.style.borderColor = 'var(--border-focus)')}
+              onBlur={(e) => (e.target.style.borderColor = 'var(--border-strong)')}
             />
           </div>
         </div>
@@ -198,7 +205,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
           <textarea
             ref={rubricRef}
             value={rubric}
-            onChange={e => {
+            onChange={(e) => {
               setRubric(e.target.value)
               markDirty('rubric', e.target.value)
               setValidationError('')
@@ -216,8 +223,8 @@ export function GraderDetail({ id }: GraderDetailProps) {
               minHeight: '200px',
               transition: 'border-color 150ms ease-out',
             }}
-            onFocus={e => (e.target.style.borderColor = 'var(--border-focus)')}
-            onBlur={e => (e.target.style.borderColor = 'var(--border-strong)')}
+            onFocus={(e) => (e.target.style.borderColor = 'var(--border-focus)')}
+            onBlur={(e) => (e.target.style.borderColor = 'var(--border-strong)')}
           />
         </div>
 
@@ -254,11 +261,11 @@ export function GraderDetail({ id }: GraderDetailProps) {
               border: '1px solid var(--border-strong)',
               borderRadius: 'var(--radius-md)',
             }}
-            onMouseEnter={e => {
+            onMouseEnter={(e) => {
               e.currentTarget.style.color = 'var(--fail-fg)'
               e.currentTarget.style.borderColor = 'var(--fail)'
             }}
-            onMouseLeave={e => {
+            onMouseLeave={(e) => {
               e.currentTarget.style.color = 'var(--fg-muted)'
               e.currentTarget.style.borderColor = 'var(--border-strong)'
             }}
@@ -321,14 +328,17 @@ export function GraderDetail({ id }: GraderDetailProps) {
               gap: '16px',
             }}
           >
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+            <h3
+              style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}
+            >
               Delete grader "{grader.name}"?
             </h3>
 
             {affectedExperiments.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <p style={{ fontSize: '12px', color: 'var(--error-fg)', margin: 0 }}>
-                  The following experiments use this grader and will also be permanently deleted along with all their evaluation results:
+                  The following experiments use this grader and will also be permanently deleted
+                  along with all their evaluation results:
                 </p>
                 <ul
                   style={{
@@ -345,7 +355,14 @@ export function GraderDetail({ id }: GraderDetailProps) {
                   }}
                 >
                   {affectedExperiments.map((exp) => (
-                    <li key={exp.id} style={{ fontSize: '12px', color: 'var(--fail-fg)', fontFamily: 'var(--font-mono)' }}>
+                    <li
+                      key={exp.id}
+                      style={{
+                        fontSize: '12px',
+                        color: 'var(--fail-fg)',
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
                       {exp.name}
                     </li>
                   ))}

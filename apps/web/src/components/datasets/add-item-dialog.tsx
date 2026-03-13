@@ -1,10 +1,5 @@
-import { useState, useEffect } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useCreateItem, useUpdateItem } from '@/hooks/use-datasets'
@@ -74,12 +69,14 @@ export function EditItemDialog({
   onOpenChange,
 }: EditItemDialogProps) {
   const [values, setValues] = useState<Record<string, string>>(item.values)
+  const [syncedItemId, setSyncedItemId] = useState(item.id)
   const updateItem = useUpdateItem()
 
-  // Sync values when item changes
-  useEffect(() => {
+  // Sync values when item changes (derived-state pattern)
+  if (syncedItemId !== item.id) {
+    setSyncedItemId(item.id)
     setValues(item.values)
-  }, [item.id])
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -139,9 +136,7 @@ function ItemDialogContent({
       }}
     >
       <DialogHeader>
-        <DialogTitle
-          style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}
-        >
+        <DialogTitle style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}>
           {title}
         </DialogTitle>
       </DialogHeader>
@@ -168,9 +163,7 @@ function ItemDialogContent({
               <Input
                 id={`item-${attr}`}
                 value={values[attr] ?? ''}
-                onChange={(e) =>
-                  onChange({ ...values, [attr]: e.target.value })
-                }
+                onChange={(e) => onChange({ ...values, [attr]: e.target.value })}
                 style={{
                   background: 'var(--bg-surface-2)',
                   borderColor: 'var(--border-strong)',
