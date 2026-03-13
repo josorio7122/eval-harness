@@ -401,7 +401,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
               </div>
             ) : (
               <p style={{ fontSize: '12px', color: 'var(--fg-secondary)', margin: 0 }}>
-                All items and revision history will be permanently deleted.
+                All items, revision history, and any associated experiments with their results will be permanently deleted.
               </p>
             )}
 

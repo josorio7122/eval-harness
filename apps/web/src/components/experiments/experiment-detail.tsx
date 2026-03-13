@@ -56,6 +56,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
 
   const isRunning = experiment?.status === 'running' || experiment?.status === 'queued'
   const isComplete = experiment?.status === 'complete'
+  const canExport = experiment?.status === 'complete' || experiment?.status === 'failed'
 
   const hasResults =
     experiment?.results && experiment.results.length > 0
@@ -235,7 +236,12 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
           {/* Re-run — only when complete or failed */}
           {(isComplete || experiment.status === 'failed') && (
             <button
-              onClick={() => rerunExp.mutate(id)}
+              onClick={async () => {
+                const result = await rerunExp.mutateAsync(id)
+                if (result?.data?.id) {
+                  navigate(`/experiments/${result.data.id}`)
+                }
+              }}
               disabled={rerunExp.isPending}
               className="flex items-center gap-1.5 h-[28px] px-3 text-[12px] font-medium transition-colors disabled:opacity-50"
               style={{
@@ -256,8 +262,8 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
             </button>
           )}
 
-          {/* Export CSV — only when complete */}
-          {isComplete && (
+          {/* Export CSV — when complete or failed */}
+          {canExport && (
             <button
               onClick={async () => {
                 setExportingCsv(true)

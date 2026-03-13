@@ -488,11 +488,9 @@ export function RevisionHistory({ datasetId }: RevisionHistoryProps) {
                     <span style={{ fontSize: '11px', color: 'var(--fg-secondary)' }}>
                       {rev.itemCount} items
                     </span>
-                    {rev.experimentCount > 0 && (
-                      <span style={{ fontSize: '11px', color: 'var(--fg-tertiary)' }}>
-                        {rev.experimentCount} experiments
-                      </span>
-                    )}
+                    <span style={{ fontSize: '11px', color: 'var(--fg-tertiary)' }}>
+                      {rev.experimentCount} experiment{rev.experimentCount !== 1 ? 's' : ''}
+                    </span>
                     <span
                       style={{
                         fontSize: '10px',

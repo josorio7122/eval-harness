@@ -19,9 +19,9 @@ export function AggregateStats({ experiment, filteredResults, filteredItemCount 
 
   const itemCount = filteredItemCount ?? items.length
   const totalCells = itemCount * graders.length
-  const overallRate = passRate(results)
-  const overallPct = Math.round(overallRate * 100)
   const overallPassCount = results.filter((r) => r.verdict === 'pass').length
+  const overallPct = totalCells > 0 ? Math.round((overallPassCount / totalCells) * 100) : 0
+  const overallRate = totalCells > 0 ? overallPassCount / totalCells : 0
 
   // Determine headline color
   let headlineColor = 'var(--pass-fg)'
@@ -69,7 +69,7 @@ export function AggregateStats({ experiment, filteredResults, filteredItemCount 
             lineHeight: 1,
           }}
         >
-          {overallPassCount}/{results.length} — {overallPct}%
+          {overallPassCount}/{totalCells} — {overallPct}%
         </div>
         <div
           style={{
