@@ -28,7 +28,7 @@ When this system is complete, a user can manage datasets of structured test case
 - **ItemCreate:** When the user submits a new item, that item appears in the dataset immediately. Every attribute defined in the schema is present on the item; any attribute the user did not fill in is stored as an empty string.
 - **ItemEdit:** When the user edits an item and confirms, the updated values are reflected immediately. No other items are affected.
 - **ItemDelete:** When the user deletes an item, it is removed from the dataset immediately and is no longer visible.
-- **ItemSchemaConformance:** At all times, every item in a dataset carries exactly the set of attributes defined by the dataset's current schema — no more, no fewer. Adding an attribute to the schema retroactively adds that attribute (empty) to all existing items. Removing an attribute from the schema retroactively drops that attribute's value from all existing items.
+- **ItemSchemaConformance:** At all times, every item in a dataset's latest revision carries exactly the set of attributes defined by that revision's schema — no more, no fewer. Adding an attribute to the schema creates a new revision where all items carry that attribute (empty by default). Removing an attribute from the schema creates a new revision where all items no longer carry that attribute. Previous revisions retain their original schema and item values.
 
 **Import & Export**
 
@@ -37,6 +37,28 @@ When this system is complete, a user can manage datasets of structured test case
 - **DatasetCSVImportPreview:** Before committing an import, the system shows the user a summary: the number of valid rows found and any rows that will be skipped (with a reason per skipped row). The user must explicitly confirm before items are created.
 - **DatasetCSVExport:** When the user requests a CSV export of a dataset's items, they receive a file where the first row is the header (schema order) and each subsequent row is one item in insertion order. The filename communicates which dataset it belongs to.
 
+**Dataset Revisions**
+
+- **RevisionOnCreate:** When a dataset is created, the system automatically creates an initial revision (schemaVersion 1) with the default attributes `["input", "expected_output"]` and zero items. This revision is the dataset's starting state.
+- **RevisionOnItemCreate:** When the user adds an item to a dataset, the system creates a new revision containing all existing items plus the new item. The previous revision is unchanged. The new revision inherits the same `schemaVersion` as the previous revision.
+- **RevisionOnItemEdit:** When the user edits an item, the system creates a new revision containing all items with the edited item's values updated. The edited item retains the same stable `itemId` across revisions. The previous revision is unchanged. The new revision inherits the same `schemaVersion`.
+- **RevisionOnItemDelete:** When the user deletes an item, the system creates a new revision containing all items except the deleted one. The previous revision is unchanged and still contains the deleted item. The new revision inherits the same `schemaVersion`.
+- **RevisionOnAttributeAdd:** When the user adds an attribute, the system creates a new revision with the new attribute added to the schema and all items backfilled with empty string for that attribute. The `schemaVersion` is incremented by 1.
+- **RevisionOnAttributeRemove:** When the user removes a custom attribute, the system creates a new revision with the attribute removed from the schema and stripped from all items. The `schemaVersion` is incremented by 1.
+- **RevisionOnCSVImport:** When the user imports items via CSV, the system creates exactly one new revision containing all existing items plus all imported items. The new revision inherits the same `schemaVersion`.
+- **RevisionImmutability:** Once a revision is created, its attributes and items are never modified by any subsequent operation. Revisions are an immutable audit trail of dataset state.
+- **RevisionLatest:** The current state of a dataset — its attributes and items — is always the latest revision, determined by the most recent `createdAt` timestamp. There is no separate mutable working copy.
+- **RevisionSchemaVersion:** The `schemaVersion` counter increments only when the schema changes (attribute added or removed). Item-only mutations (create, edit, delete, CSV import) copy the `schemaVersion` unchanged.
+
+**Version Navigation**
+
+- **RevisionList:** When the user navigates to a dataset's revision history, they see a list of all revisions ordered by `createdAt` descending (newest first). Each entry shows the `schemaVersion`, `attributes`, `createdAt` timestamp, item count, and the number of experiments pinned to that revision.
+- **RevisionDetail:** When the user selects a specific revision from the history, they see the full list of items in that revision with their values, the revision's attributes, and its `schemaVersion`. This view is read-only — the user cannot edit items in a past revision.
+- **RevisionBrowseItems:** When viewing a previous revision, the user sees the exact dataset state at that point in time — including items that were later deleted and attribute values that were later changed. The items are displayed in the same format as the current dataset view.
+- **RevisionCompareSchema:** When browsing the revision list, the user can see which revisions changed the schema (different `schemaVersion` from the previous entry) versus which revisions only changed items (same `schemaVersion`).
+- **RevisionExperimentLink:** When viewing a revision, the user can see which experiments were run against it. Selecting an experiment navigates to that experiment's results.
+- **RevisionCurrentIndicator:** The most recent revision in the list is clearly marked as "Current" to distinguish it from historical revisions.
+
 ## Contracts
 
 These describe what the user provides and what the system surfaces — not internal representations.
@@ -44,13 +66,14 @@ These describe what the user provides and what the system surfaces — not inter
 **Dataset (summary, as shown in the list)**
 
 - `name` — string, user-provided, non-empty
-- `item_count` — integer, how many items currently exist in this dataset
+- `item_count` — integer, how many items exist in the latest revision
 
 **Dataset (detail view)**
 
 - `name` — string
-- `attributes` — ordered list of attribute names; always includes "input" and "expected_output"
-- `items` — ordered list of Items
+- `attributes` — ordered list of attribute names from the latest revision; always includes "input" and "expected_output"
+- `items` — ordered list of items from the latest revision
+- `schemaVersion` — integer, the latest revision's schema version
 
 **Item (as displayed in a dataset)**
 
@@ -95,14 +118,43 @@ These describe what the user provides and what the system surfaces — not inter
 - Rows 2–N: one item per row in insertion order; empty values appear as empty cells
 - Filename incorporates the dataset name
 
+**Dataset Revision (as shown in revision history)**
+
+- `schemaVersion` — integer, incremented on schema changes only
+- `attributes` — ordered list of attribute names for this revision
+- `item_count` — integer, how many items exist in this revision
+- `experiment_count` — integer, how many experiments are pinned to this revision
+- `created_at` — timestamp of when this revision was created
+- `is_current` — boolean, true only for the most recent revision
+
+**Dataset Revision (detail view)**
+
+- `schemaVersion` — integer
+- `attributes` — ordered list of attribute names
+- `items` — ordered list of revision items, each with a stable `itemId` and `values`
+- `created_at` — timestamp
+- `experiments` — list of experiments pinned to this revision (name, status)
+
+**Revision List request**
+
+- `dataset_id` — UUID of the dataset
+
+**Revision Detail request**
+
+- `dataset_id` — UUID of the dataset
+- `revision_id` — UUID of the specific revision
+
 ## Constraints
 
 - `input` and `expected_output` are reserved attribute names. They are present on every dataset from creation and cannot be removed or renamed.
 - All attribute values are strings. No numeric, boolean, or structured types are in scope for this phase.
 - Attribute names within a dataset must be unique.
 - A dataset's name must be non-empty and unique across all datasets.
-- State persistence is in-memory for the session. No reads from or writes to a backend database are required for this phase.
 - This is a single-user, single-session tool. No authentication or multi-tenancy constraints apply.
+- The current state of a dataset is always derived from its latest revision (by `createdAt`). There is no separate mutable table.
+- Every mutation to a dataset's items or schema creates a new immutable revision. Previous revisions are never modified.
+- `schemaVersion` increments only on schema changes (attribute add/remove). Item mutations copy `schemaVersion` unchanged.
+- Revisions are deleted only when the parent dataset is deleted (cascade). There is no API to delete individual revisions.
 
 ## Error Cases
 
@@ -125,7 +177,9 @@ These describe what the user provides and what the system surfaces — not inter
 
 - Attribute types other than string (numbers, booleans, enums, structured objects).
 - Importing or exporting in any format other than CSV.
-- Versioning or history of datasets, graders, or schema changes.
+- Versioning or history of graders or grader rubric changes.
+- Diffing between dataset revisions (showing what changed between two revisions).
+- Reverting a dataset to a previous revision.
 - Validation of item values beyond schema conformance (no regex, length, or format constraints).
 - Sorting or reordering items within a dataset beyond insertion order.
 - Searching or filtering items within a dataset.
@@ -205,13 +259,15 @@ These describe what the user provides and what the system surfaces — not inter
 
 ### Behaviors
 
-- **ExperimentCreate:** When the user provides a name, selects a dataset, and selects one or more graders, the system creates an experiment in a "not yet run" state. The experiment is immediately visible in the experiment list.
-- **ExperimentRun:** When the user runs an experiment, the system evaluates every grader against every dataset item using the current state of the dataset. For each evaluation, the system sends the rubric as judging instructions and the dataset item attributes as the data to judge. Each evaluation produces a verdict (pass or fail) and a reason. When the run completes, the results are available for inspection.
-- **ExperimentRerun:** When the user re-runs an experiment, the system creates a new experiment with a new name (derived from the original) and runs it independently. The original experiment and its results are preserved.
+- **ExperimentCreate:** When the user provides a name, selects a dataset, and selects one or more graders, the system creates an experiment that references the dataset's latest revision at the time of creation. The experiment is immediately visible in the experiment list. No new revision is created — the experiment uses the existing latest revision.
+- **ExperimentRun:** When the user runs an experiment, the system evaluates every grader against every item in the experiment's referenced revision — not the dataset's current state. For each evaluation, the system sends the rubric as judging instructions and the revision item's attributes as the data to judge. Each evaluation produces a verdict (pass or fail) and a reason. Dataset edits made after experiment creation do not affect the experiment's items or results.
+- **ExperimentRerun:** When the user re-runs an experiment, the system creates a new experiment that references the dataset's latest revision at the time of the rerun. The new experiment runs independently with its own revision reference. The original experiment and its results are preserved with their original revision.
 - **ExperimentList:** The user can see a list of all experiments, each showing at minimum its name and the dataset it is associated with.
-- **ExperimentResults:** When the user opens an experiment, they see a results table where rows are dataset items, columns are graders, and each cell displays the pass/fail verdict for that item–grader pair. The reason for each verdict is accessible on hover without leaving the table.
+- **ExperimentResults:** When the user opens an experiment, they see a results table where rows are the revision's items (frozen at experiment creation), columns are graders, and each cell displays the pass/fail verdict for that item–grader pair. The reason for each verdict is accessible on hover without leaving the table. The revision version and creation timestamp are visible.
 - **ExperimentDelete:** When the user deletes an experiment, the experiment record and all of its results are permanently removed. The dataset and graders are not affected.
-- **ExperimentCSVExport:** When the user requests a CSV export of a completed experiment's results, they receive a file where the header contains all dataset attributes followed by one pair of columns per grader (`{grader_name}_verdict` and `{grader_name}_reason`). Each subsequent row is one dataset item's results. Verdicts are the literal strings `pass` or `fail`; cells in error state contain `error`. The action is only available when the experiment has at least one result.
+- **ExperimentCSVExport:** When the user requests a CSV export of a completed experiment's results, they receive a file where the header contains the revision's attributes followed by one pair of columns per grader (`{grader_name}_verdict` and `{grader_name}_reason`). Each subsequent row is one revision item's results. Verdicts are the literal strings `pass` or `fail`; cells in error state contain `error`. The export always reflects the revision's data, not the dataset's current state. Re-exporting after dataset edits produces identical output.
+- **ExperimentRevisionPinning:** Once an experiment is created, its revision reference never changes. Editing the dataset creates new revisions but does not affect any existing experiment's items or results.
+- **ExperimentSharedRevision:** Two experiments created against the same dataset without any intervening edits share the same revision. No duplicate snapshot is created.
 
 **Aggregate Statistics**
 
@@ -237,14 +293,16 @@ These describe what the user provides and what the system surfaces — not inter
 - `name` — string
 - `dataset_name` — name of the associated dataset
 - `status` — one of: "queued", "running", "complete", "failed"
+- `revision_schema_version` — the schemaVersion of the revision this experiment is pinned to
 
 **Experiment Results table**
 
-- Rows are dataset items (identified by their content)
+- Rows are revision items (frozen at experiment creation, identified by their content)
 - Columns are graders (identified by name)
 - Each cell contains:
   - `verdict` — "pass" or "fail"
   - `reason` — string, visible on hover
+- The revision's `schemaVersion` and `created_at` are displayed
 
 ### Error Cases
 
@@ -258,7 +316,7 @@ These describe what the user provides and what the system surfaces — not inter
 ### Resolved Decisions (Experiments)
 
 1. **Re-runnability:** Re-running an experiment creates a new experiment with new results. The original experiment and its results are preserved. This maintains full run history.
-2. **Dataset reference:** Experiments use a live reference to the dataset, not a snapshot. If the dataset is edited after a run, results reference the current dataset state. This keeps the system simple and leaves the door open for dataset versioning in the future.
+2. **Dataset reference:** Experiments reference a specific dataset revision, not the live dataset. The revision is pinned at experiment creation time and never changes. Dataset edits after creation produce new revisions but do not affect existing experiments. This ensures experiment results are always reproducible and immune to subsequent dataset mutations.
 3. **Grader cap:** No cap on graders per experiment. Unbounded selection.
 4. **Timestamps:** No timestamps for now.
 5. **Experiment statuses:** Experiments have four statuses: "queued" (waiting for a slot), "running" (actively evaluating), "complete" (all cells evaluated), "failed" (run could not complete). Up to two experiments may run in parallel; additional experiments queue until a slot is available.
