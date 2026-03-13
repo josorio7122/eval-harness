@@ -76,6 +76,13 @@ STATUS=$(echo "$RES" | tail -1)
 check "Create experiment" "201" "$STATUS"
 EXP_ID=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
 
+# --- Step 5a: Start SSE listener before running ---
+echo "📡 Starting SSE listener..."
+SSE_FILE=$(mktemp)
+curl -s -N "$API_URL/experiments/$EXP_ID/events" > "$SSE_FILE" 2>/dev/null &
+SSE_PID=$!
+sleep 1  # let connection establish
+
 # --- Step 5: Run experiment ---
 echo "🚀 Running experiment..."
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/experiments/$EXP_ID/run")
@@ -103,6 +110,34 @@ else
   echo "  ❌ Experiment timed out after ${TIMEOUT}s"
   FAIL=$((FAIL+1))
 fi
+
+# --- Step 6.5: Verify SSE progress events ---
+sleep 2  # give SSE a moment to flush
+kill $SSE_PID 2>/dev/null || true
+
+echo "📡 Verifying SSE progress events..."
+PROGRESS_COUNT=$(grep -c 'event: progress' "$SSE_FILE" 2>/dev/null || echo "0")
+echo "  Progress events received: $PROGRESS_COUNT"
+
+# Display each progress event
+grep 'data:.*cellsCompleted' "$SSE_FILE" | while read -r line; do
+  CELLS=$(echo "$line" | python3 -c "import sys,json; d=json.loads(sys.stdin.readline().replace('data: ','')); print(f\"{d['cellsCompleted']}/{d['totalCells']}\")" 2>/dev/null)
+  echo "  📊 Progress: $CELLS"
+done
+
+# Expect 6 progress events (3 items × 2 graders)
+check "SSE progress events = 6 (3 items × 2 graders)" "6" "$PROGRESS_COUNT"
+
+# Verify connected event was received
+if grep -q 'event: connected' "$SSE_FILE" 2>/dev/null; then
+  echo "  ✅ SSE connected event received"
+  PASS=$((PASS+1))
+else
+  echo "  ❌ SSE connected event missing"
+  FAIL=$((FAIL+1))
+fi
+
+rm -f "$SSE_FILE"
 
 # --- Step 7: Verify experiment status and results ---
 echo "📊 Verifying results..."
