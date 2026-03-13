@@ -68,6 +68,20 @@ export function createDatasetRouter(service: DatasetService) {
     return c.json(result)
   })
 
+  // ─── Revisions ────────────────────────────────────────────────────────────
+
+  app.get('/datasets/:id/revisions', async (c) => {
+    const result = await service.listRevisions(c.req.param('id'))
+    if (!result.success) return c.json(result, 404)
+    return c.json(result)
+  })
+
+  app.get('/datasets/:id/revisions/:revisionId', async (c) => {
+    const result = await service.getRevision(c.req.param('id'), c.req.param('revisionId'))
+    if (!result.success) return c.json(result, 404)
+    return c.json(result)
+  })
+
   // ─── CSV ──────────────────────────────────────────────────────────────────
 
   app.get('/datasets/:id/csv/template', async (c) => {

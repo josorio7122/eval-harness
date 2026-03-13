@@ -8,22 +8,35 @@ datasource db {
 }
 
 model Dataset {
-  id          String        @id @default(uuid()) @db.Uuid
-  name        String        @unique
-  attributes  String[]      @default(["input", "expected_output"])
-  items       DatasetItem[]
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String            @unique
+  revisions   DatasetRevision[]
   experiments Experiment[]
 }
 
-model DatasetItem {
-  id        String             @id @default(uuid()) @db.Uuid
-  datasetId String             @db.Uuid
-  values    Json
-  createdAt DateTime           @default(now())
-  dataset   Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
-  results   ExperimentResult[]
+model DatasetRevision {
+  id            String                @id @default(uuid()) @db.Uuid
+  datasetId     String                @db.Uuid
+  schemaVersion Int
+  attributes    String[]
+  createdAt     DateTime              @default(now())
+  dataset       Dataset               @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  items         DatasetRevisionItem[]
+  experiments   Experiment[]
 
   @@index([datasetId])
+}
+
+model DatasetRevisionItem {
+  id         String             @id @default(uuid()) @db.Uuid
+  revisionId String             @db.Uuid
+  itemId     String             @db.Uuid
+  values     Json
+  revision   DatasetRevision    @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+  results    ExperimentResult[]
+
+  @@index([revisionId])
+  @@index([itemId])
 }
 
 model Grader {
@@ -36,15 +49,18 @@ model Grader {
 }
 
 model Experiment {
-  id        String             @id @default(uuid()) @db.Uuid
-  name      String
-  datasetId String             @db.Uuid
-  status    String             @default("queued")
-  dataset   Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
-  graders   ExperimentGrader[]
-  results   ExperimentResult[]
+  id                String             @id @default(uuid()) @db.Uuid
+  name              String
+  datasetId         String             @db.Uuid
+  datasetRevisionId String             @db.Uuid
+  status            String             @default("queued")
+  dataset           Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  revision          DatasetRevision    @relation(fields: [datasetRevisionId], references: [id])
+  graders           ExperimentGrader[]
+  results           ExperimentResult[]
 
   @@index([datasetId])
+  @@index([datasetRevisionId])
 }
 
 model ExperimentGrader {
@@ -58,18 +74,18 @@ model ExperimentGrader {
 }
 
 model ExperimentResult {
-  id            String      @id @default(uuid()) @db.Uuid
-  experimentId  String      @db.Uuid
-  datasetItemId String      @db.Uuid
-  graderId      String      @db.Uuid
-  verdict       String
-  reason        String      @default("")
-  experiment    Experiment  @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  datasetItem   DatasetItem @relation(fields: [datasetItemId], references: [id], onDelete: Cascade)
-  grader        Grader      @relation(fields: [graderId], references: [id], onDelete: Cascade)
+  id                    String              @id @default(uuid()) @db.Uuid
+  experimentId          String              @db.Uuid
+  datasetRevisionItemId String              @db.Uuid
+  graderId              String              @db.Uuid
+  verdict               String
+  reason                String              @default("")
+  experiment            Experiment          @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  datasetRevisionItem   DatasetRevisionItem @relation(fields: [datasetRevisionItemId], references: [id], onDelete: Cascade)
+  grader                Grader              @relation(fields: [graderId], references: [id], onDelete: Cascade)
 
-  @@unique([experimentId, datasetItemId, graderId])
+  @@unique([experimentId, datasetRevisionItemId, graderId])
   @@index([experimentId])
-  @@index([datasetItemId])
+  @@index([datasetRevisionItemId])
   @@index([graderId])
 }

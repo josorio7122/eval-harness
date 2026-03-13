@@ -19,6 +19,8 @@ const mockService = {
   exportCsv: vi.fn(),
   importCsv: vi.fn(),
   previewCsv: vi.fn(),
+  listRevisions: vi.fn(),
+  getRevision: vi.fn(),
 }
 
 const app = createDatasetRouter(mockService)
@@ -393,5 +395,47 @@ describe('POST /datasets/:id/csv/import', () => {
       body: 'wrong,columns\nval1,val2',
     })
     expect(res.status).toBe(400)
+  })
+})
+
+// ─── GET /datasets/:id/revisions ──────────────────────────────────────────
+
+describe('GET /datasets/:id/revisions', () => {
+  it('returns 200 with revisions array', async () => {
+    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: '2024-01-01T00:00:00Z', itemCount: 2 }]
+    mockService.listRevisions.mockResolvedValue({ success: true, data: revisions })
+
+    const res = await app.request('/datasets/1/revisions')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toEqual({ success: true, data: revisions })
+  })
+
+  it('returns 404 when dataset not found', async () => {
+    mockService.listRevisions.mockResolvedValue({ success: false, error: 'Dataset not found' })
+
+    const res = await app.request('/datasets/999/revisions')
+    expect(res.status).toBe(404)
+  })
+})
+
+// ─── GET /datasets/:id/revisions/:revisionId ─────────────────────────────
+
+describe('GET /datasets/:id/revisions/:revisionId', () => {
+  it('returns 200 with revision detail', async () => {
+    const revision = { id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: '2024-01-01T00:00:00Z', items: [] }
+    mockService.getRevision.mockResolvedValue({ success: true, data: revision })
+
+    const res = await app.request('/datasets/1/revisions/rev1')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toEqual({ success: true, data: revision })
+  })
+
+  it('returns 404 when revision not found', async () => {
+    mockService.getRevision.mockResolvedValue({ success: false, error: 'Revision not found' })
+
+    const res = await app.request('/datasets/1/revisions/rev999')
+    expect(res.status).toBe(404)
   })
 })

@@ -342,11 +342,32 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
         const { validRows, skippedRows } = parsed.data
 
-        for (const values of validRows) {
-          await repo.createItem(datasetId, values)
-        }
+        await repo.importItems(datasetId, validRows)
 
         return ok({ imported: validRows.length, skipped: skippedRows.length })
+      } catch (e) {
+        return fail(e instanceof Error ? e.message : 'Unknown error')
+      }
+    },
+
+    async listRevisions(datasetId: string): Promise<Result<Awaited<ReturnType<typeof repo.findRevisions>>>> {
+      try {
+        const dataset = await repo.findById(datasetId)
+        if (!dataset) return fail('Dataset not found')
+        const revisions = await repo.findRevisions(datasetId)
+        return ok(revisions)
+      } catch (e) {
+        return fail(e instanceof Error ? e.message : 'Unknown error')
+      }
+    },
+
+    async getRevision(datasetId: string, revisionId: string): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findRevisionById>>>>> {
+      try {
+        const dataset = await repo.findById(datasetId)
+        if (!dataset) return fail('Dataset not found')
+        const revision = await repo.findRevisionById(datasetId, revisionId)
+        if (!revision) return fail('Revision not found')
+        return ok(revision)
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
       }

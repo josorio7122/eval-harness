@@ -11,7 +11,7 @@ beforeAll(async () => {
   client = new pg.Client({ connectionString: TEST_URL })
   await client.connect()
   await client.query(`
-    TRUNCATE "ExperimentResult", "ExperimentGrader", "Experiment", "DatasetItem", "Dataset", "Grader" CASCADE
+    TRUNCATE "ExperimentResult", "ExperimentGrader", "Experiment", "DatasetRevisionItem", "DatasetRevision", "Dataset", "Grader" CASCADE
   `)
 })
 

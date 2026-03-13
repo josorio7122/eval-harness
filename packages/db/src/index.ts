@@ -1,7 +1,8 @@
 export { PrismaClient } from '../generated/prisma/client.js'
 export type {
   Dataset,
-  DatasetItem,
+  DatasetRevision,
+  DatasetRevisionItem,
   Grader,
   Experiment,
   ExperimentGrader,
