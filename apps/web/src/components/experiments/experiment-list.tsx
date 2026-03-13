@@ -6,7 +6,7 @@ import { CreateExperimentDialog } from './create-experiment-dialog'
 import type { Experiment } from '@/hooks/use-experiments'
 
 const STATUS_BORDER_COLOR: Record<Experiment['status'], string> = {
-  running: 'var(--accent)',
+  running: 'var(--accent-custom)',
   complete: 'var(--pass)', // overridden below if any fail
   failed: 'var(--error)',
   queued: 'var(--neutral)',
@@ -20,7 +20,7 @@ const STATUS_LABEL: Record<Experiment['status'], string> = {
 }
 
 const STATUS_COLOR: Record<Experiment['status'], string> = {
-  running: 'var(--accent)',
+  running: 'var(--accent-custom)',
   complete: 'var(--pass-fg)',
   failed: 'var(--error-fg)',
   queued: 'var(--neutral-fg)',
@@ -258,7 +258,7 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
                       style={{
                         height: '100%',
                         width: `${pct}%`,
-                        background: 'var(--accent)',
+                        background: 'var(--accent-custom)',
                         transition: 'width 400ms ease-out',
                       }}
                     />

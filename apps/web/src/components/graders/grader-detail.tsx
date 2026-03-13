@@ -194,7 +194,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
               className="text-[11px] font-medium px-[6px] py-[2px]"
               style={{
                 background: 'var(--accent-subtle)',
-                color: 'var(--accent)',
+                color: 'var(--accent-custom)',
                 borderRadius: 'var(--radius-sm)',
                 letterSpacing: '0.03em',
               }}

@@ -49,7 +49,7 @@ function CurrentBadge() {
 function StatusBadge({ status }: { status: string }) {
   const colorMap: Record<string, { bg: string; fg: string }> = {
     complete: { bg: 'var(--pass-subtle)', fg: 'var(--pass-fg)' },
-    running: { bg: 'var(--bg-surface-2)', fg: 'var(--accent)' },
+    running: { bg: 'var(--bg-surface-2)', fg: 'var(--accent-custom)' },
     failed: { bg: 'var(--fail-subtle)', fg: 'var(--fail-fg)' },
     queued: { bg: 'var(--bg-surface-2)', fg: 'var(--fg-tertiary)' },
   }
@@ -460,7 +460,7 @@ export function RevisionHistory({ datasetId }: RevisionHistoryProps) {
                   style={{
                     padding: '10px 16px',
                     borderBottom: '1px solid var(--border-subtle)',
-                    borderLeft: isSelected ? '2px solid var(--accent)' : '2px solid transparent',
+                    borderLeft: isSelected ? '2px solid var(--accent-custom)' : '2px solid transparent',
                     background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
                     cursor: 'pointer',
                     display: 'flex',

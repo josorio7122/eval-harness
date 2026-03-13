@@ -776,7 +776,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
               letterSpacing: '0.06em',
               background: 'transparent',
               border: 'none',
-              borderBottom: activeTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+              borderBottom: activeTab === tab ? '2px solid var(--accent-custom)' : '2px solid transparent',
               color: activeTab === tab ? 'var(--fg-primary)' : 'var(--fg-tertiary)',
               cursor: 'pointer',
               marginBottom: '-1px',
@@ -884,7 +884,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
                           background: 'transparent',
                           border: 'none',
                           cursor: 'pointer',
-                          color: 'var(--accent)',
+                          color: 'var(--accent-custom)',
                           fontSize: '12px',
                           textDecoration: 'underline',
                         }}

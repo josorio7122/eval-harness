@@ -152,7 +152,7 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
                 className="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors"
                 style={{
                   borderBottom: '1px solid var(--border-subtle)',
-                  borderLeft: isSelected ? '2px solid var(--accent)' : '2px solid transparent',
+                  borderLeft: isSelected ? '2px solid var(--accent-custom)' : '2px solid transparent',
                   background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
                   paddingLeft: isSelected ? '14px' : '16px',
                 }}
@@ -187,7 +187,7 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
                   className="shrink-0 text-[11px] font-medium px-[6px] py-[2px]"
                   style={{
                     background: 'var(--accent-subtle)',
-                    color: 'var(--accent)',
+                    color: 'var(--accent-custom)',
                     borderRadius: 'var(--radius-sm)',
                     letterSpacing: '0.03em',
                   }}

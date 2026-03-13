@@ -34,7 +34,7 @@ export function Layout() {
               }
               style={({ isActive }) => ({
                 color: isActive ? 'var(--fg-primary)' : 'var(--fg-secondary)',
-                borderLeftColor: isActive ? 'var(--accent)' : 'transparent',
+                borderLeftColor: isActive ? 'var(--accent-custom)' : 'transparent',
                 background: isActive ? 'var(--bg-surface-1)' : 'transparent',
               })}
             >

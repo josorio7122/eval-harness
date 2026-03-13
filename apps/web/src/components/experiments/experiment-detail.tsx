@@ -30,7 +30,7 @@ interface ExperimentDetailProps {
 
 const STATUS_COLOR: Record<string, string> = {
   queued: 'var(--neutral-fg)',
-  running: 'var(--accent)',
+  running: 'var(--accent-custom)',
   complete: 'var(--pass-fg)',
   failed: 'var(--error-fg)',
 }
@@ -225,7 +225,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
             <div
               className="flex items-center gap-1.5 h-[28px] px-3 text-[12px]"
               style={{
-                color: 'var(--accent)',
+                color: 'var(--accent-custom)',
                 fontFamily: 'var(--font-mono)',
                 fontVariantNumeric: 'tabular-nums',
               }}
@@ -419,7 +419,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
             style={{
               height: '100%',
               width: `${progressPct}%`,
-              background: 'var(--accent)',
+              background: 'var(--accent-custom)',
               transition: 'width 400ms ease-out',
             }}
           />

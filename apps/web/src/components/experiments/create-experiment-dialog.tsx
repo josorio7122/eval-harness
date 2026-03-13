@@ -212,7 +212,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
                         type="checkbox"
                         checked={selected}
                         onChange={() => toggleGrader(grader.id)}
-                        style={{ accentColor: 'var(--accent)' }}
+                        style={{ accentColor: 'var(--accent-custom)' }}
                       />
                       <div className="flex-1 min-w-0">
                         <div
