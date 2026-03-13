@@ -181,13 +181,13 @@ describe('datasets repository (integration)', () => {
     expect(updated.schemaVersion).toBe(3) // 1 (initial) + 1 (add) + 1 (remove)
 
     const found = await repo.findById(ds.id)
-    expect((found!.items[0].values as Record<string, string>)).not.toHaveProperty('context')
+    expect(found!.items[0].values as Record<string, string>).not.toHaveProperty('context')
   })
 
   // 14. add then remove round-trip
   it('addAttribute then removeAttribute returns item to original shape', async () => {
     const ds = await repo.create('roundtrip-attr-ds')
-    const item = await repo.createItem(ds.id, { input: 'x', expected_output: 'y' })
+    await repo.createItem(ds.id, { input: 'x', expected_output: 'y' })
 
     await repo.addAttribute(ds.id, 'extra')
     const afterAdd = await repo.findById(ds.id)
@@ -319,9 +319,7 @@ describe('datasets repository (integration)', () => {
     const ds = await repo.create('sv-import-ds')
     const beforeSV = (await repo.findById(ds.id))!.schemaVersion
 
-    await repo.importItems(ds.id, [
-      { input: 'a', expected_output: 'b' },
-    ])
+    await repo.importItems(ds.id, [{ input: 'a', expected_output: 'b' }])
     const afterSV = (await repo.findById(ds.id))!.schemaVersion
 
     expect(afterSV).toBe(beforeSV)
@@ -339,7 +337,7 @@ describe('datasets repository (integration)', () => {
 
     const prevDetail = await repo.findRevisionById(ds.id, prevRevId)
     expect(prevDetail!.attributes).not.toContain('extra')
-    expect((prevDetail!.items[0].values as Record<string, string>)).not.toHaveProperty('extra')
+    expect(prevDetail!.items[0].values as Record<string, string>).not.toHaveProperty('extra')
   })
 
   // 26. Previous revision still has deleted item (immutability)

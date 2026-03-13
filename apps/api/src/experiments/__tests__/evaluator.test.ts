@@ -9,6 +9,7 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 }))
 
 import { generateObject } from 'ai'
+import type { GenerateObjectResult } from 'ai'
 import { evaluate } from '../evaluator.js'
 
 const mockGenerateObject = vi.mocked(generateObject)
@@ -21,7 +22,7 @@ describe('evaluate', () => {
   it('returns pass verdict when LLM returns pass', async () => {
     mockGenerateObject.mockResolvedValue({
       object: { verdict: 'pass', reason: 'Looks good' },
-    } as any)
+    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }, never>)
 
     const result = await evaluate('Grade this response', { input: 'hello', output: 'world' })
 
@@ -32,7 +33,7 @@ describe('evaluate', () => {
   it('returns fail verdict when LLM returns fail', async () => {
     mockGenerateObject.mockResolvedValue({
       object: { verdict: 'fail', reason: 'Does not match' },
-    } as any)
+    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }, never>)
 
     const result = await evaluate('Grade this response', { input: 'hello', output: 'bad' })
 
@@ -42,7 +43,7 @@ describe('evaluate', () => {
   it('passes rubric as system prompt and item attributes as prompt', async () => {
     mockGenerateObject.mockResolvedValue({
       object: { verdict: 'pass', reason: 'ok' },
-    } as any)
+    } as unknown as GenerateObjectResult<{ verdict: string; reason: string }, never>)
 
     await evaluate('Check quality', { input: 'foo', expected_output: 'bar' })
 

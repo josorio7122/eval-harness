@@ -33,8 +33,8 @@ async function parseCsvContent(
   if (!trimmed) return fail('CSV is empty')
 
   // Detect non-CSV content before parsing
-  if (/\x00/.test(csvText)) return fail('File could not be parsed as CSV')
-  if (/^\s*[{\[]/.test(trimmed)) return fail('File could not be parsed as CSV')
+  if (csvText.includes('\0')) return fail('File could not be parsed as CSV')
+  if (/^\s*[{[]/.test(trimmed)) return fail('File could not be parsed as CSV')
 
   // Parse with csv-parser
   return new Promise((resolve) => {
@@ -117,7 +117,9 @@ export function createDatasetService(repo: typeof datasetRepository) {
       }
     },
 
-    async getDataset(id: string): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
+    async getDataset(
+      id: string,
+    ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
       try {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
@@ -127,7 +129,9 @@ export function createDatasetService(repo: typeof datasetRepository) {
       }
     },
 
-    async createDataset(input: { name: string }): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
+    async createDataset(input: {
+      name: string
+    }): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
       try {
         const existing = await repo.findByName(input.name)
         if (existing) return fail('Dataset name already exists')
@@ -189,7 +193,8 @@ export function createDatasetService(repo: typeof datasetRepository) {
       try {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
-        if (BUILT_IN_ATTRIBUTES.includes(attributeName)) return fail('Cannot remove built-in attribute')
+        if (BUILT_IN_ATTRIBUTES.includes(attributeName))
+          return fail('Cannot remove built-in attribute')
         if (!dataset.attributes.includes(attributeName)) return fail('Attribute not found')
         const updated = await repo.removeAttribute(id, attributeName)
         return ok(updated)
@@ -198,7 +203,9 @@ export function createDatasetService(repo: typeof datasetRepository) {
       }
     },
 
-    async listItems(datasetId: string): Promise<Result<Awaited<ReturnType<typeof repo.findItemsByDatasetId>>>> {
+    async listItems(
+      datasetId: string,
+    ): Promise<Result<Awaited<ReturnType<typeof repo.findItemsByDatasetId>>>> {
       try {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
@@ -296,7 +303,12 @@ export function createDatasetService(repo: typeof datasetRepository) {
     async previewCsv(
       datasetId: string,
       csvContent: string,
-    ): Promise<Result<{ validRows: Record<string, string>[]; skippedRows: { row: number; reason: string }[] }>> {
+    ): Promise<
+      Result<{
+        validRows: Record<string, string>[]
+        skippedRows: { row: number; reason: string }[]
+      }>
+    > {
       try {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
@@ -331,7 +343,9 @@ export function createDatasetService(repo: typeof datasetRepository) {
       }
     },
 
-    async listRevisions(datasetId: string): Promise<Result<Awaited<ReturnType<typeof repo.findRevisions>>>> {
+    async listRevisions(
+      datasetId: string,
+    ): Promise<Result<Awaited<ReturnType<typeof repo.findRevisions>>>> {
       try {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
@@ -342,7 +356,10 @@ export function createDatasetService(repo: typeof datasetRepository) {
       }
     },
 
-    async getRevision(datasetId: string, revisionId: string): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findRevisionById>>>>> {
+    async getRevision(
+      datasetId: string,
+      revisionId: string,
+    ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findRevisionById>>>>> {
       try {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')

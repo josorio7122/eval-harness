@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createDatasetSchema, updateDatasetSchema, addAttributeSchema, createItemSchema, updateItemSchema } from '../validator.js'
+import { createDatasetSchema, addAttributeSchema, createItemSchema } from '../validator.js'
 
 describe('createDatasetSchema', () => {
   it('accepts valid name', () => {
@@ -39,7 +39,9 @@ describe('addAttributeSchema', () => {
 
 describe('createItemSchema', () => {
   it('accepts valid values', () => {
-    const result = createItemSchema.safeParse({ values: { input: 'hello', expected_output: 'world' } })
+    const result = createItemSchema.safeParse({
+      values: { input: 'hello', expected_output: 'world' },
+    })
     expect(result.success).toBe(true)
   })
 
