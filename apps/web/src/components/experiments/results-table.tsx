@@ -474,17 +474,24 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               })}
               {/* Summary aggregate */}
               <td style={{ padding: '6px 12px', textAlign: 'center' }}>
-                <span
-                  style={{
-                    fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
-                    fontVariantNumeric: 'tabular-nums',
-                    color: 'var(--fg-tertiary)',
-                  }}
-                >
-                  {graderPassRates.reduce((sum, gs) => sum + gs.passes, 0)}/
-                  {graderPassRates.reduce((sum, gs) => sum + gs.total, 0)}
-                </span>
+                {(() => {
+                  const totalPasses = graderPassRates.reduce((sum, gs) => sum + gs.passes, 0)
+                  const totalFilteredCells = filteredItems.length * graders.length
+                  const overallPct = totalFilteredCells > 0 ? Math.round((totalPasses / totalFilteredCells) * 100) : null
+                  return (
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        fontVariantNumeric: 'tabular-nums',
+                        color: 'var(--fg-tertiary)',
+                      }}
+                    >
+                      {totalPasses}/{totalFilteredCells}
+                      {overallPct !== null && ` — ${overallPct}%`}
+                    </span>
+                  )
+                })()}
               </td>
             </tr>
           </tbody>

@@ -56,10 +56,8 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
 
   const isRunning = experiment?.status === 'running' || experiment?.status === 'queued'
   const isComplete = experiment?.status === 'complete'
-  const canExport = experiment?.status === 'complete' || experiment?.status === 'failed'
-
-  const hasResults =
-    experiment?.results && experiment.results.length > 0
+  const hasResults = (experiment?.results?.length ?? 0) > 0
+  const canExport = (experiment?.status === 'complete' || experiment?.status === 'failed') && hasResults
 
   // Loading skeleton
   if (isLoading) {
