@@ -6,7 +6,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@eval-harness/db": "workspace:^",

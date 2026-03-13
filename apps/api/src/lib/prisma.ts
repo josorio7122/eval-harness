@@ -1,6 +1,18 @@
 import { PrismaClient } from '@eval-harness/db'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-const adapter = new PrismaPg({ connectionString: process.env['DATABASE_URL'] })
+let _prisma: PrismaClient | null = null
 
-export const prisma = new PrismaClient({ adapter })
+function getPrisma(): PrismaClient {
+  if (!_prisma) {
+    const adapter = new PrismaPg({ connectionString: process.env['DATABASE_URL']! })
+    _prisma = new PrismaClient({ adapter })
+  }
+  return _prisma
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return (getPrisma() as unknown as Record<string | symbol, unknown>)[prop]
+  },
+})
