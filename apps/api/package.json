@@ -1,0 +1,28 @@
+{
+  "name": "@eval-harness/api",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@eval-harness/db": "workspace:^",
+    "@eval-harness/shared": "workspace:^",
+    "@hono/node-server": "^1.19.11",
+    "@openrouter/ai-sdk-provider": "^2.3.0",
+    "ai": "^6.0.116",
+    "dotenv": "^17.3.1",
+    "hono": "^4.12.7",
+    "p-queue": "^9.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.0"
+  },
+  "private": true
+}
