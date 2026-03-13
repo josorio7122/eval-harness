@@ -26,11 +26,10 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
+    "@repo/eslint-config": "workspace:^",
     "@types/node": "^25.5.0",
     "@types/pg": "^8.18.0",
-    "eslint": "^10.0.3",
-    "eslint-config-prettier": "^10.1.8",
+    "eslint": "^9.39.4",
     "tsx": "^4.7.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.57.0",

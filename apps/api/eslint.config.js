@@ -1,19 +1,13 @@
-import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
-import eslintConfigPrettier from 'eslint-config-prettier'
+import { config as nodeConfig } from '@repo/eslint-config/node'
 
-export default [
+export default tseslint.config(
+  ...nodeConfig,
   {
-    ignores: ['dist/**'],
-  },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
-  eslintConfigPrettier,
-  {
-    files: ['**/*.{ts}'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': 'error',
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
   },
-]
+)
