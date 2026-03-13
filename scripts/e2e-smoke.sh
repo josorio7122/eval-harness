@@ -93,14 +93,14 @@ echo -e "${GREEN}Server is reachable ✓${RESET}"
 echo ""
 echo -e "${YELLOW}Cleaning up any leftover test data from previous runs...${RESET}"
 for name in "smoke-test-dataset" "renamed-dataset" "cascade-test"; do
-  ID=$(curl -s "${BASE}/datasets" | jq -r --arg n "$name" '.data[] | select(.name == $n) | .id' 2>/dev/null || true)
+  ID=$(curl -s "${BASE}/datasets" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' 2>/dev/null || true)
   if [[ -n "$ID" && "$ID" != "null" ]]; then
     curl -s -X DELETE "${BASE}/datasets/${ID}" > /dev/null
     echo "  Deleted dataset: $name ($ID)"
   fi
 done
 for name in "accuracy-check" "updated-grader" "cascade-grader"; do
-  ID=$(curl -s "${BASE}/graders" | jq -r --arg n "$name" '.data[] | select(.name == $n) | .id' 2>/dev/null || true)
+  ID=$(curl -s "${BASE}/graders" | jq -r --arg n "$name" '.[] | select(.name == $n) | .id' 2>/dev/null || true)
   if [[ -n "$ID" && "$ID" != "null" ]]; then
     curl -s -X DELETE "${BASE}/graders/${ID}" > /dev/null
     echo "  Deleted grader: $name ($ID)"
@@ -115,7 +115,7 @@ section "DATASETS"
 R=$(curl_json POST /datasets '{"name":"smoke-test-dataset"}')
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create dataset 'smoke-test-dataset'" 201 "$S"
-DATASET_ID=$(echo "$B" | jq -r '.data.id')
+DATASET_ID=$(echo "$B" | jq -r '.id')
 echo "    → DATASET_ID: $DATASET_ID"
 
 # 2. Duplicate name → 400
@@ -133,16 +133,16 @@ sleep 1
 R=$(curl_get /datasets)
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "List datasets → 200" 200 "$S"
-COUNT=$(echo "$B" | jq --arg id "$DATASET_ID" '[.data[] | select(.id == $id)] | length')
+COUNT=$(echo "$B" | jq --arg id "$DATASET_ID" '[.[] | select(.id == $id)] | length')
 [[ "$COUNT" -ge 1 ]] && pass "List datasets contains smoke-test-dataset" || fail "List datasets does not contain smoke-test-dataset"
 
 # 5. Get dataset by ID
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get dataset by ID → 200" 200 "$S"
-NAME=$(echo "$B" | jq -r '.data.name')
-SCHEMA_VER=$(echo "$B" | jq -r '.data.schemaVersion')
-ITEMS_LEN=$(echo "$B" | jq '.data.items | length')
+NAME=$(echo "$B" | jq -r '.name')
+SCHEMA_VER=$(echo "$B" | jq -r '.schemaVersion')
+ITEMS_LEN=$(echo "$B" | jq '.items | length')
 [[ "$NAME" == "smoke-test-dataset" ]] && pass "Dataset name='smoke-test-dataset'" || fail "Dataset name mismatch: $NAME"
 [[ "$SCHEMA_VER" == "1" ]] && pass "Dataset schemaVersion=1" || fail "schemaVersion expected 1, got $SCHEMA_VER"
 [[ "$ITEMS_LEN" == "0" ]] && pass "Dataset items=[]" || fail "Dataset items expected empty, got $ITEMS_LEN"
@@ -156,7 +156,7 @@ assert_status "Rename dataset → 200" 200 "$S"
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get renamed dataset → 200" 200 "$S"
-NAME=$(echo "$B" | jq -r '.data.name')
+NAME=$(echo "$B" | jq -r '.name')
 [[ "$NAME" == "renamed-dataset" ]] && pass "Dataset name='renamed-dataset'" || fail "Rename failed: name='$NAME'"
 
 # ─── ATTRIBUTES ────────────────────────────────────────────────────────────────
@@ -170,8 +170,8 @@ assert_status "Add attribute 'context' → 201" 201 "$S"
 # 9. Get dataset, verify attributes & schemaVersion=2
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
-ATTRS=$(echo "$B" | jq -c '.data.attributes')
-SCHEMA_VER=$(echo "$B" | jq '.data.schemaVersion')
+ATTRS=$(echo "$B" | jq -c '.attributes')
+SCHEMA_VER=$(echo "$B" | jq '.schemaVersion')
 [[ "$ATTRS" == '["input","expected_output","context"]' ]] \
   && pass "attributes=['input','expected_output','context']" \
   || fail "attributes mismatch: $ATTRS"
@@ -195,8 +195,8 @@ assert_status "Remove attribute 'context' → 200" 200 "$S"
 # 13. Get dataset, verify attributes & schemaVersion=3
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
-ATTRS=$(echo "$B" | jq -c '.data.attributes')
-SCHEMA_VER=$(echo "$B" | jq '.data.schemaVersion')
+ATTRS=$(echo "$B" | jq -c '.attributes')
+SCHEMA_VER=$(echo "$B" | jq '.schemaVersion')
 [[ "$ATTRS" == '["input","expected_output"]' ]] \
   && pass "attributes=['input','expected_output'] after remove" \
   || fail "attributes mismatch after remove: $ATTRS"
@@ -209,13 +209,13 @@ section "ITEMS"
 R=$(curl_json POST "/datasets/${DATASET_ID}/items" '{"values":{"input":"What is 2+2?","expected_output":"4"}}')
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create item → 201" 201 "$S"
-ITEM_ID=$(echo "$B" | jq -r '.data.itemId')
+ITEM_ID=$(echo "$B" | jq -r '.itemId')
 echo "    → ITEM_ID: $ITEM_ID"
 
 # 15. Get dataset, verify 1 item
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
-ITEMS_LEN=$(echo "$B" | jq '.data.items | length')
+ITEMS_LEN=$(echo "$B" | jq '.items | length')
 [[ "$ITEMS_LEN" == "1" ]] && pass "Dataset has 1 item" || fail "Dataset item count expected 1, got $ITEMS_LEN"
 
 # 16. Update item
@@ -226,8 +226,8 @@ assert_status "Update item → 200" 200 "$S"
 # 17. Get dataset, verify updated values
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
-INPUT_VAL=$(echo "$B" | jq -r '.data.items[0].values.input')
-OUTPUT_VAL=$(echo "$B" | jq -r '.data.items[0].values.expected_output')
+INPUT_VAL=$(echo "$B" | jq -r '.items[0].values.input')
+OUTPUT_VAL=$(echo "$B" | jq -r '.items[0].values.expected_output')
 [[ "$INPUT_VAL" == "What is 3+3?" ]] && pass "Item input updated to 'What is 3+3?'" || fail "Item input mismatch: $INPUT_VAL"
 [[ "$OUTPUT_VAL" == "6" ]] && pass "Item expected_output updated to '6'" || fail "Item output mismatch: $OUTPUT_VAL"
 
@@ -235,7 +235,7 @@ OUTPUT_VAL=$(echo "$B" | jq -r '.data.items[0].values.expected_output')
 R=$(curl_json POST "/datasets/${DATASET_ID}/items" '{"values":{"input":"What is 4+4?","expected_output":"8"}}')
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create second item → 201" 201 "$S"
-ITEM2_ID=$(echo "$B" | jq -r '.data.itemId')
+ITEM2_ID=$(echo "$B" | jq -r '.itemId')
 
 # ─── CSV ───────────────────────────────────────────────────────────────────────
 section "CSV"
@@ -253,8 +253,7 @@ CSV_DATA=$'input,expected_output\nWhat is 5+5?,10\nWhat is 6+6?,12'
 R=$(curl_csv POST "/datasets/${DATASET_ID}/csv/preview" "$CSV_DATA")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Preview CSV → 200" 200 "$S"
-# API returns: { data: { totalRows, rows, headers, skippedRows } }
-TOTAL_ROWS=$(echo "$B" | jq -r '.data.totalRows // (.data.rows | length) // "unknown"' 2>/dev/null || echo "unknown")
+TOTAL_ROWS=$(echo "$B" | jq -r '.totalRows // (.rows | length) // "unknown"' 2>/dev/null || echo "unknown")
 echo "    → totalRows: $TOTAL_ROWS"
 [[ "$TOTAL_ROWS" == "2" ]] && pass "CSV preview totalRows=2" || fail "CSV preview totalRows expected 2, got $TOTAL_ROWS (body: $B)"
 
@@ -266,7 +265,7 @@ assert_status "Import CSV → 200" 200 "$S"
 # 22. Get dataset, verify items increased (was 2, now should be 4)
 R=$(curl_get "/datasets/${DATASET_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
-ITEMS_LEN=$(echo "$B" | jq '.data.items | length')
+ITEMS_LEN=$(echo "$B" | jq '.items | length')
 [[ "$ITEMS_LEN" -ge 4 ]] \
   && pass "Dataset items increased to $ITEMS_LEN after CSV import" \
   || fail "Dataset items expected ≥4 after import, got $ITEMS_LEN"
@@ -286,16 +285,16 @@ section "REVISIONS"
 R=$(curl_get "/datasets/${DATASET_ID}/revisions")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "List revisions → 200" 200 "$S"
-REV_COUNT=$(echo "$B" | jq '.data | length')
+REV_COUNT=$(echo "$B" | jq '. | length')
 [[ "$REV_COUNT" -gt 1 ]] && pass "Multiple revisions exist ($REV_COUNT)" || fail "Expected >1 revisions, got $REV_COUNT"
 
 # 25. Get first (latest) revision → 200, verify it has items
-FIRST_REV_ID=$(echo "$B" | jq -r '.data[0].id')
+FIRST_REV_ID=$(echo "$B" | jq -r '.[0].id')
 echo "    → Latest revision ID: $FIRST_REV_ID"
 R=$(curl_get "/datasets/${DATASET_ID}/revisions/${FIRST_REV_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get revision by ID → 200" 200 "$S"
-REV_ITEMS=$(echo "$B" | jq '.data.items | length')
+REV_ITEMS=$(echo "$B" | jq '.items | length')
 [[ "$REV_ITEMS" -ge 1 ]] && pass "Revision has items ($REV_ITEMS items)" || fail "Revision has no items"
 
 # 26. Non-existent revision → 404
@@ -309,8 +308,8 @@ section "REVISION IMMUTABILITY"
 # 27. Record current latest revision ID and its item count
 R=$(curl_get "/datasets/${DATASET_ID}/revisions")
 B=$(body_of "$R")
-IMMUT_REV_ID=$(echo "$B" | jq -r '.data[0].id')
-IMMUT_ITEM_COUNT=$(echo "$B" | jq '.data[0].itemCount')
+IMMUT_REV_ID=$(echo "$B" | jq -r '.[0].id')
+IMMUT_ITEM_COUNT=$(echo "$B" | jq '.[0].itemCount')
 echo "    → Pinned revision: $IMMUT_REV_ID (itemCount: $IMMUT_ITEM_COUNT)"
 
 # 28. Add a new item (creates new revision)
@@ -322,7 +321,7 @@ assert_status "Add item for immutability test → 201" 201 "$S"
 R=$(curl_get "/datasets/${DATASET_ID}/revisions/${IMMUT_REV_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get old revision after mutation → 200" 200 "$S"
-OLD_REV_ITEMS=$(echo "$B" | jq '.data.items | length')
+OLD_REV_ITEMS=$(echo "$B" | jq '.items | length')
 [[ "$OLD_REV_ITEMS" == "$IMMUT_ITEM_COUNT" ]] \
   && pass "Old revision still has $IMMUT_ITEM_COUNT items (immutable ✓)" \
   || fail "Old revision mutated! Expected $IMMUT_ITEM_COUNT items, got $OLD_REV_ITEMS"
@@ -334,7 +333,7 @@ section "GRADERS"
 R=$(curl_json POST /graders '{"name":"accuracy-check","description":"Checks factual accuracy","rubric":"Evaluate whether the output matches the expected output. Consider semantic equivalence, not just exact string matching."}')
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create grader 'accuracy-check' → 201" 201 "$S"
-GRADER_ID=$(echo "$B" | jq -r '.data.id')
+GRADER_ID=$(echo "$B" | jq -r '.id')
 echo "    → GRADER_ID: $GRADER_ID"
 
 # 31. Empty rubric → 400
@@ -380,8 +379,8 @@ R=$(curl_json POST /experiments \
   "{\"name\":\"eval-run-1\",\"datasetId\":\"${DATASET_ID}\",\"graderIds\":[\"${GRADER_ID}\"]}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create experiment → 201" 201 "$S"
-EXPERIMENT_ID=$(echo "$B" | jq -r '.data.id')
-EXP_DATASET_REV_ID=$(echo "$B" | jq -r '.data.datasetRevisionId')
+EXPERIMENT_ID=$(echo "$B" | jq -r '.id')
+EXP_DATASET_REV_ID=$(echo "$B" | jq -r '.datasetRevisionId')
 echo "    → EXPERIMENT_ID: $EXPERIMENT_ID"
 echo "    → datasetRevisionId: $EXP_DATASET_REV_ID"
 [[ "$EXP_DATASET_REV_ID" != "null" && -n "$EXP_DATASET_REV_ID" ]] \
@@ -409,7 +408,7 @@ assert_status "List experiments → 200" 200 "$S"
 R=$(curl_get "/experiments/${EXPERIMENT_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get experiment → 200" 200 "$S"
-EXP_STATUS=$(echo "$B" | jq -r '.data.status')
+EXP_STATUS=$(echo "$B" | jq -r '.status')
 [[ "$EXP_STATUS" == "queued" ]] \
   && pass "Experiment status='queued'" \
   || fail "Experiment status expected 'queued', got '$EXP_STATUS'"
@@ -427,7 +426,7 @@ sleep 2
 R=$(curl_get "/experiments/${EXPERIMENT_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get experiment after run → 200" 200 "$S"
-EXP_STATUS=$(echo "$B" | jq -r '.data.status')
+EXP_STATUS=$(echo "$B" | jq -r '.status')
 echo "    → Experiment status after run: $EXP_STATUS"
 [[ "$EXP_STATUS" == "complete" || "$EXP_STATUS" == "failed" || "$EXP_STATUS" == "running" ]] \
   && pass "Experiment reached expected state: '$EXP_STATUS'" \
@@ -454,8 +453,8 @@ assert_status "Add item to create new revision (for pinning test) → 201" 201 "
 R=$(curl_json POST "/experiments/${EXPERIMENT_ID}/rerun")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Rerun experiment → 201" 201 "$S"
-RERUN_ID=$(echo "$B" | jq -r '.data.id')
-RERUN_REV_ID=$(echo "$B" | jq -r '.data.datasetRevisionId')
+RERUN_ID=$(echo "$B" | jq -r '.id')
+RERUN_REV_ID=$(echo "$B" | jq -r '.datasetRevisionId')
 echo "    → RERUN_ID: $RERUN_ID"
 echo "    → Original datasetRevisionId: $EXP_DATASET_REV_ID"
 echo "    → Rerun  datasetRevisionId:   $RERUN_REV_ID"
@@ -507,7 +506,7 @@ section "CASCADE DELETE"
 R=$(curl_json POST /datasets '{"name":"cascade-test"}')
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create 'cascade-test' dataset → 201" 201 "$S"
-CASCADE_DATASET_ID=$(echo "$B" | jq -r '.data.id')
+CASCADE_DATASET_ID=$(echo "$B" | jq -r '.id')
 echo "    → CASCADE_DATASET_ID: $CASCADE_DATASET_ID"
 
 # 56. Create item in cascade dataset
@@ -521,7 +520,7 @@ R=$(curl_json POST /graders \
   '{"name":"cascade-grader","description":"cascade test","rubric":"Cascade test rubric - verify output matches expected"}')
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create 'cascade-grader' → 201" 201 "$S"
-CASCADE_GRADER_ID=$(echo "$B" | jq -r '.data.id')
+CASCADE_GRADER_ID=$(echo "$B" | jq -r '.id')
 echo "    → CASCADE_GRADER_ID: $CASCADE_GRADER_ID"
 
 # 58. Create cascade experiment
@@ -529,7 +528,7 @@ R=$(curl_json POST /experiments \
   "{\"name\":\"cascade-exp\",\"datasetId\":\"${CASCADE_DATASET_ID}\",\"graderIds\":[\"${CASCADE_GRADER_ID}\"]}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Create cascade experiment → 201" 201 "$S"
-CASCADE_EXP_ID=$(echo "$B" | jq -r '.data.id')
+CASCADE_EXP_ID=$(echo "$B" | jq -r '.id')
 echo "    → CASCADE_EXP_ID: $CASCADE_EXP_ID"
 
 # 59. Delete cascade dataset — should cascade to its experiments

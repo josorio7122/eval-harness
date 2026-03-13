@@ -11,14 +11,14 @@ interface Grader {
 export function useGraders() {
   return useQuery({
     queryKey: ['graders'],
-    queryFn: () => api.get<{ success: true; data: Grader[] }>('/graders').then((r) => r.data),
+    queryFn: () => api.get<Grader[]>('/graders'),
   })
 }
 
 export function useGrader(id: string | undefined) {
   return useQuery({
     queryKey: ['graders', id],
-    queryFn: () => api.get<{ success: true; data: Grader }>(`/graders/${id}`).then((r) => r.data),
+    queryFn: () => api.get<Grader>(`/graders/${id}`),
     enabled: !!id,
   })
 }

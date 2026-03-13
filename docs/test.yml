@@ -16,7 +16,7 @@ datasets:
         -d '{"name": "my-dataset"}'
     expected_status: 201
     expected_body: |
-      { "success": true, "data": { "id": "...", "name": "my-dataset", "attributes": ["input", "expected_output"], "schemaVersion": 1, "items": [] } }
+      { "id": "...", "name": "my-dataset", "attributes": ["input", "expected_output"], "schemaVersion": 1, "items": [] }
 
   create_duplicate_name:
     description: "Reject duplicate dataset name"
@@ -25,7 +25,7 @@ datasets:
         -H "Content-Type: application/json" \
         -d '{"name": "my-dataset"}'
     expected_status: 400
-    expected_body: '{ "success": false, "error": "Dataset name already exists" }'
+    expected_body: '{ "error": "Dataset name already exists" }'
 
   create_empty_name:
     description: "Reject empty dataset name"
@@ -102,7 +102,7 @@ dataset_items:
         -d '{"values": {"input": "What is 2+2?", "expected_output": "4"}}'
     expected_status: 201
     expected_body: |
-      { "success": true, "data": { "id": "...", "revisionId": "...", "itemId": "...", "values": { "input": "What is 2+2?", "expected_output": "4" } } }
+      { "id": "...", "revisionId": "...", "itemId": "...", "values": { "input": "What is 2+2?", "expected_output": "4" } }
     notes: "Creates a new revision containing all existing items plus this new item. The itemId is stable across revisions."
 
   create_missing_builtin:
@@ -175,18 +175,15 @@ dataset_revisions:
       curl http://localhost:3001/datasets/:id/revisions
     expected_status: 200
     expected_body: |
-      {
-        "success": true,
-        "data": [
-          {
-            "id": "...",
-            "schemaVersion": 1,
-            "attributes": ["input", "expected_output"],
-            "createdAt": "2025-01-01T00:00:00.000Z",
-            "itemCount": 2
-          }
-        ]
-      }
+      [
+        {
+          "id": "...",
+          "schemaVersion": 1,
+          "attributes": ["input", "expected_output"],
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "itemCount": 2
+        }
+      ]
     notes: "Ordered by createdAt DESC (newest first). First entry is the current revision."
 
   get:
@@ -196,16 +193,13 @@ dataset_revisions:
     expected_status: 200
     expected_body: |
       {
-        "success": true,
-        "data": {
-          "id": "...",
-          "schemaVersion": 1,
-          "attributes": ["input", "expected_output"],
-          "createdAt": "2025-01-01T00:00:00.000Z",
-          "items": [
-            { "id": "...", "revisionId": "...", "itemId": "...", "values": { "input": "...", "expected_output": "..." } }
-          ]
-        }
+        "id": "...",
+        "schemaVersion": 1,
+        "attributes": ["input", "expected_output"],
+        "createdAt": "2025-01-01T00:00:00.000Z",
+        "items": [
+          { "id": "...", "revisionId": "...", "itemId": "...", "values": { "input": "...", "expected_output": "..." } }
+        ]
       }
     notes: "Read-only snapshot. Items in past revisions cannot be edited."
 
@@ -312,7 +306,7 @@ experiments:
         -d '{"name": "eval-run-1", "datasetId": ":datasetId", "graderIds": [":graderId"]}'
     expected_status: 201
     expected_body: |
-      { "success": true, "data": { "id": "...", "name": "eval-run-1", "datasetId": ":datasetId", "datasetRevisionId": "...", "status": "queued" } }
+      { "id": "...", "name": "eval-run-1", "datasetId": ":datasetId", "datasetRevisionId": "...", "status": "queued" }
     notes: "The experiment is pinned to the dataset's latest revision at creation time."
 
   create_no_graders:

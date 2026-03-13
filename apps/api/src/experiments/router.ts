@@ -11,41 +11,41 @@ export function createExperimentRouter(service: ExperimentService) {
 
   app.get('/experiments', async (c) => {
     const result = await service.listExperiments()
-    if (!result.success) return c.json(result, 400)
-    return c.json(result)
+    if (!result.success) return c.json({ error: result.error }, 400)
+    return c.json(result.data)
   })
 
   app.post('/experiments', async (c) => {
     const body = await c.req.json()
     const parsed = createExperimentSchema.safeParse(body)
-    if (!parsed.success) return c.json({ success: false, error: parsed.error.flatten() }, 400)
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
     const result = await service.createExperiment(parsed.data)
-    if (!result.success) return c.json(result, 400)
-    return c.json(result, 201)
+    if (!result.success) return c.json({ error: result.error }, 400)
+    return c.json(result.data, 201)
   })
 
   app.get('/experiments/:id', async (c) => {
     const result = await service.getExperiment(c.req.param('id'))
-    if (!result.success) return c.json(result, 404)
-    return c.json(result)
+    if (!result.success) return c.json({ error: result.error }, 404)
+    return c.json(result.data)
   })
 
   app.delete('/experiments/:id', async (c) => {
     const result = await service.deleteExperiment(c.req.param('id'))
-    if (!result.success) return c.json(result, 404)
-    return c.json(result)
+    if (!result.success) return c.json({ error: result.error }, 404)
+    return c.json(result.data)
   })
 
   app.post('/experiments/:id/rerun', async (c) => {
     const result = await service.rerunExperiment(c.req.param('id'))
-    if (!result.success) return c.json(result, 404)
-    return c.json(result, 201)
+    if (!result.success) return c.json({ error: result.error }, 404)
+    return c.json(result.data, 201)
   })
 
   app.post('/experiments/:id/run', async (c) => {
     const result = await service.runExperiment(c.req.param('id'))
-    if (!result.success) return c.json(result, 400)
-    return c.json(result, 202)
+    if (!result.success) return c.json({ error: result.error }, 400)
+    return c.json(result.data, 202)
   })
 
   app.get('/experiments/:id/events', async (c) => {
@@ -73,7 +73,7 @@ export function createExperimentRouter(service: ExperimentService) {
 
   app.get('/experiments/:id/csv/export', async (c) => {
     const result = await service.exportCsv(c.req.param('id'))
-    if (!result.success) return c.json(result, 400)
+    if (!result.success) return c.json({ error: result.error }, 400)
     c.header('Content-Type', 'text/csv')
     c.header('Content-Disposition', `attachment; filename="experiment-${c.req.param('id')}.csv"`)
     return c.body(result.data)

@@ -41,7 +41,7 @@ describe('GET /experiments', () => {
     const res = await app.request('/experiments')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: experiments })
+    expect(body).toEqual(experiments)
   })
 
   it('returns revision in experiment list', async () => {
@@ -58,7 +58,7 @@ describe('GET /experiments', () => {
     const res = await app.request('/experiments')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data[0].revision).toEqual({
+    expect(body[0].revision).toEqual({
       schemaVersion: 1,
       createdAt: '2024-01-01T00:00:00.000Z',
     })
@@ -77,7 +77,7 @@ describe('POST /experiments', () => {
     })
     expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: created })
+    expect(body).toEqual(created)
   })
 
   it('returns 400 when name is empty', async () => {
@@ -109,7 +109,7 @@ describe('POST /experiments', () => {
     })
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Dataset not found' })
   })
 })
 
@@ -121,7 +121,7 @@ describe('GET /experiments/:id', () => {
     const res = await app.request(`/experiments/${VALID_UUID}`)
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(experiment)
+    expect(body).toEqual(experiment)
   })
 
   it('returns 404 when not found', async () => {
@@ -130,7 +130,7 @@ describe('GET /experiments/:id', () => {
     const res = await app.request(`/experiments/${VALID_UUID}`)
     expect(res.status).toBe(404)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Experiment not found' })
   })
 })
 
@@ -141,7 +141,7 @@ describe('DELETE /experiments/:id', () => {
     const res = await del(`/experiments/${VALID_UUID}`)
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual({ deleted: true })
+    expect(body).toEqual({ deleted: true })
   })
 
   it('returns 404 when not found', async () => {
@@ -163,7 +163,7 @@ describe('POST /experiments/:id/rerun', () => {
     const res = await jsonPost(`/experiments/${VALID_UUID}/rerun`, {})
     expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body.data).toEqual(rerun)
+    expect(body).toEqual(rerun)
   })
 
   it('returns 404 when original not found', async () => {
@@ -181,7 +181,7 @@ describe('POST /experiments/:id/run', () => {
     const res = await jsonPost(`/experiments/${VALID_UUID}/run`, {})
     expect(res.status).toBe(202)
     const body = await res.json()
-    expect(body.data).toEqual({ status: 'queued' })
+    expect(body).toEqual({ status: 'queued' })
   })
 
   it('returns 400 when service fails', async () => {
@@ -193,7 +193,7 @@ describe('POST /experiments/:id/run', () => {
     const res = await jsonPost(`/experiments/${VALID_UUID}/run`, {})
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Experiment is not in a runnable state' })
   })
 })
 

@@ -69,8 +69,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
         datasetId,
         graderIds,
       })
-      const created = (result as { data?: { id: string } }).data
-      onCreated?.(created?.id ?? '')
+      onCreated?.((result as { id?: string }).id ?? '')
       onClose()
     } catch {
       // error handled by mutation state

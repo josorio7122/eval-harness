@@ -35,15 +35,14 @@ export interface DatasetWithItems extends Dataset {
 export function useDatasets() {
   return useQuery({
     queryKey: ['datasets'],
-    queryFn: () => api.get<{ success: true; data: Dataset[] }>('/datasets').then((r) => r.data),
+    queryFn: () => api.get<Dataset[]>('/datasets'),
   })
 }
 
 export function useDataset(id: string | undefined) {
   return useQuery({
     queryKey: ['datasets', id],
-    queryFn: () =>
-      api.get<{ success: true; data: DatasetWithItems }>(`/datasets/${id}`).then((r) => r.data),
+    queryFn: () => api.get<DatasetWithItems>(`/datasets/${id}`),
     enabled: !!id,
   })
 }
@@ -171,7 +170,7 @@ export function usePreviewCsv() {
         throw new Error(err.error ?? `Preview failed: ${res.status}`)
       }
       const json = await res.json()
-      return json.data ?? json
+      return json
     },
   })
 }
@@ -194,10 +193,7 @@ export interface RevisionDetail extends Revision {
 export function useRevisions(datasetId: string | undefined) {
   return useQuery({
     queryKey: ['datasets', datasetId, 'revisions'],
-    queryFn: () =>
-      api
-        .get<{ success: true; data: Revision[] }>(`/datasets/${datasetId}/revisions`)
-        .then((r) => r.data),
+    queryFn: () => api.get<Revision[]>(`/datasets/${datasetId}/revisions`),
     enabled: !!datasetId,
   })
 }
@@ -205,13 +201,7 @@ export function useRevisions(datasetId: string | undefined) {
 export function useRevision(datasetId: string | undefined, revisionId: string | undefined) {
   return useQuery({
     queryKey: ['datasets', datasetId, 'revisions', revisionId],
-    queryFn: () =>
-      api
-        .get<{
-          success: true
-          data: RevisionDetail
-        }>(`/datasets/${datasetId}/revisions/${revisionId}`)
-        .then((r) => r.data),
+    queryFn: () => api.get<RevisionDetail>(`/datasets/${datasetId}/revisions/${revisionId}`),
     enabled: !!datasetId && !!revisionId,
   })
 }

@@ -18,13 +18,11 @@ export function CreateDatasetDialog({ trigger, onCreated }: CreateDatasetDialogP
     e.preventDefault()
     if (!name.trim()) return
     try {
-      const result = (await create.mutateAsync({ name: name.trim() })) as {
-        data?: { id: string }
-      }
+      const result = (await create.mutateAsync({ name: name.trim() })) as { id?: string }
       setName('')
       setOpen(false)
-      if (onCreated && result?.data?.id) {
-        onCreated(result.data.id)
+      if (onCreated && result?.id) {
+        onCreated(result.id)
       }
     } catch {
       // error shown via create.error below

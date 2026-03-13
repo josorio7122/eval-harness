@@ -40,16 +40,14 @@ export interface Experiment {
 export function useExperiments() {
   return useQuery({
     queryKey: ['experiments'],
-    queryFn: () =>
-      api.get<{ success: true; data: Experiment[] }>('/experiments').then((r) => r.data),
+    queryFn: () => api.get<Experiment[]>('/experiments'),
   })
 }
 
 export function useExperiment(id: string | undefined) {
   return useQuery({
     queryKey: ['experiments', id],
-    queryFn: () =>
-      api.get<{ success: true; data: Experiment }>(`/experiments/${id}`).then((r) => r.data),
+    queryFn: () => api.get<Experiment>(`/experiments/${id}`),
     enabled: !!id,
     refetchInterval: (query) => {
       const status = query.state.data?.status
@@ -62,7 +60,7 @@ export function useCreateExperiment() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: { name: string; datasetId: string; graderIds: string[] }) =>
-      api.post<{ success: true; data: Experiment }>('/experiments', data),
+      api.post<Experiment>('/experiments', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
   })
 }
@@ -86,8 +84,7 @@ export function useDeleteExperiment() {
 export function useRerunExperiment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<{ success: true; data: Experiment }>(`/experiments/${id}/rerun`),
+    mutationFn: (id: string) => api.post<Experiment>(`/experiments/${id}/rerun`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
   })
 }

@@ -92,8 +92,8 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
         onRun={() => runExp.mutate(id)}
         onRerun={async () => {
           const result = await rerunExp.mutateAsync(id)
-          if (result?.data?.id) {
-            navigate(`/experiments/${result.data.id}`)
+          if (result?.id) {
+            navigate(`/experiments/${result.id}`)
           }
         }}
         onExport={async () => {

@@ -43,7 +43,7 @@ describe('POST /graders', () => {
     const res = await jsonPost('/graders', { name: 'my-grader', rubric: 'Score on accuracy' })
     expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: created })
+    expect(body).toEqual(created)
   })
 
   it('returns 400 when name is empty', async () => {
@@ -66,7 +66,7 @@ describe('POST /graders', () => {
     const res = await jsonPost('/graders', { name: 'dup', rubric: 'Some rubric' })
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Grader name already exists' })
   })
 })
 
@@ -78,7 +78,7 @@ describe('GET /graders', () => {
     const res = await app.request('/graders')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: graders })
+    expect(body).toEqual(graders)
   })
 })
 
@@ -90,7 +90,7 @@ describe('GET /graders/:id', () => {
     const res = await app.request('/graders/1')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(grader)
+    expect(body).toEqual(grader)
   })
 
   it('returns 404 when not found', async () => {
@@ -99,7 +99,7 @@ describe('GET /graders/:id', () => {
     const res = await app.request('/graders/999')
     expect(res.status).toBe(404)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Grader not found' })
   })
 })
 
@@ -111,7 +111,7 @@ describe('PATCH /graders/:id', () => {
     const res = await jsonPatch('/graders/1', { name: 'renamed' })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(updated)
+    expect(body).toEqual(updated)
   })
 
   it('returns 400 when name is empty', async () => {
@@ -147,7 +147,7 @@ describe('DELETE /graders/:id', () => {
     const res = await del('/graders/1')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual({ deleted: true })
+    expect(body).toEqual({ deleted: true })
   })
 
   it('returns 404 when not found', async () => {

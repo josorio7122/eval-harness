@@ -61,7 +61,7 @@ describe('POST /datasets', () => {
     const res = await jsonPost('/datasets', { name: 'my-ds' })
     expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: created })
+    expect(body).toEqual(created)
   })
 
   it('returns 400 when name is empty', async () => {
@@ -78,7 +78,7 @@ describe('POST /datasets', () => {
     const res = await jsonPost('/datasets', { name: 'dup' })
     expect(res.status).toBe(400)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Dataset name already exists' })
   })
 })
 
@@ -92,7 +92,7 @@ describe('GET /datasets', () => {
     const res = await app.request('/datasets')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: datasets })
+    expect(body).toEqual(datasets)
   })
 })
 
@@ -106,7 +106,7 @@ describe('GET /datasets/:id', () => {
     const res = await app.request('/datasets/1')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(dataset)
+    expect(body).toEqual(dataset)
   })
 
   it('returns 404 when not found', async () => {
@@ -115,7 +115,7 @@ describe('GET /datasets/:id', () => {
     const res = await app.request('/datasets/999')
     expect(res.status).toBe(404)
     const body = await res.json()
-    expect(body.success).toBe(false)
+    expect(body).toEqual({ error: 'Dataset not found' })
   })
 })
 
@@ -129,7 +129,7 @@ describe('PATCH /datasets/:id', () => {
     const res = await jsonPatch('/datasets/1', { name: 'renamed' })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(updated)
+    expect(body).toEqual(updated)
   })
 
   it('returns 400 when name is empty', async () => {
@@ -138,9 +138,18 @@ describe('PATCH /datasets/:id', () => {
     expect(mockService.updateDataset).not.toHaveBeenCalled()
   })
 
-  it('returns 400 when service fails', async () => {
+  it('returns 404 when service fails with not found', async () => {
     mockService.updateDataset.mockResolvedValue({ success: false, error: 'Dataset not found' })
     const res = await jsonPatch('/datasets/999', { name: 'new' })
+    expect(res.status).toBe(404)
+  })
+
+  it('returns 400 when service fails with other error', async () => {
+    mockService.updateDataset.mockResolvedValue({
+      success: false,
+      error: 'Dataset name already exists',
+    })
+    const res = await jsonPatch('/datasets/1', { name: 'dup' })
     expect(res.status).toBe(400)
   })
 })
@@ -154,7 +163,7 @@ describe('DELETE /datasets/:id', () => {
     const res = await del('/datasets/1')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual({ deleted: true })
+    expect(body).toEqual({ deleted: true })
   })
 
   it('returns 404 when not found', async () => {
@@ -175,7 +184,7 @@ describe('POST /datasets/:id/attributes', () => {
     const res = await jsonPost('/datasets/1/attributes', { name: 'context' })
     expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body.data).toEqual(updated)
+    expect(body).toEqual(updated)
   })
 
   it('returns 400 with empty name', async () => {
@@ -204,7 +213,7 @@ describe('DELETE /datasets/:id/attributes/:name', () => {
     const res = await del('/datasets/1/attributes/context')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(updated)
+    expect(body).toEqual(updated)
   })
 
   it('returns 400 when service fails', async () => {
@@ -227,7 +236,7 @@ describe('GET /datasets/:id/items', () => {
     const res = await app.request('/datasets/1/items')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(items)
+    expect(body).toEqual(items)
   })
 })
 
@@ -243,7 +252,7 @@ describe('POST /datasets/:id/items', () => {
     })
     expect(res.status).toBe(201)
     const body = await res.json()
-    expect(body.data).toEqual(item)
+    expect(body).toEqual(item)
   })
 
   it('returns 400 when values is missing', async () => {
@@ -273,7 +282,7 @@ describe('PATCH /datasets/:id/items/:itemId', () => {
     })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(updated)
+    expect(body).toEqual(updated)
   })
 
   it('returns 400 when values is missing', async () => {
@@ -292,7 +301,7 @@ describe('DELETE /datasets/:id/items/:itemId', () => {
     const res = await del('/datasets/1/items/i1')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual({ deleted: true })
+    expect(body).toEqual({ deleted: true })
   })
 
   it('returns 404 when not found', async () => {
@@ -371,9 +380,8 @@ describe('POST /datasets/:id/csv/preview', () => {
     })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toHaveProperty('validRowCount')
-    expect(body.data).not.toHaveProperty('totalRows')
-    expect(body.data).toEqual({
+    expect(body).not.toHaveProperty('totalRows')
+    expect(body).toEqual({
       headers: ['input', 'expected_output'],
       rows: [{ input: 'hello', expected_output: 'world' }],
       validRowCount: 1,
@@ -407,7 +415,7 @@ describe('POST /datasets/:id/csv/import', () => {
     })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual({ imported: 2 })
+    expect(body).toEqual({ imported: 2 })
   })
 
   it('returns 400 when service fails', async () => {
@@ -442,7 +450,7 @@ describe('GET /datasets/:id/revisions', () => {
     const res = await app.request('/datasets/1/revisions')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: revisions })
+    expect(body).toEqual(revisions)
   })
 
   it('returns 404 when dataset not found', async () => {
@@ -469,7 +477,7 @@ describe('GET /datasets/:id/revisions/:revisionId', () => {
     const res = await app.request('/datasets/1/revisions/rev1')
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual({ success: true, data: revision })
+    expect(body).toEqual(revision)
   })
 
   it('returns 404 when revision not found', async () => {
