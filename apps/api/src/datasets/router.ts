@@ -116,7 +116,7 @@ export function createDatasetRouter(service: DatasetService) {
       data: {
         headers: datasetResult.data.attributes,
         rows: result.data.validRows,
-        totalRows: result.data.validRows.length,
+        validRowCount: result.data.validRows.length,
         skippedRows: result.data.skippedRows,
       },
     })

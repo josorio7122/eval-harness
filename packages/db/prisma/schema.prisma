@@ -32,6 +32,7 @@ model DatasetRevisionItem {
   revisionId String             @db.Uuid
   itemId     String             @db.Uuid
   values     Json
+  createdAt  DateTime           @default(now())
   revision   DatasetRevision    @relation(fields: [revisionId], references: [id], onDelete: Cascade)
   results    ExperimentResult[]
 

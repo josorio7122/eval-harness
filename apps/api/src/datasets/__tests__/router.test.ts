@@ -350,10 +350,12 @@ describe('POST /datasets/:id/csv/preview', () => {
     })
     expect(res.status).toBe(200)
     const body = await res.json()
+    expect(body.data).toHaveProperty('validRowCount')
+    expect(body.data).not.toHaveProperty('totalRows')
     expect(body.data).toEqual({
       headers: ['input', 'expected_output'],
       rows: [{ input: 'hello', expected_output: 'world' }],
-      totalRows: 1,
+      validRowCount: 1,
       skippedRows: [{ row: 3, reason: 'Empty required field: input' }],
     })
   })

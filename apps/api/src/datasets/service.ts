@@ -88,6 +88,13 @@ function parseCsvContent(
   const lines = csv.split('\n').filter((l) => l.trim() !== '')
   if (lines.length < 1) return fail('CSV is empty')
 
+  // Detect non-CSV content before attempting column validation
+  const firstLine = lines[0]
+  // Check for binary content (null bytes)
+  if (/\x00/.test(csv)) return fail('File could not be parsed as CSV')
+  // Check for JSON (starts with { or [)
+  if (/^\s*[{\[]/.test(firstLine)) return fail('File could not be parsed as CSV')
+
   const headerCols = parseCsvRow(lines[0]).map(h => h.trim().toLowerCase())
 
   // Distinct error messages for missing vs unknown columns

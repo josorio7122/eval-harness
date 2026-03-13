@@ -331,6 +331,37 @@ describe('importCsv', () => {
   })
 })
 
+describe('importCsv - non-CSV detection (C6)', () => {
+  it('rejects JSON content as not valid CSV', async () => {
+    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    const result = await service.importCsv('1', '{"foo":"bar"}')
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toContain('could not be parsed')
+  })
+
+  it('rejects JSON array content as not valid CSV', async () => {
+    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    const result = await service.importCsv('1', '[{"foo":"bar"}]')
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toContain('could not be parsed')
+  })
+
+  it('rejects binary-looking content as not valid CSV', async () => {
+    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    const result = await service.importCsv('1', '\x00\x01\x02\x03')
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toContain('could not be parsed')
+  })
+
+  it('returns missing columns error for single-column CSV with multi-column schema', async () => {
+    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    const result = await service.importCsv('1', 'justonecolumn\nvalue1\nvalue2')
+    expect(result.success).toBe(false)
+    // Single-column CSV is ambiguous — we give the more precise "missing columns" error
+    if (!result.success) expect(result.error).toContain('Missing required columns')
+  })
+})
+
 describe('importCsv - case-insensitive headers', () => {
   it('accepts CSV with mixed-case headers', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
@@ -389,10 +420,11 @@ describe('previewCsv', () => {
 describe('listRevisions', () => {
   it('returns ok with revisions when dataset exists', async () => {
     mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
-    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), itemCount: 0, experimentCount: 0 }]
+    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), itemCount: 0, experimentCount: 0, isCurrent: true }]
     mockRepo.findRevisions.mockResolvedValue(revisions)
     const result = await service.listRevisions('1')
     expect(result).toEqual({ success: true, data: revisions })
+    expect((result as { success: true; data: typeof revisions }).data[0].isCurrent).toBe(true)
   })
 
   it('returns fail when dataset not found', async () => {

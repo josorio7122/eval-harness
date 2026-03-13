@@ -356,4 +356,40 @@ describe('datasets repository (integration)', () => {
     expect(prevDetail!.items).toHaveLength(1)
     expect((prevDetail!.items[0].values as Record<string, string>).input).toBe('will-delete')
   })
+
+  // 27. Items are returned in insertion order (C2)
+  it('preserves item insertion order', async () => {
+    const ds = await repo.create('order-test')
+    await repo.createItem(ds.id, { input: 'first', expected_output: '1' })
+    await repo.createItem(ds.id, { input: 'second', expected_output: '2' })
+    await repo.createItem(ds.id, { input: 'third', expected_output: '3' })
+
+    const found = await repo.findById(ds.id)
+    expect((found!.items[0].values as Record<string, string>).input).toBe('first')
+    expect((found!.items[1].values as Record<string, string>).input).toBe('second')
+    expect((found!.items[2].values as Record<string, string>).input).toBe('third')
+  })
+
+  // 28. Order preserved after edit (C2)
+  it('preserves item order after edit', async () => {
+    const ds = await repo.create('order-edit-test')
+    const i1 = await repo.createItem(ds.id, { input: 'first', expected_output: '1' })
+    await repo.createItem(ds.id, { input: 'second', expected_output: '2' })
+
+    await repo.updateItem(i1.itemId, { input: 'first-edited', expected_output: '1' })
+
+    const found = await repo.findById(ds.id)
+    expect((found!.items[0].values as Record<string, string>).input).toBe('first-edited')
+    expect((found!.items[1].values as Record<string, string>).input).toBe('second')
+  })
+
+  // 29. findRevisions marks first entry as isCurrent (C3)
+  it('findRevisions marks first entry as isCurrent', async () => {
+    const ds = await repo.create('is-current-test')
+    await repo.createItem(ds.id, { input: 'q', expected_output: 'a' })
+
+    const revisions = await repo.findRevisions(ds.id)
+    expect(revisions[0].isCurrent).toBe(true)
+    expect(revisions[1].isCurrent).toBe(false)
+  })
 })

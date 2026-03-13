@@ -1,0 +1,5 @@
+-- AlterTable
+DO $$ BEGIN
+  ALTER TABLE "DatasetRevisionItem" ADD COLUMN "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
