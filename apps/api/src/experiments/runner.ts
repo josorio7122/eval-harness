@@ -16,6 +16,39 @@ type EvaluateFn = (
   itemAttributes: Record<string, string>,
 ) => Promise<{ verdict: string; reason: string }>
 
+async function evaluateCell(
+  evaluate: EvaluateFn,
+  repo: Repo,
+  experimentId: string,
+  item: { id: string; values: Record<string, string> },
+  grader: { id: string; rubric: string },
+) {
+  let verdict: string
+  let reason: string
+  let isError: boolean
+
+  try {
+    const result = await evaluate(grader.rubric, item.values)
+    verdict = result.verdict
+    reason = result.reason
+    isError = false
+  } catch (err) {
+    verdict = 'error'
+    reason = err instanceof Error ? err.message : 'Unknown error'
+    isError = true
+  }
+
+  const saveResult = await repo.createResult({
+    experimentId,
+    datasetRevisionItemId: item.id,
+    graderId: grader.id,
+    verdict,
+    reason,
+  })
+
+  return { saved: saveResult.success ? saveResult.data : null, isError }
+}
+
 export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
   async enqueue(
     experimentId: string,
@@ -23,39 +56,21 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
     graders: Array<{ id: string; rubric: string }>,
   ): Promise<void> {
     await experimentQueue.add(async () => {
-      await repo.updateStatus(experimentId, 'running')
+      const statusResult = await repo.updateStatus(experimentId, 'running')
+      if (!statusResult.success) {
+        experimentEvents.emit(experimentId, { type: 'error', experimentId, error: statusResult.error })
+        return
+      }
 
       const totalCells = datasetItems.length * graders.length
       let cellsCompleted = 0
-      let errorCount = 0
 
       const evalQueue = new PQueue({ concurrency: 4 })
 
       const tasks = datasetItems.flatMap((item) =>
         graders.map((grader) =>
           evalQueue.add(async () => {
-            let savedResult: unknown
-            try {
-              const result = await evaluate(grader.rubric, item.values)
-              const saveResult = await repo.createResult({
-                experimentId,
-                datasetRevisionItemId: item.id,
-                graderId: grader.id,
-                verdict: result.verdict,
-                reason: result.reason,
-              })
-              savedResult = saveResult.success ? saveResult.data : null
-            } catch (err) {
-              errorCount++
-              const saveResult = await repo.createResult({
-                experimentId,
-                datasetRevisionItemId: item.id,
-                graderId: grader.id,
-                verdict: 'error',
-                reason: err instanceof Error ? err.message : 'Unknown error',
-              })
-              savedResult = saveResult.success ? saveResult.data : null
-            }
+            const cellResult = await evaluateCell(evaluate, repo, experimentId, item, grader)
 
             cellsCompleted++
             experimentEvents.emit(experimentId, {
@@ -64,13 +79,16 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
               cellsCompleted,
               totalCells,
               status: 'running',
-              result: savedResult,
+              result: cellResult.saved,
             })
+
+            return cellResult
           }),
         ),
       )
 
-      await Promise.all(tasks)
+      const results = await Promise.all(tasks)
+      const errorCount = results.filter((r) => r?.isError).length
 
       const finalStatus: ExperimentStatus = errorCount === totalCells ? 'failed' : 'complete'
       await repo.updateStatus(experimentId, finalStatus)

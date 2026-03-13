@@ -1,18 +1,36 @@
-export function buildSystemPrompt(rubric: string): string {
-  return `You are an expert evaluator tasked with assessing whether an AI system's output meets defined quality criteria. Your role is to act as an objective, impartial judge — not to generate responses yourself.
+const SYSTEM_TEMPLATE = `You are an expert evaluator tasked with assessing whether an AI system's output meets defined quality criteria. Your role is to act as an objective, impartial judge — not to generate responses yourself.
 
 ## Evaluation Criteria
 
-${rubric}
+{rubric}
 
 ## Instructions
 
 Apply the criteria above to the test case you will receive. Consider whether the output satisfies each aspect of the criteria, then reach a verdict.
 
 Think through your evaluation carefully before concluding. Analyze what the output does well, where it falls short, and whether any shortcomings are significant enough to constitute a failure under the given criteria.`
+
+const USER_TEMPLATE = `## Input
+
+{input}
+
+## Expected Output
+
+{expected_output}{context}
+
+Evaluate the output above against the criteria and return your assessment.`
+
+const CONTEXT_TEMPLATE = `
+
+## Additional Context
+
+{attributes}`
+
+export function buildSystemPrompt(rubric: string) {
+  return SYSTEM_TEMPLATE.replace('{rubric}', rubric)
 }
 
-export function buildUserMessage(itemAttributes: Record<string, string>): string {
+export function buildUserMessage(itemAttributes: Record<string, string>) {
   const input = itemAttributes['input']
   if (input === undefined) {
     throw new Error('Missing required field: input')
@@ -29,16 +47,13 @@ export function buildUserMessage(itemAttributes: Record<string, string>): string
 
   const contextSection =
     customAttributes.length > 0
-      ? `\n\n## Additional Context\n\n${customAttributes.map(([k, v]) => `${k}: ${v}`).join('\n')}`
+      ? CONTEXT_TEMPLATE.replace(
+          '{attributes}',
+          customAttributes.map(([k, v]) => `${k}: ${v}`).join('\n'),
+        )
       : ''
 
-  return `## Input
-
-${input}
-
-## Expected Output
-
-${expectedOutput}${contextSection}
-
-Evaluate the output above against the criteria and return your assessment.`
+  return USER_TEMPLATE.replace('{input}', input)
+    .replace('{expected_output}', expectedOutput)
+    .replace('{context}', contextSection)
 }
