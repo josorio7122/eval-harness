@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
-# e2e-smoke.sh — Full API smoke test against http://localhost:3001
-# Follows the order in docs/test.yml exactly.
-# Safe to re-run: cleans up leftover test data at startup.
+# ──────────────────────────────────────────────────────────────────────────────
+# e2e-smoke.sh — Full API smoke test
+#
+# Runs ~70 assertions against a live API server at http://localhost:3001.
+# Tests every REST endpoint across all 3 domains (datasets, graders, experiments)
+# plus CSV operations, dataset revisions, SSE streaming, and cascade deletion.
+#
+# Does NOT require OPENROUTER_API_KEY — experiment run tests accept any terminal
+# status (complete, failed, running) since the LLM may not be configured.
+#
+# Prerequisites:
+#   - API server running:  pnpm dev
+#   - PostgreSQL running:  docker compose up -d
+#   - jq installed
+#
+# Usage:
+#   ./scripts/e2e-smoke.sh
+#
+# Safe to re-run: cleans up leftover test data at startup + EXIT trap.
+# ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
@@ -19,6 +36,10 @@ BOLD='\033[1m'
 RESET='\033[0m'
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
+# pass/fail: increment counters and print colored step output
+# assert_status: compare HTTP status codes
+# body_of/status_of: split curl response (body is all lines except last, status is last line)
+# curl_json/curl_get/curl_csv: curl wrappers that append HTTP status as last line
 pass() {
   PASS=$((PASS + 1))
   STEP=$((STEP + 1))
@@ -92,6 +113,8 @@ if ! curl -s --max-time 3 "${BASE}/datasets" > /dev/null 2>&1; then
 fi
 echo -e "${GREEN}Server is reachable ✓${RESET}"
 
+# Track all created entity IDs so the EXIT trap can delete them if the script
+# fails mid-run. Order matters: delete experiments first (FK deps), then graders, then datasets.
 # ─── IDs for cleanup trap ──────────────────────────────────────────────────────
 DATASET_ID=""
 GRADER_ID=""
@@ -115,6 +138,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Remove any entities left from a previous failed run (matched by name).
+# This ensures a clean slate even if the EXIT trap didn't fire.
 # ─── Cleanup leftover test data ────────────────────────────────────────────────
 echo ""
 echo -e "${YELLOW}Cleaning up any leftover test data from previous runs...${RESET}"
@@ -135,6 +160,9 @@ done
 echo -e "${GREEN}Cleanup complete ✓${RESET}"
 
 # ─── DATASETS ──────────────────────────────────────────────────────────────────
+# Tests: POST /datasets (create), POST duplicate (400), POST empty name (400),
+#        GET /datasets (list), GET /datasets/:id (get by ID + verify fields),
+#        PATCH /datasets/:id (rename), GET renamed (verify)
 section "DATASETS"
 
 R=$(curl_json POST /datasets '{"name":"smoke-test-dataset"}')
@@ -178,6 +206,9 @@ NAME=$(echo "$B" | jq -r '.name')
 [[ "$NAME" == "renamed-dataset" ]] && pass "Dataset name='renamed-dataset'" || fail "Rename failed: name='$NAME'"
 
 # ─── ATTRIBUTES ────────────────────────────────────────────────────────────────
+# Tests: POST /datasets/:id/attributes (add custom attribute, verify schemaVersion increments),
+#        POST duplicate attribute (400), DELETE built-in attribute (400 — 'input' is protected),
+#        DELETE custom attribute (200, verify schemaVersion increments again)
 section "ATTRIBUTES"
 
 R=$(curl_json POST "/datasets/${DATASET_ID}/attributes" '{"name":"context"}')
@@ -215,6 +246,9 @@ SCHEMA_VER=$(echo "$B" | jq '.schemaVersion')
 [[ "$SCHEMA_VER" == "3" ]] && pass "schemaVersion=3 after remove attribute" || fail "schemaVersion expected 3, got $SCHEMA_VER"
 
 # ─── ITEMS ─────────────────────────────────────────────────────────────────────
+# Tests: POST /datasets/:id/items (create item, verify itemId returned),
+#        GET dataset (verify item count), PATCH item (update values),
+#        GET dataset (verify updated values), POST second item
 section "ITEMS"
 
 R=$(curl_json POST "/datasets/${DATASET_ID}/items" '{"values":{"input":"What is 2+2?","expected_output":"4"}}')
@@ -245,6 +279,11 @@ assert_status "Create second item → 201" 201 "$S"
 ITEM2_ID=$(echo "$B" | jq -r '.itemId')
 
 # ─── CSV ───────────────────────────────────────────────────────────────────────
+# Tests: GET /csv/template (200, Content-Type: text/csv),
+#        POST /csv/preview (parse CSV, verify validRowCount),
+#        POST /csv/import (import rows into dataset),
+#        GET dataset (verify item count increased),
+#        GET /csv/export (200, Content-Type: text/csv)
 section "CSV"
 
 HTTP_STATUS=$(curl -s -o /tmp/smoke_template.csv -w "%{http_code}" "${BASE}/datasets/${DATASET_ID}/csv/template")
@@ -281,6 +320,9 @@ echo "$CT_EXPORT" | grep -qi "text/csv" \
   || fail "CSV export Content-Type not text/csv: $CT_EXPORT"
 
 # ─── REVISIONS ─────────────────────────────────────────────────────────────────
+# Tests: GET /datasets/:id/revisions (list, verify multiple revisions exist after mutations),
+#        GET /datasets/:id/revisions/:revisionId (get specific revision, verify items),
+#        GET non-existent revision (404)
 section "REVISIONS"
 
 R=$(curl_get "/datasets/${DATASET_ID}/revisions")
@@ -302,6 +344,9 @@ S=$(status_of "$R")
 assert_status "Get non-existent revision → 404" 404 "$S"
 
 # ─── REVISION IMMUTABILITY ─────────────────────────────────────────────────────
+# Tests copy-on-write semantics: previous revisions must NOT change when new items are added.
+# Records the latest revision's item count, adds a new item (creating a new revision),
+# then verifies the OLD revision still has the original item count.
 section "REVISION IMMUTABILITY"
 
 R=$(curl_get "/datasets/${DATASET_ID}/revisions")
@@ -323,6 +368,10 @@ OLD_REV_ITEMS=$(echo "$B" | jq '.items | length')
   || fail "Old revision mutated! Expected $IMMUT_ITEM_COUNT items, got $OLD_REV_ITEMS"
 
 # ─── GRADERS ───────────────────────────────────────────────────────────────────
+# Tests: POST /graders (create), POST with empty rubric (400), POST missing name (400),
+#        GET /graders (list), GET /graders/:id (get by ID),
+#        PATCH /graders/:id (update name+rubric), PATCH description only,
+#        GET non-existent grader (404)
 section "GRADERS"
 
 R=$(curl_json POST /graders '{"name":"accuracy-check","description":"Checks factual accuracy","rubric":"Evaluate whether the output matches the expected output. Consider semantic equivalence, not just exact string matching."}')
@@ -360,6 +409,11 @@ S=$(status_of "$R")
 assert_status "Get non-existent grader → 404" 404 "$S"
 
 # ─── EXPERIMENTS ───────────────────────────────────────────────────────────────
+# Tests: POST /experiments (create, verify datasetRevisionId is set),
+#        POST with no graders (400), POST with invalid datasetId (400),
+#        GET /experiments (list), GET /experiments/:id (verify status='queued'),
+#        POST /experiments/:id/run (202), poll status until terminal,
+#        GET /experiments/:id/csv/export (if complete)
 section "EXPERIMENTS"
 
 R=$(curl_json POST /experiments \
@@ -433,6 +487,9 @@ else
 fi
 
 # ─── EXPERIMENT PINNING ─────────────────────────────────────────────────────────
+# Tests that re-running an experiment pins to the LATEST revision, not the original.
+# Adds a new item (creating a new revision), then re-runs the experiment.
+# The rerun's datasetRevisionId must differ from the original's.
 section "EXPERIMENT PINNING"
 
 R=$(curl_json POST "/datasets/${DATASET_ID}/items" '{"values":{"input":"What is 8+8?","expected_output":"16"}}')
@@ -453,6 +510,9 @@ echo "    → Rerun  datasetRevisionId:   $RERUN_REV_ID"
   || fail "Rerun has same datasetRevisionId as original — should be a newer revision"
 
 # ─── SSE ───────────────────────────────────────────────────────────────────────
+# Tests Server-Sent Events: connects to /experiments/:id/events and verifies
+# the stream includes an 'event: connected' message. Uses --max-time 3 since
+# the SSE stream stays open indefinitely.
 section "SSE (Server-Sent Events)"
 
 SSE_OUTPUT=$(curl -s -N --max-time 3 "${BASE}/experiments/${EXPERIMENT_ID}/events" 2>/dev/null || true)
@@ -461,6 +521,8 @@ echo "$SSE_OUTPUT" | grep -q "event: connected" \
   || fail "SSE stream missing 'event: connected' (got: ${SSE_OUTPUT:0:200})"
 
 # ─── DELETION ──────────────────────────────────────────────────────────────────
+# Tests: DELETE /experiments/:id (200), GET deleted (404),
+#        DELETE /graders/:id (200), GET deleted (404)
 section "DELETION"
 
 R=$(curl_json DELETE "/experiments/${EXPERIMENT_ID}")
@@ -487,6 +549,11 @@ S=$(status_of "$R")
 assert_status "Get deleted grader → 404" 404 "$S"
 
 # ─── CASCADE DELETE ─────────────────────────────────────────────────────────────
+# Tests Prisma cascade rules:
+# 1. Create a dataset + item + grader + experiment (linked together)
+# 2. Delete the DATASET → experiment should be cascade-deleted (404)
+# 3. Grader should SURVIVE dataset deletion (200) — graders are independent
+# 4. Clean up the surviving grader
 section "CASCADE DELETE"
 
 R=$(curl_json POST /datasets '{"name":"cascade-test"}')

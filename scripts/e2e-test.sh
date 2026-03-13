@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
-# e2e-test.sh — Full experiment lifecycle E2E test with real LLM evaluation.
-# Requires OPENROUTER_API_KEY. Tests: create dataset → add items → create graders →
-# create experiment → run → poll → verify SSE → verify results → export CSV → cleanup.
+# ──────────────────────────────────────────────────────────────────────────────
+# e2e-test.sh — Full experiment lifecycle with real LLM evaluation
+#
+# End-to-end test that exercises the complete experiment flow:
+#   1. Create a dataset with 3 math items (e.g., "What is 1+1?" → "2")
+#   2. Create 2 graders (accuracy + clarity) with distinct rubrics
+#   3. Create an experiment linking dataset + graders
+#   4. Start SSE listener (background curl) to capture progress events
+#   5. Run the experiment (POST /run → 202 Accepted)
+#   6. Poll status every 2s until complete/failed (timeout: 120s)
+#   7. Verify SSE: exactly 6 progress events (3 items × 2 graders)
+#   8. Verify results: status=complete, 6 results, valid pass rate
+#   9. Export CSV: verify headers (input, expected_output, _verdict, _reason)
+#  10. Cleanup via EXIT trap
+#
+# REQUIRES:
+#   - OPENROUTER_API_KEY environment variable (exits 0 if not set)
+#   - API server running:  pnpm dev
+#   - PostgreSQL running:  docker compose up -d
+#   - jq installed
+#
+# Usage:
+#   OPENROUTER_API_KEY=sk-... ./scripts/e2e-test.sh
+#
+# Entity names are suffixed with $$ (PID) to avoid collisions on re-runs.
+# ──────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
 
@@ -19,6 +42,11 @@ BOLD='\033[1m'
 RESET='\033[0m'
 
 # ─── Helpers ─────────────────────────────────────────────────────────────
+# Same helpers as e2e-smoke.sh for consistent output formatting.
+# pass/fail: increment counters, print numbered step
+# assert_status: compare expected vs actual HTTP status
+# body_of/status_of: split curl response into body + status code
+# curl_json/curl_get: curl wrappers that append status code as last line
 pass() {
   PASS=$((PASS + 1))
   STEP=$((STEP + 1))
@@ -66,6 +94,8 @@ curl_get() {
 }
 
 # ─── Prerequisite check ─────────────────────────────────────────────────
+# Skip gracefully if OPENROUTER_API_KEY is not set — this test costs real
+# LLM API calls, so it should never fail CI just because the key is missing.
 if [[ -z "${OPENROUTER_API_KEY:-}" ]]; then
   echo -e "${YELLOW}⚠️  OPENROUTER_API_KEY not set — skipping lifecycle test${RESET}"
   echo "   Set it to run the full experiment lifecycle test."
@@ -85,6 +115,8 @@ fi
 echo -e "${GREEN}Server is reachable ✓${RESET}"
 
 # ─── Cleanup trap ────────────────────────────────────────────────────────
+# Always runs on EXIT — kills SSE background process, removes temp file,
+# deletes all created entities (experiment → graders → dataset, in FK order).
 SSE_PID=""
 SSE_FILE=""
 DATASET_ID=""
@@ -106,6 +138,8 @@ cleanup() {
 trap cleanup EXIT
 
 # ─── DATASET ─────────────────────────────────────────────────────────────
+# Create a dataset with 3 simple math items. These will be evaluated by the
+# LLM graders. Each item has an 'input' question and 'expected_output' answer.
 section "DATASET SETUP"
 
 R=$(curl_json POST /datasets "{\"name\":\"e2e-lifecycle-$$\"}")
@@ -122,6 +156,10 @@ for i in 1 2 3; do
 done
 
 # ─── GRADERS ─────────────────────────────────────────────────────────────
+# Create 2 graders with different rubrics:
+# - Accuracy: checks if expected_output is the correct answer to input
+# - Clarity: checks if expected_output is clear and unambiguous
+# Both should pass for simple math (e.g., "2" is correct and clear for "1+1").
 section "GRADERS"
 
 R=$(curl_json POST /graders \
@@ -139,6 +177,8 @@ GRADER2_ID=$(echo "$B" | jq -r '.id')
 echo "    → GRADER2_ID: $GRADER2_ID"
 
 # ─── EXPERIMENT ──────────────────────────────────────────────────────────
+# Create an experiment linking the dataset to both graders.
+# This produces 3 items × 2 graders = 6 evaluation cells.
 section "EXPERIMENT"
 
 R=$(curl_json POST /experiments \
@@ -149,6 +189,9 @@ EXP_ID=$(echo "$B" | jq -r '.id')
 echo "    → EXP_ID: $EXP_ID"
 
 # ─── SSE LISTENER ────────────────────────────────────────────────────────
+# Start an SSE listener BEFORE running the experiment so we capture all events.
+# The listener writes to a temp file in the background. After running, we poll
+# the experiment status until it reaches a terminal state.
 section "SSE + RUN"
 
 SSE_FILE=$(mktemp)
@@ -161,6 +204,9 @@ S=$(status_of "$R")
 assert_status "Run experiment" 202 "$S"
 
 # ─── POLL ────────────────────────────────────────────────────────────────
+# Poll GET /experiments/:id every 2s. The experiment runner evaluates items
+# concurrently (p-queue concurrency=4), so 3 math items should finish quickly.
+# Timeout is 120s to account for slow LLM responses or rate limiting.
 echo "    → Polling experiment status (timeout: 120s)..."
 POLL_TIMEOUT=120
 POLL_ELAPSED=0
@@ -183,6 +229,9 @@ else
 fi
 
 # ─── SSE VERIFICATION ───────────────────────────────────────────────────
+# Kill the SSE listener and verify the captured events.
+# Expected: 1 'connected' event + 6 'progress' events (one per evaluation cell).
+# Each progress event contains cellsCompleted/totalCells for the frontend progress bar.
 section "SSE VERIFICATION"
 
 sleep 2
@@ -206,6 +255,9 @@ grep -q 'event: connected' "$SSE_FILE" 2>/dev/null \
   || fail "SSE connected event missing"
 
 # ─── RESULTS ─────────────────────────────────────────────────────────────
+# Verify the experiment completed with all 6 results.
+# Compute pass rate — for simple math items, we expect high pass rates but
+# don't assert a specific value since LLM output is non-deterministic.
 section "RESULTS"
 
 R=$(curl_get "/experiments/${EXP_ID}")
@@ -226,6 +278,10 @@ echo "    → Pass rate: ${PASS_RATE}% ($PASS_COUNT/$RESULT_COUNT)"
   || fail "Pass rate out of range: $PASS_RATE"
 
 # ─── CSV EXPORT ──────────────────────────────────────────────────────────
+# Export results as CSV. Verify:
+# - Headers include dataset attributes (input, expected_output) + grader columns
+#   ({graderName}_verdict, {graderName}_reason)
+# - Row count matches item count (3 data rows)
 section "CSV EXPORT"
 
 R=$(curl_get "/experiments/${EXP_ID}/csv/export")
@@ -250,8 +306,7 @@ CSV_ROW_COUNT=$(echo "$B" | tail -n +2 | wc -l | tr -d ' ')
   || fail "CSV row count expected 3, got $CSV_ROW_COUNT"
 
 # ─── SUMMARY ─────────────────────────────────────────────────────────────
-# (cleanup happens via trap)
-
+# Cleanup happens via the EXIT trap defined above. Print final pass/fail tally.
 section "SUMMARY"
 
 TOTAL=$((PASS + FAIL))
