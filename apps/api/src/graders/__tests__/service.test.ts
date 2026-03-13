@@ -19,9 +19,7 @@ beforeEach(() => {
 
 describe('listGraders', () => {
   it('returns ok with graders array', async () => {
-    const graders = [
-      { id: '1', name: 'g1', description: '', rubric: 'some rubric' },
-    ]
+    const graders = [{ id: '1', name: 'g1', description: '', rubric: 'some rubric' }]
     mockRepo.findAll.mockResolvedValue(graders)
     const result = await service.listGraders()
     expect(result).toEqual({ success: true, data: graders })
@@ -48,20 +46,38 @@ describe('createGrader', () => {
     mockRepo.findByName.mockResolvedValue(null)
     const created = { id: '1', name: 'g1', description: '', rubric: 'some rubric' }
     mockRepo.create.mockResolvedValue(created)
-    const result = await service.createGrader({ name: 'g1', description: '', rubric: 'some rubric' })
+    const result = await service.createGrader({
+      name: 'g1',
+      description: '',
+      rubric: 'some rubric',
+    })
     expect(result).toEqual({ success: true, data: created })
   })
 
   it('fails on duplicate name', async () => {
-    mockRepo.findByName.mockResolvedValue({ id: '1', name: 'g1', description: '', rubric: 'rubric' })
-    const result = await service.createGrader({ name: 'g1', description: '', rubric: 'some rubric' })
+    mockRepo.findByName.mockResolvedValue({
+      id: '1',
+      name: 'g1',
+      description: '',
+      rubric: 'rubric',
+    })
+    const result = await service.createGrader({
+      name: 'g1',
+      description: '',
+      rubric: 'some rubric',
+    })
     expect(result).toEqual({ success: false, error: 'Grader name already exists' })
   })
 })
 
 describe('updateGrader', () => {
   it('updates successfully', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'g1', description: '', rubric: 'old rubric' })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'g1',
+      description: '',
+      rubric: 'old rubric',
+    })
     mockRepo.findByName.mockResolvedValue(null)
     const updated = { id: '1', name: 'g2', description: '', rubric: 'old rubric' }
     mockRepo.update.mockResolvedValue(updated)
@@ -77,7 +93,12 @@ describe('updateGrader', () => {
 
   it('fails on duplicate name', async () => {
     mockRepo.findById.mockResolvedValue({ id: '1', name: 'g1', description: '', rubric: 'rubric' })
-    mockRepo.findByName.mockResolvedValue({ id: '2', name: 'g2', description: '', rubric: 'rubric' })
+    mockRepo.findByName.mockResolvedValue({
+      id: '2',
+      name: 'g2',
+      description: '',
+      rubric: 'rubric',
+    })
     const result = await service.updateGrader('1', { name: 'g2' })
     expect(result).toEqual({ success: false, error: 'Grader name already exists' })
   })

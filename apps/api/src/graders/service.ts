@@ -12,7 +12,9 @@ export function createGraderService(repo: typeof graderRepository) {
       }
     },
 
-    async getGrader(id: string): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
+    async getGrader(
+      id: string,
+    ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
       try {
         const grader = await repo.findById(id)
         if (!grader) return fail('Grader not found')

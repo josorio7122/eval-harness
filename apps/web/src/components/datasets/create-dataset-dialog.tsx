@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useCreateDataset } from '@/hooks/use-datasets'
@@ -51,9 +46,7 @@ export function CreateDatasetDialog({ trigger, onCreated }: CreateDatasetDialogP
           }}
         >
           <DialogHeader>
-            <DialogTitle
-              style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}
-            >
+            <DialogTitle style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}>
               Create Dataset
             </DialogTitle>
           </DialogHeader>

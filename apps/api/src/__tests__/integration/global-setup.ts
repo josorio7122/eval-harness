@@ -10,10 +10,7 @@ export async function setup() {
   const client = new pg.Client({ connectionString: `${BASE_URL}/postgres` })
   await client.connect()
 
-  const result = await client.query(
-    `SELECT 1 FROM pg_database WHERE datname = $1`,
-    [TEST_DB],
-  )
+  const result = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [TEST_DB])
   if (result.rowCount === 0) {
     await client.query(`CREATE DATABASE ${TEST_DB}`)
   }

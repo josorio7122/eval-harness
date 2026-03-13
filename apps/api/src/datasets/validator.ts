@@ -9,7 +9,11 @@ export const updateDatasetSchema = z.object({
 })
 
 export const addAttributeSchema = z.object({
-  name: z.string().trim().min(1, 'Attribute name is required').transform((v) => v.toLowerCase()),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Attribute name is required')
+    .transform((v) => v.toLowerCase()),
 })
 
 export const createItemSchema = z.object({

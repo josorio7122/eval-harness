@@ -84,23 +84,27 @@ function ShimmerRow() {
     >
       <div
         className="animate-pulse"
-        style={{ height: '12px', width: '60px', borderRadius: '4px', background: 'var(--bg-surface-2)' }}
+        style={{
+          height: '12px',
+          width: '60px',
+          borderRadius: '4px',
+          background: 'var(--bg-surface-2)',
+        }}
       />
       <div
         className="animate-pulse"
-        style={{ height: '11px', width: '100px', borderRadius: '4px', background: 'var(--bg-surface-2)' }}
+        style={{
+          height: '11px',
+          width: '100px',
+          borderRadius: '4px',
+          background: 'var(--bg-surface-2)',
+        }}
       />
     </div>
   )
 }
 
-function RevisionDetailPanel({
-  datasetId,
-  revisionId,
-}: {
-  datasetId: string
-  revisionId: string
-}) {
+function RevisionDetailPanel({ datasetId, revisionId }: { datasetId: string; revisionId: string }) {
   const navigate = useNavigate()
   const { data: revision, isLoading } = useRevision(datasetId, revisionId)
 
@@ -120,7 +124,11 @@ function RevisionDetailPanel({
           <div
             key={i}
             className="animate-pulse"
-            style={{ height: '40px', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface-2)' }}
+            style={{
+              height: '40px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-surface-2)',
+            }}
           />
         ))}
       </div>
@@ -452,9 +460,7 @@ export function RevisionHistory({ datasetId }: RevisionHistoryProps) {
                   style={{
                     padding: '10px 14px',
                     borderBottom: '1px solid var(--border-subtle)',
-                    borderLeft: isSelected
-                      ? '2px solid var(--accent)'
-                      : '2px solid transparent',
+                    borderLeft: isSelected ? '2px solid var(--accent)' : '2px solid transparent',
                     background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
                     cursor: 'pointer',
                     display: 'flex',

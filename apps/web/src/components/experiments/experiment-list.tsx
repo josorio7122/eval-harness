@@ -7,7 +7,7 @@ import type { Experiment } from '@/hooks/use-experiments'
 
 const STATUS_BORDER_COLOR: Record<Experiment['status'], string> = {
   running: 'var(--accent)',
-  complete: 'var(--pass)',   // overridden below if any fail
+  complete: 'var(--pass)', // overridden below if any fail
   failed: 'var(--error)',
   queued: 'var(--neutral)',
 }
@@ -165,9 +165,7 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
             const isSelected = exp.id === selectedId
             const fails = hasFails(exp)
             const borderColor =
-              exp.status === 'complete' && fails
-                ? 'var(--fail)'
-                : STATUS_BORDER_COLOR[exp.status]
+              exp.status === 'complete' && fails ? 'var(--fail)' : STATUS_BORDER_COLOR[exp.status]
             const pct = progressPct(exp)
 
             return (

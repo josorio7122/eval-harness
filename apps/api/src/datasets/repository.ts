@@ -18,7 +18,8 @@ async function createRevision(
     currentSchemaVersion?: number
   },
 ) {
-  const baseVersion = options.currentSchemaVersion ?? (await getLatestRevision(datasetId))?.schemaVersion ?? 0
+  const baseVersion =
+    options.currentSchemaVersion ?? (await getLatestRevision(datasetId))?.schemaVersion ?? 0
   const newSchemaVersion = baseVersion + options.schemaVersionDelta
 
   return prisma.datasetRevision.create({

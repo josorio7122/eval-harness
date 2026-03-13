@@ -74,9 +74,7 @@ export function createExperimentService(
       }
     },
 
-    async rerunExperiment(
-      id: string,
-    ): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
+    async rerunExperiment(id: string): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
       try {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
@@ -107,12 +105,14 @@ export function createExperimentService(
           return fail('Experiment is not in a runnable state')
         }
 
-        const datasetItems = (experiment.revision as { items: Array<{ id: string; values: Record<string, string> }> }).items
+        const datasetItems = (
+          experiment.revision as { items: Array<{ id: string; values: Record<string, string> }> }
+        ).items
         if (datasetItems.length === 0) return fail('Dataset has no items')
 
-        const graders = (experiment.graders as Array<{ graderId: string; grader: { id: string; rubric: string } }>).map(
-          (eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }),
-        )
+        const graders = (
+          experiment.graders as Array<{ graderId: string; grader: { id: string; rubric: string } }>
+        ).map((eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }))
 
         if (!runner) return fail('Runner not configured')
         void runner.enqueue(id, datasetItems, graders)
@@ -126,7 +126,8 @@ export function createExperimentService(
       try {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
-        if (experiment.status === 'queued' || experiment.status === 'running') return fail('Experiment has not finished running')
+        if (experiment.status === 'queued' || experiment.status === 'running')
+          return fail('Experiment has not finished running')
 
         const results = await repo.findResultsWithDetails(id)
         if (results.length === 0) return fail('No results to export')

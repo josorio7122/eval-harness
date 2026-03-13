@@ -71,7 +71,10 @@ describe('POST /datasets', () => {
   })
 
   it('returns 400 when service fails (name exists)', async () => {
-    mockService.createDataset.mockResolvedValue({ success: false, error: 'Dataset name already exists' })
+    mockService.createDataset.mockResolvedValue({
+      success: false,
+      error: 'Dataset name already exists',
+    })
     const res = await jsonPost('/datasets', { name: 'dup' })
     expect(res.status).toBe(400)
     const body = await res.json()
@@ -182,7 +185,10 @@ describe('POST /datasets/:id/attributes', () => {
   })
 
   it('returns 400 when service fails (duplicate)', async () => {
-    mockService.addAttribute.mockResolvedValue({ success: false, error: 'Attribute already exists' })
+    mockService.addAttribute.mockResolvedValue({
+      success: false,
+      error: 'Attribute already exists',
+    })
     const res = await jsonPost('/datasets/1/attributes', { name: 'input' })
     expect(res.status).toBe(400)
   })
@@ -202,7 +208,10 @@ describe('DELETE /datasets/:id/attributes/:name', () => {
   })
 
   it('returns 400 when service fails', async () => {
-    mockService.removeAttribute.mockResolvedValue({ success: false, error: 'Cannot remove built-in attribute' })
+    mockService.removeAttribute.mockResolvedValue({
+      success: false,
+      error: 'Cannot remove built-in attribute',
+    })
     const res = await del('/datasets/1/attributes/input')
     expect(res.status).toBe(400)
   })
@@ -229,7 +238,9 @@ describe('POST /datasets/:id/items', () => {
     const item = { id: 'i1', datasetId: '1', values: { input: 'hi', expected_output: 'hello' } }
     mockService.createItem.mockResolvedValue({ success: true, data: item })
 
-    const res = await jsonPost('/datasets/1/items', { values: { input: 'hi', expected_output: 'hello' } })
+    const res = await jsonPost('/datasets/1/items', {
+      values: { input: 'hi', expected_output: 'hello' },
+    })
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body.data).toEqual(item)
@@ -243,7 +254,9 @@ describe('POST /datasets/:id/items', () => {
 
   it('returns 400 when service fails', async () => {
     mockService.createItem.mockResolvedValue({ success: false, error: 'Dataset not found' })
-    const res = await jsonPost('/datasets/999/items', { values: { input: 'x', expected_output: 'y' } })
+    const res = await jsonPost('/datasets/999/items', {
+      values: { input: 'x', expected_output: 'y' },
+    })
     expect(res.status).toBe(400)
   })
 })
@@ -255,7 +268,9 @@ describe('PATCH /datasets/:id/items/:itemId', () => {
     const updated = { id: 'i1', datasetId: '1', values: { input: 'new', expected_output: 'val' } }
     mockService.updateItem.mockResolvedValue({ success: true, data: updated })
 
-    const res = await jsonPatch('/datasets/1/items/i1', { values: { input: 'new', expected_output: 'val' } })
+    const res = await jsonPatch('/datasets/1/items/i1', {
+      values: { input: 'new', expected_output: 'val' },
+    })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.data).toEqual(updated)
@@ -291,7 +306,10 @@ describe('DELETE /datasets/:id/items/:itemId', () => {
 
 describe('GET /datasets/:id/csv/template', () => {
   it('returns 200 with text/csv content type and Content-Disposition', async () => {
-    mockService.getCsvTemplate.mockResolvedValue({ success: true, data: { csv: 'input,expected_output,context', name: 'my-ds' } })
+    mockService.getCsvTemplate.mockResolvedValue({
+      success: true,
+      data: { csv: 'input,expected_output,context', name: 'my-ds' },
+    })
 
     const res = await app.request('/datasets/1/csv/template')
     expect(res.status).toBe(200)
@@ -312,7 +330,10 @@ describe('GET /datasets/:id/csv/template', () => {
 
 describe('GET /datasets/:id/csv/export', () => {
   it('returns 200 with text/csv content type and Content-Disposition', async () => {
-    mockService.exportCsv.mockResolvedValue({ success: true, data: { csv: 'input,expected_output\nhello,world', name: 'my-ds' } })
+    mockService.exportCsv.mockResolvedValue({
+      success: true,
+      data: { csv: 'input,expected_output\nhello,world', name: 'my-ds' },
+    })
 
     const res = await app.request('/datasets/1/csv/export')
     expect(res.status).toBe(200)
@@ -390,7 +411,10 @@ describe('POST /datasets/:id/csv/import', () => {
   })
 
   it('returns 400 when service fails', async () => {
-    mockService.importCsv.mockResolvedValue({ success: false, error: 'CSV columns do not match dataset attributes' })
+    mockService.importCsv.mockResolvedValue({
+      success: false,
+      error: 'CSV columns do not match dataset attributes',
+    })
     const res = await app.request('/datasets/1/csv/import', {
       method: 'POST',
       headers: { 'Content-Type': 'text/csv' },
@@ -404,7 +428,15 @@ describe('POST /datasets/:id/csv/import', () => {
 
 describe('GET /datasets/:id/revisions', () => {
   it('returns 200 with revisions array', async () => {
-    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: '2024-01-01T00:00:00Z', itemCount: 2 }]
+    const revisions = [
+      {
+        id: 'rev1',
+        schemaVersion: 1,
+        attributes: ['input', 'expected_output'],
+        createdAt: '2024-01-01T00:00:00Z',
+        itemCount: 2,
+      },
+    ]
     mockService.listRevisions.mockResolvedValue({ success: true, data: revisions })
 
     const res = await app.request('/datasets/1/revisions')
@@ -425,7 +457,13 @@ describe('GET /datasets/:id/revisions', () => {
 
 describe('GET /datasets/:id/revisions/:revisionId', () => {
   it('returns 200 with revision detail', async () => {
-    const revision = { id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: '2024-01-01T00:00:00Z', items: [] }
+    const revision = {
+      id: 'rev1',
+      schemaVersion: 1,
+      attributes: ['input', 'expected_output'],
+      createdAt: '2024-01-01T00:00:00Z',
+      items: [],
+    }
     mockService.getRevision.mockResolvedValue({ success: true, data: revision })
 
     const res = await app.request('/datasets/1/revisions/rev1')

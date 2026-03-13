@@ -220,7 +220,12 @@ describe('rerunExperiment', () => {
     }
     mockRepo.findById.mockResolvedValue(original)
     mockDatasetRepo.findRevisions.mockResolvedValue([{ id: 'rev-latest' }])
-    const rerun = { id: VALID_UUID_2, name: 'exp1 (re-run)', status: 'queued', datasetId: VALID_UUID_2 }
+    const rerun = {
+      id: VALID_UUID_2,
+      name: 'exp1 (re-run)',
+      status: 'queued',
+      datasetId: VALID_UUID_2,
+    }
     mockRepo.create.mockResolvedValue(rerun)
 
     const result = await service.rerunExperiment(VALID_UUID)
@@ -408,7 +413,9 @@ describe('exportCsv', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
     const lines = result.data.trim().split('\n')
-    expect(lines[0]).toBe('input,expected_output,grader-a_verdict,grader-a_reason,grader-b_verdict,grader-b_reason')
+    expect(lines[0]).toBe(
+      'input,expected_output,grader-a_verdict,grader-a_reason,grader-b_verdict,grader-b_reason',
+    )
     expect(lines[1]).toBe('hi,hello,pass,good,fail,bad tone')
     expect(lines).toHaveLength(2)
   })
@@ -530,5 +537,3 @@ describe('exportCsv', () => {
     expect(lines[1]).toContain('"Has, comma and ""quotes"""')
   })
 })
-
-

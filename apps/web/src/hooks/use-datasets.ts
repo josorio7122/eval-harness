@@ -35,8 +35,7 @@ export interface DatasetWithItems extends Dataset {
 export function useDatasets() {
   return useQuery({
     queryKey: ['datasets'],
-    queryFn: () =>
-      api.get<{ success: true; data: Dataset[] }>('/datasets').then((r) => r.data),
+    queryFn: () => api.get<{ success: true; data: Dataset[] }>('/datasets').then((r) => r.data),
   })
 }
 
@@ -44,9 +43,7 @@ export function useDataset(id: string | undefined) {
   return useQuery({
     queryKey: ['datasets', id],
     queryFn: () =>
-      api
-        .get<{ success: true; data: DatasetWithItems }>(`/datasets/${id}`)
-        .then((r) => r.data),
+      api.get<{ success: true; data: DatasetWithItems }>(`/datasets/${id}`).then((r) => r.data),
     enabled: !!id,
   })
 }
@@ -81,8 +78,7 @@ export function useAddAttribute() {
   return useMutation({
     mutationFn: ({ datasetId, name }: { datasetId: string; name: string }) =>
       api.post(`/datasets/${datasetId}/attributes`, { name }),
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })
 }
 
@@ -91,23 +87,16 @@ export function useRemoveAttribute() {
   return useMutation({
     mutationFn: ({ datasetId, name }: { datasetId: string; name: string }) =>
       api.del(`/datasets/${datasetId}/attributes/${name}`),
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })
 }
 
 export function useCreateItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      datasetId,
-      values,
-    }: {
-      datasetId: string
-      values: Record<string, string>
-    }) => api.post(`/datasets/${datasetId}/items`, { values }),
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+    mutationFn: ({ datasetId, values }: { datasetId: string; values: Record<string, string> }) =>
+      api.post(`/datasets/${datasetId}/items`, { values }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })
 }
 
@@ -123,23 +112,16 @@ export function useUpdateItem() {
       itemId: string
       values: Record<string, string>
     }) => api.patch(`/datasets/${datasetId}/items/${itemId}`, { values }),
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })
 }
 
 export function useDeleteItem() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      datasetId,
-      itemId,
-    }: {
-      datasetId: string
-      itemId: string
-    }) => api.del(`/datasets/${datasetId}/items/${itemId}`),
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+    mutationFn: ({ datasetId, itemId }: { datasetId: string; itemId: string }) =>
+      api.del(`/datasets/${datasetId}/items/${itemId}`),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })
 }
 
@@ -225,9 +207,10 @@ export function useRevision(datasetId: string | undefined, revisionId: string | 
     queryKey: ['datasets', datasetId, 'revisions', revisionId],
     queryFn: () =>
       api
-        .get<{ success: true; data: RevisionDetail }>(
-          `/datasets/${datasetId}/revisions/${revisionId}`,
-        )
+        .get<{
+          success: true
+          data: RevisionDetail
+        }>(`/datasets/${datasetId}/revisions/${revisionId}`)
         .then((r) => r.data),
     enabled: !!datasetId && !!revisionId,
   })
@@ -236,13 +219,7 @@ export function useRevision(datasetId: string | undefined, revisionId: string | 
 export function useImportCsv() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({
-      datasetId,
-      file,
-    }: {
-      datasetId: string
-      file: File
-    }) => {
+    mutationFn: async ({ datasetId, file }: { datasetId: string; file: File }) => {
       const csvContent = await file.text()
       const res = await fetch(`${API_URL}/datasets/${datasetId}/csv/import`, {
         method: 'POST',
@@ -255,7 +232,6 @@ export function useImportCsv() {
       }
       return res.json()
     },
-    onSuccess: (_, vars) =>
-      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })
 }

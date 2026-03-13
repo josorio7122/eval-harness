@@ -29,7 +29,12 @@ export const experimentRepository = {
     })
   },
 
-  create(data: { name: string; datasetId: string; datasetRevisionId: string; graderIds: string[] }) {
+  create(data: {
+    name: string
+    datasetId: string
+    datasetRevisionId: string
+    graderIds: string[]
+  }) {
     return prisma.experiment.create({
       data: {
         name: data.name,

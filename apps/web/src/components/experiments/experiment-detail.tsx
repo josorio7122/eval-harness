@@ -57,7 +57,8 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   const isRunning = experiment?.status === 'running' || experiment?.status === 'queued'
   const isComplete = experiment?.status === 'complete'
   const hasResults = (experiment?.results?.length ?? 0) > 0
-  const canExport = (experiment?.status === 'complete' || experiment?.status === 'failed') && hasResults
+  const canExport =
+    (experiment?.status === 'complete' || experiment?.status === 'failed') && hasResults
 
   // Loading skeleton
   if (isLoading) {
@@ -72,10 +73,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
             style={{ background: 'var(--bg-surface-2)', borderRadius: 'var(--radius-sm)' }}
           />
         </div>
-        <div
-          className="flex flex-col gap-3 p-6"
-          style={{ flex: 1 }}
-        >
+        <div className="flex flex-col gap-3 p-6" style={{ flex: 1 }}>
           {[1, 2, 3].map((i) => (
             <div
               key={i}
@@ -101,12 +99,11 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
     navigate('/experiments')
   }
 
-  const totalCells =
-    (experiment.dataset?.items?.length ?? 0) * (experiment.graders?.length ?? 0)
+  const totalCells = (experiment.dataset?.items?.length ?? 0) * (experiment.graders?.length ?? 0)
   const completedCells =
     isRunning && progress.totalCells > 0
       ? progress.cellsCompleted
-      : experiment.results?.length ?? 0
+      : (experiment.results?.length ?? 0)
   const progressPct = totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0
 
   return (
@@ -144,7 +141,13 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
           /
         </span>
         <h2
-          style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)', flex: 1, minWidth: 0 }}
+          style={{
+            fontSize: '16px',
+            fontWeight: 600,
+            color: 'var(--fg-primary)',
+            flex: 1,
+            minWidth: 0,
+          }}
           className="truncate"
         >
           {experiment.name}
@@ -152,10 +155,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
 
         {/* Dataset name */}
         {experiment.dataset && (
-          <span
-            className="text-[12px] shrink-0"
-            style={{ color: 'var(--fg-tertiary)' }}
-          >
+          <span className="text-[12px] shrink-0" style={{ color: 'var(--fg-tertiary)' }}>
             {experiment.dataset.name}
           </span>
         )}
@@ -224,7 +224,11 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
           {isRunning && (
             <div
               className="flex items-center gap-1.5 h-[28px] px-3 text-[12px]"
-              style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}
+              style={{
+                color: 'var(--accent)',
+                fontFamily: 'var(--font-mono)',
+                fontVariantNumeric: 'tabular-nums',
+              }}
             >
               <Loader2 size={12} className="animate-spin" />
               {completedCells}/{totalCells}
@@ -348,7 +352,9 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
               gap: '16px',
             }}
           >
-            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+            <h3
+              style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}
+            >
               Delete experiment "{experiment.name}"?
             </h3>
             <p style={{ fontSize: '12px', color: 'var(--fg-secondary)', margin: 0 }}>
@@ -421,7 +427,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
       )}
 
       {/* Results table — when running (partial) or complete */}
-      {(isRunning || isComplete || hasResults) ? (
+      {isRunning || isComplete || hasResults ? (
         <ResultsTable experiment={experiment} />
       ) : (
         /* Empty / queued state */

@@ -11,7 +11,11 @@ function passRate(results: ExperimentResult[]): number {
   return results.filter((r) => r.verdict === 'pass').length / results.length
 }
 
-export function AggregateStats({ experiment, filteredResults, filteredItemCount }: AggregateStatsProps) {
+export function AggregateStats({
+  experiment,
+  filteredResults,
+  filteredItemCount,
+}: AggregateStatsProps) {
   const allResults = experiment.results ?? []
   const results = filteredResults ?? allResults
   const graders = experiment.graders ?? []

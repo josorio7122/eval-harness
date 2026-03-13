@@ -19,11 +19,7 @@ export function DatasetList() {
         className="flex items-center justify-between px-6 py-4 border-b"
         style={{ borderColor: 'var(--border-default)' }}
       >
-        <h2
-          style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)' }}
-        >
-          Datasets
-        </h2>
+        <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)' }}>Datasets</h2>
         <CreateDatasetDialog
           trigger={
             <Button
@@ -119,9 +115,7 @@ export function DatasetList() {
           >
             <Database size={32} style={{ color: 'var(--fg-muted)' }} />
             <div className="flex flex-col items-center gap-1">
-              <p
-                style={{ fontSize: '14px', fontWeight: 500, color: 'var(--fg-secondary)' }}
-              >
+              <p style={{ fontSize: '14px', fontWeight: 500, color: 'var(--fg-secondary)' }}>
                 No datasets yet
               </p>
               <p style={{ fontSize: '12px', color: 'var(--fg-tertiary)' }}>
@@ -165,9 +159,7 @@ export function DatasetList() {
                   e.currentTarget.style.background = 'transparent'
                 }}
               >
-                <span
-                  style={{ fontSize: '13px', color: 'var(--fg-primary)', fontWeight: 500 }}
-                >
+                <span style={{ fontSize: '13px', color: 'var(--fg-primary)', fontWeight: 500 }}>
                   {dataset.name}
                 </span>
                 <span

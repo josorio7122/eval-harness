@@ -58,11 +58,11 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
             border: '1px solid var(--border-strong)',
             borderRadius: 'var(--radius-md)',
           }}
-          onMouseEnter={e => {
+          onMouseEnter={(e) => {
             e.currentTarget.style.color = 'var(--fg-primary)'
             e.currentTarget.style.background = 'var(--bg-surface-3)'
           }}
-          onMouseLeave={e => {
+          onMouseLeave={(e) => {
             e.currentTarget.style.color = 'var(--fg-secondary)'
             e.currentTarget.style.background = 'var(--bg-surface-2)'
           }}
@@ -132,8 +132,8 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
                 border: '1px solid var(--border-strong)',
                 borderRadius: 'var(--radius-md)',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
             >
               <Plus size={13} />
               Create grader
@@ -143,7 +143,7 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
 
         {!isLoading &&
           graders &&
-          graders.map(grader => {
+          graders.map((grader) => {
             const isSelected = grader.id === selectedId
             return (
               <div
@@ -156,12 +156,12 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
                   background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
                   paddingLeft: isSelected ? '14px' : '16px',
                 }}
-                onMouseEnter={e => {
+                onMouseEnter={(e) => {
                   if (!isSelected) {
                     e.currentTarget.style.background = 'var(--bg-surface-1)'
                   }
                 }}
-                onMouseLeave={e => {
+                onMouseLeave={(e) => {
                   if (!isSelected) {
                     e.currentTarget.style.background = 'transparent'
                   }

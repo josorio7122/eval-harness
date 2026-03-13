@@ -8,10 +8,7 @@ export const experimentEvents = new EventEmitter()
 
 const experimentQueue = new PQueue({ concurrency: 2 })
 
-type Repo = Pick<
-  typeof experimentRepository,
-  'updateStatus' | 'createResult'
->
+type Repo = Pick<typeof experimentRepository, 'updateStatus' | 'createResult'>
 
 type EvaluateFn = (
   rubric: string,

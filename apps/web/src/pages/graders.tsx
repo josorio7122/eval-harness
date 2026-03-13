@@ -13,10 +13,7 @@ export function GradersPage() {
     <div className="flex h-full" style={{ background: 'var(--bg-base)' }}>
       {/* Left panel: list (30%) */}
       <div className="w-[30%] min-w-[240px] max-w-[320px] flex flex-col h-full overflow-hidden">
-        <GraderList
-          selectedId={id}
-          onCreateClick={() => setShowCreate(true)}
-        />
+        <GraderList selectedId={id} onCreateClick={() => setShowCreate(true)} />
       </div>
 
       {/* Right panel: detail (70%) */}
@@ -38,7 +35,7 @@ export function GradersPage() {
       <CreateGraderDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreated={newId => {
+        onCreated={(newId) => {
           if (newId) navigate(`/graders/${newId}`)
         }}
       />

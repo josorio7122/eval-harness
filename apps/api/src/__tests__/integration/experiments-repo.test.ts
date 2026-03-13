@@ -19,8 +19,16 @@ async function seedData() {
   const latestData = await datasetRepository.findById(dataset.id)
   const revisionItems = latestData!.items
 
-  const grader1 = await graderRepository.create({ name: `exp-repo-grader-1-${n}`, description: 'desc', rubric: 'rubric1' })
-  const grader2 = await graderRepository.create({ name: `exp-repo-grader-2-${n}`, description: 'desc', rubric: 'rubric2' })
+  const grader1 = await graderRepository.create({
+    name: `exp-repo-grader-1-${n}`,
+    description: 'desc',
+    rubric: 'rubric1',
+  })
+  const grader2 = await graderRepository.create({
+    name: `exp-repo-grader-2-${n}`,
+    description: 'desc',
+    rubric: 'rubric2',
+  })
   return { dataset, latestRevision, revisionItems, grader1, grader2 }
 }
 
@@ -126,9 +134,27 @@ describe('experiments repository (integration)', () => {
       graderIds: [grader1.id, grader2.id],
     })
 
-    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'pass', reason: 'r1' })
-    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader2.id, verdict: 'fail', reason: 'r2' })
-    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[1].id, graderId: grader1.id, verdict: 'pass', reason: 'r3' })
+    await repo.createResult({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItems[0].id,
+      graderId: grader1.id,
+      verdict: 'pass',
+      reason: 'r1',
+    })
+    await repo.createResult({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItems[0].id,
+      graderId: grader2.id,
+      verdict: 'fail',
+      reason: 'r2',
+    })
+    await repo.createResult({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItems[1].id,
+      graderId: grader1.id,
+      verdict: 'pass',
+      reason: 'r3',
+    })
 
     const count = await repo.countResultsByExperimentId(experiment.id)
     expect(count).toBe(3)
@@ -157,7 +183,10 @@ describe('experiments repository (integration)', () => {
 
     const results = await repo.findResultsWithDetails(experiment.id)
     expect(results).toHaveLength(1)
-    expect(results[0].datasetRevisionItem.values).toMatchObject({ input: 'q1', expected_output: 'a1' })
+    expect(results[0].datasetRevisionItem.values).toMatchObject({
+      input: 'q1',
+      expected_output: 'a1',
+    })
     expect(results[0].grader.name).toBe(grader1.name)
   })
 
@@ -171,10 +200,22 @@ describe('experiments repository (integration)', () => {
       graderIds: [grader1.id],
     })
 
-    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'pass', reason: 'first' })
+    await repo.createResult({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItems[0].id,
+      graderId: grader1.id,
+      verdict: 'pass',
+      reason: 'first',
+    })
 
     await expect(
-      repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'fail', reason: 'duplicate' })
+      repo.createResult({
+        experimentId: experiment.id,
+        datasetRevisionItemId: revisionItems[0].id,
+        graderId: grader1.id,
+        verdict: 'fail',
+        reason: 'duplicate',
+      }),
     ).rejects.toThrow()
   })
 
@@ -188,7 +229,13 @@ describe('experiments repository (integration)', () => {
       graderIds: [grader1.id],
     })
 
-    await repo.createResult({ experimentId: experiment.id, datasetRevisionItemId: revisionItems[0].id, graderId: grader1.id, verdict: 'pass', reason: 'before remove' })
+    await repo.createResult({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItems[0].id,
+      graderId: grader1.id,
+      verdict: 'pass',
+      reason: 'before remove',
+    })
 
     await repo.remove(experiment.id)
     const found = await repo.findById(experiment.id)
@@ -201,8 +248,18 @@ describe('experiments repository (integration)', () => {
   it('two experiments without intervening edits share the same revisionId', async () => {
     const { dataset, latestRevision, grader1 } = await seedData()
 
-    const expA = await repo.create({ name: 'exp-shared-a', datasetId: dataset.id, datasetRevisionId: latestRevision.id, graderIds: [grader1.id] })
-    const expB = await repo.create({ name: 'exp-shared-b', datasetId: dataset.id, datasetRevisionId: latestRevision.id, graderIds: [grader1.id] })
+    const expA = await repo.create({
+      name: 'exp-shared-a',
+      datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
+      graderIds: [grader1.id],
+    })
+    const expB = await repo.create({
+      name: 'exp-shared-b',
+      datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
+      graderIds: [grader1.id],
+    })
 
     expect(expA.datasetRevisionId).toBe(expB.datasetRevisionId)
   })

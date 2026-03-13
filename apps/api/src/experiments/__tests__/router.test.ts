@@ -145,7 +145,10 @@ describe('DELETE /experiments/:id', () => {
   })
 
   it('returns 404 when not found', async () => {
-    mockService.deleteExperiment.mockResolvedValue({ success: false, error: 'Experiment not found' })
+    mockService.deleteExperiment.mockResolvedValue({
+      success: false,
+      error: 'Experiment not found',
+    })
 
     const res = await del(`/experiments/${VALID_UUID}`)
     expect(res.status).toBe(404)

@@ -13,6 +13,7 @@ export const updateGraderSchema = z
     rubric: z.string().trim().min(1, 'Rubric is required').optional(),
   })
   .refine(
-    (data) => data.name !== undefined || data.description !== undefined || data.rubric !== undefined,
+    (data) =>
+      data.name !== undefined || data.description !== undefined || data.rubric !== undefined,
     { message: 'At least one field must be provided' },
   )

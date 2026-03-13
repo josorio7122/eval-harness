@@ -69,7 +69,11 @@ describe('createDataset', () => {
 
 describe('updateDataset', () => {
   it('updates successfully', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+    })
     mockRepo.findByName.mockResolvedValue(null)
     const updated = { id: '1', name: 'ds2', attributes: ['input', 'expected_output'] }
     mockRepo.update.mockResolvedValue(updated)
@@ -84,7 +88,11 @@ describe('updateDataset', () => {
   })
 
   it('fails on duplicate name', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+    })
     mockRepo.findByName.mockResolvedValue({ id: '2', name: 'ds2' })
     const result = await service.updateDataset('1', { name: 'ds2' })
     expect(result).toEqual({ success: false, error: 'Dataset name already exists' })
@@ -183,17 +191,29 @@ describe('createItem', () => {
     mockRepo.findById.mockResolvedValue(dataset)
     const item = { id: 'i1', datasetId: '1', values: { input: 'hello', expected_output: 'world' } }
     mockRepo.createItem.mockResolvedValue(item)
-    const result = await service.createItem('1', { values: { input: 'hello', expected_output: 'world' } })
+    const result = await service.createItem('1', {
+      values: { input: 'hello', expected_output: 'world' },
+    })
     expect(result).toEqual({ success: true, data: item })
   })
 
   it('defaults missing attributes to empty string', async () => {
     mockRepo.findById.mockResolvedValue({
-      id: '1', name: 'ds', attributes: ['input', 'expected_output', 'context'],
-      schemaVersion: 1, items: [],
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output', 'context'],
+      schemaVersion: 1,
+      items: [],
     })
-    mockRepo.createItem.mockResolvedValue({ id: 'item1', itemId: 'itemId1', revisionId: 'rev1', values: {} })
-    const result = await service.createItem('1', { values: { input: 'hello', expected_output: 'world' } })
+    mockRepo.createItem.mockResolvedValue({
+      id: 'item1',
+      itemId: 'itemId1',
+      revisionId: 'rev1',
+      values: {},
+    })
+    const result = await service.createItem('1', {
+      values: { input: 'hello', expected_output: 'world' },
+    })
     expect(result.success).toBe(true)
     const createCall = mockRepo.createItem.mock.calls[0]
     expect(createCall[1]).toEqual({ input: 'hello', expected_output: 'world', context: '' })
@@ -201,11 +221,21 @@ describe('createItem', () => {
 
   it('ignores extra keys not in schema', async () => {
     mockRepo.findById.mockResolvedValue({
-      id: '1', name: 'ds', attributes: ['input', 'expected_output'],
-      schemaVersion: 1, items: [],
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
     })
-    mockRepo.createItem.mockResolvedValue({ id: 'item1', itemId: 'itemId1', revisionId: 'rev1', values: {} })
-    const result = await service.createItem('1', { values: { input: 'hello', expected_output: 'world', extra: 'ignored' } })
+    mockRepo.createItem.mockResolvedValue({
+      id: 'item1',
+      itemId: 'itemId1',
+      revisionId: 'rev1',
+      values: {},
+    })
+    const result = await service.createItem('1', {
+      values: { input: 'hello', expected_output: 'world', extra: 'ignored' },
+    })
     expect(result.success).toBe(true)
     const createCall = mockRepo.createItem.mock.calls[0]
     expect(createCall[1]).toEqual({ input: 'hello', expected_output: 'world' })
@@ -213,7 +243,9 @@ describe('createItem', () => {
 
   it('fails when dataset not found', async () => {
     mockRepo.findById.mockResolvedValue(null)
-    const result = await service.createItem('999', { values: { input: 'hello', expected_output: 'world' } })
+    const result = await service.createItem('999', {
+      values: { input: 'hello', expected_output: 'world' },
+    })
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
 })
@@ -225,19 +257,26 @@ describe('updateItem', () => {
     mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
     const updated = { id: 'i1', datasetId: '1', values: { input: 'new', expected_output: 'val' } }
     mockRepo.updateItem.mockResolvedValue(updated)
-    const result = await service.updateItem('1', 'i1', { values: { input: 'new', expected_output: 'val' } })
+    const result = await service.updateItem('1', 'i1', {
+      values: { input: 'new', expected_output: 'val' },
+    })
     expect(result).toEqual({ success: true, data: updated })
   })
 
   it('defaults missing attributes to empty string on update', async () => {
     mockRepo.findById.mockResolvedValue({
-      id: '1', name: 'ds', attributes: ['input', 'expected_output', 'context'],
-      schemaVersion: 1, items: [],
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output', 'context'],
+      schemaVersion: 1,
+      items: [],
     })
     mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
     const updated = { id: 'i1', datasetId: '1', values: {} }
     mockRepo.updateItem.mockResolvedValue(updated)
-    const result = await service.updateItem('1', 'i1', { values: { input: 'new', expected_output: 'val' } })
+    const result = await service.updateItem('1', 'i1', {
+      values: { input: 'new', expected_output: 'val' },
+    })
     expect(result.success).toBe(true)
     const updateCall = mockRepo.updateItem.mock.calls[0]
     expect(updateCall[1]).toEqual({ input: 'new', expected_output: 'val', context: '' })
@@ -245,13 +284,18 @@ describe('updateItem', () => {
 
   it('ignores extra keys not in schema on update', async () => {
     mockRepo.findById.mockResolvedValue({
-      id: '1', name: 'ds', attributes: ['input', 'expected_output'],
-      schemaVersion: 1, items: [],
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
     })
     mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
     const updated = { id: 'i1', datasetId: '1', values: {} }
     mockRepo.updateItem.mockResolvedValue(updated)
-    const result = await service.updateItem('1', 'i1', { values: { input: 'new', expected_output: 'val', extra: 'ignored' } })
+    const result = await service.updateItem('1', 'i1', {
+      values: { input: 'new', expected_output: 'val', extra: 'ignored' },
+    })
     expect(result.success).toBe(true)
     const updateCall = mockRepo.updateItem.mock.calls[0]
     expect(updateCall[1]).toEqual({ input: 'new', expected_output: 'val' })
@@ -261,7 +305,9 @@ describe('updateItem', () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
     mockRepo.findById.mockResolvedValue(dataset)
     mockRepo.findItemById.mockResolvedValue(null)
-    const result = await service.updateItem('1', '999', { values: { input: 'x', expected_output: 'y' } })
+    const result = await service.updateItem('1', '999', {
+      values: { input: 'x', expected_output: 'y' },
+    })
     expect(result).toEqual({ success: false, error: 'Item not found' })
   })
 })
@@ -288,7 +334,10 @@ describe('getCsvTemplate', () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output', 'context'] }
     mockRepo.findById.mockResolvedValue(dataset)
     const result = await service.getCsvTemplate('1')
-    expect(result).toEqual({ success: true, data: { csv: 'input,expected_output,context', name: 'ds1' } })
+    expect(result).toEqual({
+      success: true,
+      data: { csv: 'input,expected_output,context', name: 'ds1' },
+    })
   })
 })
 
@@ -372,10 +421,17 @@ describe('importCsv', () => {
 describe('importCsv - CRLF handling', () => {
   it('handles CRLF line endings in CSV import', async () => {
     mockRepo.findById.mockResolvedValue({
-      id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [],
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
     })
     mockRepo.importItems.mockResolvedValue(undefined)
-    const result = await service.importCsv('1', 'input,expected_output\r\nhello,world\r\nfoo,bar\r\n')
+    const result = await service.importCsv(
+      '1',
+      'input,expected_output\r\nhello,world\r\nfoo,bar\r\n',
+    )
     expect(result.success).toBe(true)
     if (result.success) {
       expect(result.data.imported).toBe(2)
@@ -388,7 +444,11 @@ describe('importCsv - CRLF handling', () => {
 
   it('handles CR-only line endings in CSV import', async () => {
     mockRepo.findById.mockResolvedValue({
-      id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [],
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
     })
     mockRepo.importItems.mockResolvedValue(undefined)
     const result = await service.importCsv('1', 'input,expected_output\rhello,world\rfoo,bar')
@@ -401,28 +461,52 @@ describe('importCsv - CRLF handling', () => {
 
 describe('importCsv - non-CSV detection (C6)', () => {
   it('rejects JSON content as not valid CSV', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
     const result = await service.importCsv('1', '{"foo":"bar"}')
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('could not be parsed')
   })
 
   it('rejects JSON array content as not valid CSV', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
     const result = await service.importCsv('1', '[{"foo":"bar"}]')
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('could not be parsed')
   })
 
   it('rejects binary-looking content as not valid CSV', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
     const result = await service.importCsv('1', '\x00\x01\x02\x03')
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('could not be parsed')
   })
 
   it('returns missing columns error for single-column CSV with multi-column schema', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
     const result = await service.importCsv('1', 'justonecolumn\nvalue1\nvalue2')
     expect(result.success).toBe(false)
     // Single-column CSV is ambiguous — we give the more precise "missing columns" error
@@ -487,8 +571,24 @@ describe('previewCsv', () => {
 
 describe('listRevisions', () => {
   it('returns ok with revisions when dataset exists', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
-    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), itemCount: 0, experimentCount: 0, isCurrent: true }]
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
+    const revisions = [
+      {
+        id: 'rev1',
+        schemaVersion: 1,
+        attributes: ['input', 'expected_output'],
+        createdAt: new Date(),
+        itemCount: 0,
+        experimentCount: 0,
+        isCurrent: true,
+      },
+    ]
     mockRepo.findRevisions.mockResolvedValue(revisions)
     const result = await service.listRevisions('1')
     expect(result).toEqual({ success: true, data: revisions })
@@ -504,15 +604,34 @@ describe('listRevisions', () => {
 
 describe('getRevision', () => {
   it('returns ok with revision detail', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
-    const revision = { id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), items: [], experiments: [] }
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
+    const revision = {
+      id: 'rev1',
+      schemaVersion: 1,
+      attributes: ['input', 'expected_output'],
+      createdAt: new Date(),
+      items: [],
+      experiments: [],
+    }
     mockRepo.findRevisionById.mockResolvedValue(revision)
     const result = await service.getRevision('1', 'rev1')
     expect(result).toEqual({ success: true, data: revision })
   })
 
   it('returns fail when revision not found', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
+    mockRepo.findById.mockResolvedValue({
+      id: '1',
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+      schemaVersion: 1,
+      items: [],
+    })
     mockRepo.findRevisionById.mockResolvedValue(null)
     const result = await service.getRevision('1', 'rev999')
     expect(result).toEqual({ success: false, error: 'Revision not found' })

@@ -44,10 +44,7 @@ export function Layout() {
           ))}
         </nav>
       </aside>
-      <main
-        className="flex-1 overflow-auto"
-        style={{ background: 'var(--bg-base)' }}
-      >
+      <main className="flex-1 overflow-auto" style={{ background: 'var(--bg-base)' }}>
         <Outlet />
       </main>
     </div>

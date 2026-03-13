@@ -1,10 +1,5 @@
 import { useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useAddAttribute } from '@/hooks/use-datasets'
@@ -46,9 +41,7 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
           }}
         >
           <DialogHeader>
-            <DialogTitle
-              style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}
-            >
+            <DialogTitle style={{ color: 'var(--fg-primary)', fontSize: '14px', fontWeight: 600 }}>
               Add Attribute
             </DialogTitle>
           </DialogHeader>

@@ -20,9 +20,7 @@ describe('graders repository (integration)', () => {
 
     expect(found).not.toBeNull()
     expect(found!.id).toBe(created.id)
-    expect(found!.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    )
+    expect(found!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
     expect(found!.name).toBe('accuracy-grader')
     expect(found!.description).toBe('Checks exact match accuracy')
     expect(found!.rubric).toBe('Award 1 point for exact match, 0 otherwise.')

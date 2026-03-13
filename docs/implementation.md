@@ -16,12 +16,13 @@ A named collection of structured test cases. The current state (attributes and i
 
 ```ts
 type Dataset = {
-  id: uuid                    // System-generated
-  name: string                // User-provided. Non-empty, unique across all datasets
+  id: uuid // System-generated
+  name: string // User-provided. Non-empty, unique across all datasets
 }
 ```
 
 **Constraints:**
+
 - `name` must be non-empty
 - `name` must be unique across all datasets
 - A `Dataset` whose latest revision has zero items does not appear as selectable when creating an `Experiment`
@@ -29,6 +30,7 @@ type Dataset = {
 - Storage: PostgreSQL (latest, via Docker)
 
 **Relationships:**
+
 - Has many `DatasetRevision`s (one-to-many, cascade delete)
 - Referenced by many `Experiment`s. On deletion, all referencing experiments and their results are cascade-deleted
 
@@ -40,15 +42,16 @@ An immutable snapshot of a dataset's schema and items at a point in time. Create
 
 ```ts
 type DatasetRevision = {
-  id: uuid                    // System-generated
-  datasetId: uuid             // Reference to owning Dataset
-  schemaVersion: number       // Increments only on schema changes (attribute add/remove). Item mutations copy unchanged.
-  attributes: string[]        // The attribute schema at this revision. Always includes ["input", "expected_output"]
-  createdAt: timestamp        // System-generated. Used to determine latest revision (ORDER BY createdAt DESC LIMIT 1)
+  id: uuid // System-generated
+  datasetId: uuid // Reference to owning Dataset
+  schemaVersion: number // Increments only on schema changes (attribute add/remove). Item mutations copy unchanged.
+  attributes: string[] // The attribute schema at this revision. Always includes ["input", "expected_output"]
+  createdAt: timestamp // System-generated. Used to determine latest revision (ORDER BY createdAt DESC LIMIT 1)
 }
 ```
 
 **Constraints:**
+
 - `schemaVersion` starts at 1 when the dataset is created
 - `schemaVersion` increments by 1 only when attributes change (add or remove). Item-only mutations copy the previous `schemaVersion` unchanged
 - `attributes` always contains at least `["input", "expected_output"]`
@@ -59,6 +62,7 @@ type DatasetRevision = {
 - Latest revision is determined by `ORDER BY createdAt DESC LIMIT 1`
 
 **Relationships:**
+
 - Belongs to exactly one `Dataset` (many-to-one, cascade delete when dataset is deleted)
 - Has many `DatasetRevisionItem`s (one-to-many, cascade delete)
 - Referenced by many `Experiment`s. Revisions are never deleted individually — only via cascade when the parent dataset is deleted
@@ -71,9 +75,9 @@ A single row in a dataset revision. Immutable once created.
 
 ```ts
 type DatasetRevisionItem = {
-  id: uuid                    // System-generated. Unique per revision.
-  revisionId: uuid            // Reference to owning DatasetRevision
-  itemId: uuid                // Stable identity across revisions. Tracks the same logical item.
+  id: uuid // System-generated. Unique per revision.
+  revisionId: uuid // Reference to owning DatasetRevision
+  itemId: uuid // Stable identity across revisions. Tracks the same logical item.
   values: Record<string, string>
   // Keys are exactly the attribute names of the owning revision's attributes.
   // Values are always strings.
@@ -81,6 +85,7 @@ type DatasetRevisionItem = {
 ```
 
 **Constraints:**
+
 - `values` must contain exactly the keys present in the owning revision's `attributes` — no more, no fewer
 - All values are strings
 - `"input"` and `"expected_output"` keys are always present
@@ -90,6 +95,7 @@ type DatasetRevisionItem = {
 - Items are immutable within a revision — edits create a new revision with updated values
 
 **Relationships:**
+
 - Belongs to exactly one `DatasetRevision` (many-to-one, cascade delete)
 - Referenced by `ExperimentResult` (informational — cascade flows through `Experiment`, not directly)
 
@@ -101,14 +107,15 @@ An evaluation criterion. Holds the rubric given to the LLM judge.
 
 ```ts
 type Grader = {
-  id: uuid                    // System-generated
-  name: string                // User-provided. Non-empty, unique across all graders
-  description: string         // User-provided. May be empty string, never null
-  rubric: string              // User-provided. Non-empty. The full judging instruction for the LLM
+  id: uuid // System-generated
+  name: string // User-provided. Non-empty, unique across all graders
+  description: string // User-provided. May be empty string, never null
+  rubric: string // User-provided. Non-empty. The full judging instruction for the LLM
 }
 ```
 
 **Constraints:**
+
 - `name` must be non-empty
 - `name` must be unique across all graders
 - `rubric` must be non-empty
@@ -116,6 +123,7 @@ type Grader = {
 - No enforced length limit on `rubric`
 
 **Relationships:**
+
 - Referenced by many `Experiment`s (many-to-many via `graderIds`)
 - On deletion, all referencing experiments and their results are cascade-deleted. User must confirm if experiments exist
 
@@ -126,25 +134,27 @@ type Grader = {
 Ties a dataset and one or more graders together. Tracks run status and owns all result cells.
 
 ```ts
-type ExperimentStatus = "queued" | "running" | "complete" | "failed"
+type ExperimentStatus = 'queued' | 'running' | 'complete' | 'failed'
 
 type Experiment = {
-  id: uuid                    // System-generated
-  name: string                // User-provided. Non-empty; derived from original on re-run
-  datasetId: uuid             // User-selected. Reference to owning Dataset (for grouping/navigation)
-  datasetRevisionId: uuid     // System-set. Reference to the DatasetRevision pinned at creation time
-  graderIds: uuid[]           // User-selected. List of Grader IDs; at least one required
-  status: ExperimentStatus    // System-managed. Starts as "queued" on creation
+  id: uuid // System-generated
+  name: string // User-provided. Non-empty; derived from original on re-run
+  datasetId: uuid // User-selected. Reference to owning Dataset (for grouping/navigation)
+  datasetRevisionId: uuid // System-set. Reference to the DatasetRevision pinned at creation time
+  graderIds: uuid[] // User-selected. List of Grader IDs; at least one required
+  status: ExperimentStatus // System-managed. Starts as "queued" on creation
 }
 ```
 
 **Statuses:**
+
 - `"queued"` — created, waiting for another experiment to finish running
 - `"running"` — actively evaluating cells
 - `"complete"` — all cells evaluated (some may be in error state)
 - `"failed"` — run could not complete or all cells failed
 
 **Constraints:**
+
 - `name` must be non-empty
 - `datasetId` must reference an existing `Dataset` whose latest revision has at least one item
 - `graderIds` must contain at least one entry; no upper bound
@@ -154,6 +164,7 @@ type Experiment = {
 - Re-running creates a new `Experiment` with a new `id` and derived `name`; original is preserved
 
 **Relationships:**
+
 - References one `Dataset` (many-to-one, for grouping/navigation)
 - References one `DatasetRevision` (many-to-one, pinned at creation — the frozen item set)
 - References one or more `Grader`s (many-to-many via `graderIds[]`)
@@ -168,24 +179,26 @@ type Experiment = {
 One verdict for a single dataset item × grader pair within an experiment.
 
 ```ts
-type Verdict = "pass" | "fail" | "error"
+type Verdict = 'pass' | 'fail' | 'error'
 
 type ExperimentResult = {
-  id: uuid                    // System-generated
-  experimentId: uuid          // Owning experiment
+  id: uuid // System-generated
+  experimentId: uuid // Owning experiment
   datasetRevisionItemId: uuid // The revision item that was evaluated
-  graderId: uuid              // The grader used for this evaluation
-  verdict: Verdict            // "pass", "fail", or "error"
-  reason: string              // Explanation from the LLM judge; may be empty on "error"
+  graderId: uuid // The grader used for this evaluation
+  verdict: Verdict // "pass", "fail", or "error"
+  reason: string // Explanation from the LLM judge; may be empty on "error"
 }
 ```
 
 **Verdict values:**
+
 - `"pass"` — LLM judge determined the item meets the rubric criteria
 - `"fail"` — LLM judge determined the item does not meet the rubric criteria
 - `"error"` — The evaluation call failed; no verdict was produced
 
 **Constraints:**
+
 - The combination `(experimentId, datasetRevisionItemId, graderId)` is unique — exactly one cell per item × grader per experiment
 - `verdict` is always one of the three literal values; never null
 - `reason` is a string; empty string `""` is acceptable on error
@@ -193,6 +206,7 @@ type ExperimentResult = {
 - CSV export represents error cells as the literal string `"error"`
 
 **Relationships:**
+
 - Belongs to exactly one `Experiment` (many-to-one, cascade delete)
 - References one `DatasetRevisionItem` and one `Grader` by ID (informational — cascade flows through `Experiment`, not directly)
 
@@ -218,27 +232,27 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 
 ### Cascade Delete Rules
 
-| Entity deleted | Also deletes |
-|---|---|
-| `Dataset` | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments |
-| `DatasetRevision` | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually) |
-| `Grader` | All `Experiment`s referencing it in `graderIds`, all `ExperimentResult`s of those experiments |
-| `Experiment` | All its `ExperimentResult`s |
-| Attribute change | Creates a new revision; previous revisions are unchanged |
-| Item add/edit/delete | Creates a new revision; previous revisions are unchanged |
+| Entity deleted       | Also deletes                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Dataset`            | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments |
+| `DatasetRevision`    | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually)                                         |
+| `Grader`             | All `Experiment`s referencing it in `graderIds`, all `ExperimentResult`s of those experiments                                               |
+| `Experiment`         | All its `ExperimentResult`s                                                                                                                 |
+| Attribute change     | Creates a new revision; previous revisions are unchanged                                                                                    |
+| Item add/edit/delete | Creates a new revision; previous revisions are unchanged                                                                                    |
 
 ---
 
 ### System-Generated vs. User-Provided Fields
 
-| Entity | System-generated | User-provided |
-|---|---|---|
-| `Dataset` | `id` | `name` |
-| `DatasetRevision` | `id`, `schemaVersion`, `createdAt` | *(none — system-produced from mutations)* |
-| `DatasetRevisionItem` | `id`, `itemId` | `values` |
-| `Grader` | `id` | `name`, `description`, `rubric` |
-| `Experiment` | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds` |
-| `ExperimentResult` | `id`, `verdict`, `reason` | *(none — fully system-produced)* |
+| Entity                | System-generated                    | User-provided                             |
+| --------------------- | ----------------------------------- | ----------------------------------------- |
+| `Dataset`             | `id`                                | `name`                                    |
+| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`  | _(none — system-produced from mutations)_ |
+| `DatasetRevisionItem` | `id`, `itemId`                      | `values`                                  |
+| `Grader`              | `id`                                | `name`, `description`, `rubric`           |
+| `Experiment`          | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds`          |
+| `ExperimentResult`    | `id`, `verdict`, `reason`           | _(none — fully system-produced)_          |
 
 ---
 
@@ -282,6 +296,7 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 - **PostgreSQL** (latest, via Docker)
 
 **Module pattern — every domain follows this structure:**
+
 ```
 datasets/
   router.ts       # Hono route definitions (CRUD + revision endpoints)
@@ -347,20 +362,19 @@ All service functions return `Result<T>` instead of throwing exceptions. Errors 
 
 ```ts
 // packages/shared/src/result.ts
-export type Result<T, E = string> =
-  | { success: true; data: T }
-  | { success: false; error: E }
+export type Result<T, E = string> = { success: true; data: T } | { success: false; error: E }
 
 export const ok = <T>(data: T): Result<T, never> => ({ success: true, data })
 export const fail = <E = string>(error: E): Result<never, E> => ({ success: false, error })
 ```
 
 **Usage in services:**
+
 ```ts
 // datasets/service.ts
 const createDataset = async (input: CreateDatasetInput) => {
   const existing = await repository.findByName(input.name)
-  if (existing) return fail("Dataset name already exists")
+  if (existing) return fail('Dataset name already exists')
 
   const dataset = await repository.create(input)
   return ok(dataset)
@@ -368,9 +382,10 @@ const createDataset = async (input: CreateDatasetInput) => {
 ```
 
 **Usage in routes:**
+
 ```ts
 // datasets/router.ts
-app.post("/datasets", async (c) => {
+app.post('/datasets', async (c) => {
   const body = await c.req.json()
   const parsed = createDatasetSchema.safeParse(body)
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400)
@@ -383,6 +398,7 @@ app.post("/datasets", async (c) => {
 ```
 
 **Rules:**
+
 - Services NEVER throw. They return `Result<T>`
 - Repositories MAY throw (Prisma errors) — services catch and wrap in `fail()`
 - Routes check `result.success` and map to HTTP status codes
@@ -446,15 +462,15 @@ Every tool must be initialized via its CLI command. No hand-writing manifests or
 
 **Research before installing**: Always look up the current latest version and setup guide for any package before installing or configuring it. Do not rely on memorized versions — they go stale. Use official documentation sites (e.g. `hono.dev`, `prisma.io`, `tailwindcss.com`, `tanstack.com`, `sdk.vercel.ai`) to confirm the correct install command, init process, and configuration format for the current version.
 
-| Tool | Init command |
-|---|---|
-| Monorepo | `pnpm dlx create-turbo@latest` |
-| API (Hono) | `pnpm create hono@latest` |
-| Frontend (Vite) | `pnpm dlx create vite@latest` |
-| shadcn/ui | `pnpm dlx shadcn@latest init` |
-| Prisma | `pnpm dlx prisma init` |
-| ESLint | `pnpm dlx @eslint/create-config@latest` |
-| TypeScript | `pnpm exec tsc --init` |
+| Tool            | Init command                            |
+| --------------- | --------------------------------------- |
+| Monorepo        | `pnpm dlx create-turbo@latest`          |
+| API (Hono)      | `pnpm create hono@latest`               |
+| Frontend (Vite) | `pnpm dlx create vite@latest`           |
+| shadcn/ui       | `pnpm dlx shadcn@latest init`           |
+| Prisma          | `pnpm dlx prisma init`                  |
+| ESLint          | `pnpm dlx @eslint/create-config@latest` |
+| TypeScript      | `pnpm exec tsc --init`                  |
 
 ---
 
@@ -556,15 +572,15 @@ Per the spec's resolved decision on rubric role:
 
 When the prototype outgrows in-process queuing, swap to BullMQ:
 
-| Concern | p-queue (now) | BullMQ (later) |
-|---|---|---|
-| Infrastructure | None | Redis required |
-| Persistence | In-memory, lost on restart | Redis-backed, survives restarts |
-| Multi-process | Single process | Multiple workers across machines |
-| Monitoring | Application logs | Bull Board dashboard |
-| Rate limiting | Built-in (`intervalCap`) | Job options + rate limiter |
-| Dead letter queue | Manual (catch + save) | Built-in DLQ |
-| Setup complexity | ~20 lines | ~100 lines + Redis |
+| Concern           | p-queue (now)              | BullMQ (later)                   |
+| ----------------- | -------------------------- | -------------------------------- |
+| Infrastructure    | None                       | Redis required                   |
+| Persistence       | In-memory, lost on restart | Redis-backed, survives restarts  |
+| Multi-process     | Single process             | Multiple workers across machines |
+| Monitoring        | Application logs           | Bull Board dashboard             |
+| Rate limiting     | Built-in (`intervalCap`)   | Job options + rate limiter       |
+| Dead letter queue | Manual (catch + save)      | Built-in DLQ                     |
+| Setup complexity  | ~20 lines                  | ~100 lines + Redis               |
 
 **Migration trigger**: when experiments take >30 min, need multi-server scaling, or need job persistence across restarts.
 
@@ -578,14 +594,15 @@ The frontend receives live experiment progress via **SSE** using Hono's built-in
 
 **Event types:**
 
-| Event | When emitted | Payload |
-|---|---|---|
-| `connected` | Client connects | `{ experimentId }` |
-| `progress` | After each cell completes | `{ experimentId, status, cellsCompleted, totalCells }` |
-| `completed` | Experiment finishes | `{ experimentId, status, cellsCompleted, totalCells }` |
-| `error` | Experiment fails entirely | `{ experimentId, error }` |
+| Event       | When emitted              | Payload                                                |
+| ----------- | ------------------------- | ------------------------------------------------------ |
+| `connected` | Client connects           | `{ experimentId }`                                     |
+| `progress`  | After each cell completes | `{ experimentId, status, cellsCompleted, totalCells }` |
+| `completed` | Experiment finishes       | `{ experimentId, status, cellsCompleted, totalCells }` |
+| `error`     | Experiment fails entirely | `{ experimentId, error }`                              |
 
 **Server side (Hono):**
+
 - The evaluation queue emits events via an in-process `EventEmitter` as each cell completes
 - The SSE endpoint subscribes to events for the requested experiment ID
 - Events include aggregate progress (cells completed / total), not per-cell details
@@ -593,6 +610,7 @@ The frontend receives live experiment progress via **SSE** using Hono's built-in
 - `stream.onAbort()` cleans up the subscription on client disconnect
 
 **Client side (React):**
+
 - A custom `useExperimentSSE(experimentId)` hook opens an `EventSource` connection
 - On `progress` events: updates TanStack Query cache directly via `queryClient.setQueryData()` for instant UI feedback
 - On `completed` events: invalidates the experiment query to fetch final results from the server
@@ -600,6 +618,7 @@ The frontend receives live experiment progress via **SSE** using Hono's built-in
 - No polling needed — SSE provides push-based updates
 
 **Flow:**
+
 ```
 Cell completes → EventEmitter fires → SSE stream writes progress event
                                           │
@@ -614,6 +633,7 @@ Cell completes → EventEmitter fires → SSE stream writes progress event
 ```
 
 **Why SSE over WebSockets:**
+
 - Unidirectional (server → client) is all we need — client doesn't send data back
 - Native browser support via `EventSource` — no library needed
 - Hono has built-in `streamSSE()` — zero extra dependencies
@@ -621,6 +641,7 @@ Cell completes → EventEmitter fires → SSE stream writes progress event
 - Simpler than WebSockets for this use case
 
 **Connection model: one SSE connection per experiment**
+
 - Each experiment detail view opens its own `EventSource` to `GET /experiments/:id/events`
 - With max 2 concurrent experiments, that's at most 2 SSE connections
 - HTTP/2 multiplexes all connections over a single TCP connection — no resource concern
@@ -684,6 +705,7 @@ VITE_API_URL="http://localhost:3001"
 ```
 
 **Rules:**
+
 - `.env` at monorepo root — single source of truth
 - `.env.example` committed to repo with placeholder values (no real keys)
 - `.env` added to `.gitignore` — never committed
@@ -723,7 +745,7 @@ A structured YAML file documenting every API endpoint with curl commands for man
 
 datasets:
   create:
-    description: "Create a new dataset"
+    description: 'Create a new dataset'
     command: |
       curl -X POST http://localhost:3001/datasets \
         -H "Content-Type: application/json" \
@@ -732,7 +754,7 @@ datasets:
     expected_body: '{ "success": true, "data": { "id": "...", "name": "my-dataset", "attributes": ["input", "expected_output"] } }'
 
   create_duplicate_name:
-    description: "Reject duplicate dataset name"
+    description: 'Reject duplicate dataset name'
     command: |
       curl -X POST http://localhost:3001/datasets \
         -H "Content-Type: application/json" \
@@ -741,7 +763,7 @@ datasets:
     expected_body: '{ "success": false, "error": "Dataset name already exists" }'
 
   create_empty_name:
-    description: "Reject empty dataset name"
+    description: 'Reject empty dataset name'
     command: |
       curl -X POST http://localhost:3001/datasets \
         -H "Content-Type: application/json" \
@@ -749,19 +771,19 @@ datasets:
     expected_status: 400
 
   list:
-    description: "List all datasets"
+    description: 'List all datasets'
     command: |
       curl http://localhost:3001/datasets
     expected_status: 200
 
   get:
-    description: "Get dataset by ID with schema and items"
+    description: 'Get dataset by ID with schema and items'
     command: |
       curl http://localhost:3001/datasets/:id
     expected_status: 200
 
   rename:
-    description: "Rename a dataset"
+    description: 'Rename a dataset'
     command: |
       curl -X PATCH http://localhost:3001/datasets/:id \
         -H "Content-Type: application/json" \
@@ -769,13 +791,13 @@ datasets:
     expected_status: 200
 
   delete:
-    description: "Delete dataset (cascades to items + experiments)"
+    description: 'Delete dataset (cascades to items + experiments)'
     command: |
       curl -X DELETE http://localhost:3001/datasets/:id
     expected_status: 200
 
   add_attribute:
-    description: "Add custom attribute to dataset schema"
+    description: 'Add custom attribute to dataset schema'
     command: |
       curl -X POST http://localhost:3001/datasets/:id/attributes \
         -H "Content-Type: application/json" \
@@ -783,7 +805,7 @@ datasets:
     expected_status: 201
 
   add_duplicate_attribute:
-    description: "Reject duplicate attribute name"
+    description: 'Reject duplicate attribute name'
     command: |
       curl -X POST http://localhost:3001/datasets/:id/attributes \
         -H "Content-Type: application/json" \
@@ -791,20 +813,20 @@ datasets:
     expected_status: 400
 
   remove_attribute:
-    description: "Remove custom attribute from schema"
+    description: 'Remove custom attribute from schema'
     command: |
       curl -X DELETE http://localhost:3001/datasets/:id/attributes/context
     expected_status: 200
 
   remove_builtin_attribute:
-    description: "Reject removal of built-in attribute"
+    description: 'Reject removal of built-in attribute'
     command: |
       curl -X DELETE http://localhost:3001/datasets/:id/attributes/input
     expected_status: 400
 
 dataset_items:
   create:
-    description: "Add item to dataset"
+    description: 'Add item to dataset'
     command: |
       curl -X POST http://localhost:3001/datasets/:id/items \
         -H "Content-Type: application/json" \
@@ -812,7 +834,7 @@ dataset_items:
     expected_status: 201
 
   create_missing_builtin:
-    description: "Item without required built-in attributes"
+    description: 'Item without required built-in attributes'
     command: |
       curl -X POST http://localhost:3001/datasets/:id/items \
         -H "Content-Type: application/json" \
@@ -820,13 +842,13 @@ dataset_items:
     expected_status: 400
 
   list:
-    description: "List items in a dataset"
+    description: 'List items in a dataset'
     command: |
       curl http://localhost:3001/datasets/:id/items
     expected_status: 200
 
   update:
-    description: "Edit a dataset item"
+    description: 'Edit a dataset item'
     command: |
       curl -X PATCH http://localhost:3001/datasets/:id/items/:itemId \
         -H "Content-Type: application/json" \
@@ -834,33 +856,33 @@ dataset_items:
     expected_status: 200
 
   delete:
-    description: "Remove a dataset item"
+    description: 'Remove a dataset item'
     command: |
       curl -X DELETE http://localhost:3001/datasets/:id/items/:itemId
     expected_status: 200
 
   csv_template:
-    description: "Download CSV template for dataset"
+    description: 'Download CSV template for dataset'
     command: |
       curl http://localhost:3001/datasets/:id/csv/template -o template.csv
     expected_status: 200
 
   csv_import:
-    description: "Import items from CSV"
+    description: 'Import items from CSV'
     command: |
       curl -X POST http://localhost:3001/datasets/:id/csv/import \
         -F "file=@items.csv"
     expected_status: 200
 
   csv_export:
-    description: "Export items as CSV"
+    description: 'Export items as CSV'
     command: |
       curl http://localhost:3001/datasets/:id/csv/export -o items.csv
     expected_status: 200
 
 graders:
   create:
-    description: "Create a new grader"
+    description: 'Create a new grader'
     command: |
       curl -X POST http://localhost:3001/graders \
         -H "Content-Type: application/json" \
@@ -868,7 +890,7 @@ graders:
     expected_status: 201
 
   create_empty_rubric:
-    description: "Reject grader with empty rubric"
+    description: 'Reject grader with empty rubric'
     command: |
       curl -X POST http://localhost:3001/graders \
         -H "Content-Type: application/json" \
@@ -876,19 +898,19 @@ graders:
     expected_status: 400
 
   list:
-    description: "List all graders"
+    description: 'List all graders'
     command: |
       curl http://localhost:3001/graders
     expected_status: 200
 
   get:
-    description: "Get grader by ID"
+    description: 'Get grader by ID'
     command: |
       curl http://localhost:3001/graders/:id
     expected_status: 200
 
   update:
-    description: "Edit a grader"
+    description: 'Edit a grader'
     command: |
       curl -X PATCH http://localhost:3001/graders/:id \
         -H "Content-Type: application/json" \
@@ -896,14 +918,14 @@ graders:
     expected_status: 200
 
   delete:
-    description: "Delete grader (cascades to experiments)"
+    description: 'Delete grader (cascades to experiments)'
     command: |
       curl -X DELETE http://localhost:3001/graders/:id
     expected_status: 200
 
 experiments:
   create:
-    description: "Create an experiment"
+    description: 'Create an experiment'
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
@@ -911,7 +933,7 @@ experiments:
     expected_status: 201
 
   create_no_graders:
-    description: "Reject experiment with no graders"
+    description: 'Reject experiment with no graders'
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
@@ -919,47 +941,47 @@ experiments:
     expected_status: 400
 
   list:
-    description: "List all experiments"
+    description: 'List all experiments'
     command: |
       curl http://localhost:3001/experiments
     expected_status: 200
 
   get:
-    description: "Get experiment with results"
+    description: 'Get experiment with results'
     command: |
       curl http://localhost:3001/experiments/:id
     expected_status: 200
 
   run:
-    description: "Trigger experiment run (returns 202, processes async)"
+    description: 'Trigger experiment run (returns 202, processes async)'
     command: |
       curl -X POST http://localhost:3001/experiments/:id/run
     expected_status: 202
 
   events:
-    description: "SSE stream for experiment progress"
+    description: 'SSE stream for experiment progress'
     command: |
       curl -N http://localhost:3001/experiments/:id/events
     expected_status: 200
-    notes: "Streams SSE events: connected, progress, completed, error"
+    notes: 'Streams SSE events: connected, progress, completed, error'
 
   delete:
-    description: "Delete experiment and all results"
+    description: 'Delete experiment and all results'
     command: |
       curl -X DELETE http://localhost:3001/experiments/:id
     expected_status: 200
 
   csv_export:
-    description: "Export experiment results as CSV"
+    description: 'Export experiment results as CSV'
     command: |
       curl http://localhost:3001/experiments/:id/csv/export -o results.csv
     expected_status: 200
-    notes: "Only available when experiment status is complete"
+    notes: 'Only available when experiment status is complete'
 
   rerun:
-    description: "Re-run experiment (creates new experiment)"
+    description: 'Re-run experiment (creates new experiment)'
     command: |
       curl -X POST http://localhost:3001/experiments/:id/rerun
     expected_status: 201
-    notes: "Creates a new experiment with derived name, original preserved"
+    notes: 'Creates a new experiment with derived name, original preserved'
 ```

@@ -9,25 +9,29 @@
 ## Domain Exploration
 
 ### Concepts
+
 Evaluation, rubric, verdict, pass/fail, test case, grader, experiment run, dataset schema, accuracy, LLM judge, ground truth, provenance, threshold.
 
 ### Color World
+
 Deep slate (terminal backgrounds), phosphor green (passing signal), warning amber (instrument panels), error red (system alerts), steel blue (scientific instruments), off-white (lab notebook paper), ink black (dense data tables). Dark mode, cool temperature, desaturated except for semantic signals.
 
 ### Signature Element
+
 The **results grid cell** — a dense, borderless grid where each cell has a 2px colored left-border accent (green/red/amber) and a verdict glyph (✓/✗/!). Hover expands to show the grader rationale in an inline popover. This IS the product.
 
 ### Defaults Rejected
 
-| Default | Replacement |
-|---|---|
-| White card grid with soft shadows | Dark canvas, borders-only depth, sharp radius (4px) |
-| Color-coded status badges (pill-shaped) | Left-border accent on table rows — color at the edge, not inside a badge |
-| Blue primary action buttons | Near-white buttons on dark surfaces — the results speak louder than the buttons |
+| Default                                 | Replacement                                                                     |
+| --------------------------------------- | ------------------------------------------------------------------------------- |
+| White card grid with soft shadows       | Dark canvas, borders-only depth, sharp radius (4px)                             |
+| Color-coded status badges (pill-shaped) | Left-border accent on table rows — color at the edge, not inside a badge        |
+| Blue primary action buttons             | Near-white buttons on dark surfaces — the results speak louder than the buttons |
 
 ## Token Architecture
 
 ### Foreground
+
 ```
 --fg-primary:     hsl(240, 5%, 90%)     ← default text
 --fg-secondary:   hsl(240, 4%, 66%)     ← supporting text
@@ -37,6 +41,7 @@ The **results grid cell** — a dense, borderless grid where each cell has a 2px
 ```
 
 ### Background / Surfaces
+
 ```
 --bg-base:        hsl(240, 6%, 7%)      ← canvas
 --bg-surface-1:   hsl(240, 5%, 11%)     ← panels, cards
@@ -46,6 +51,7 @@ The **results grid cell** — a dense, borderless grid where each cell has a 2px
 ```
 
 ### Borders
+
 ```
 --border-subtle:  rgba(255,255,255,0.05)   ← table row dividers
 --border-default: rgba(255,255,255,0.08)   ← card/panel borders
@@ -54,6 +60,7 @@ The **results grid cell** — a dense, borderless grid where each cell has a 2px
 ```
 
 ### Accent
+
 ```
 --accent:         hsl(215, 60%, 58%)       ← steel-blue, selection/focus only
 --accent-subtle:  hsla(215, 60%, 58%, 0.12)
@@ -61,6 +68,7 @@ The **results grid cell** — a dense, borderless grid where each cell has a 2px
 ```
 
 ### Semantic Colors
+
 ```
 --pass:           hsl(142, 52%, 44%)       ← phosphor green
 --pass-subtle:    hsla(142, 52%, 44%, 0.08)
@@ -88,18 +96,18 @@ The **results grid cell** — a dense, borderless grid where each cell has a 2px
 --font-mono:   'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace
 ```
 
-| Role | Size | Weight | Spacing | Font |
-|---|---|---|---|---|
-| Page title | 16px | 600 | -0.01em | sans |
-| Section heading | 13px | 600 | 0.01em | sans, uppercase |
-| Body | 13px | 400 | 0 | sans |
-| Table header | 11px | 600 | 0.05em | sans, uppercase |
-| Table cell | 13px | 400 | 0 | sans |
-| Data / scores | 13px | 500 | 0 | mono, tabular-nums |
-| Stat number | 24px | 600 | -0.02em | mono, tabular-nums |
-| Stat label | 11px | 500 | 0.04em | sans, uppercase |
-| Code / rubric | 12px | 400 | 0 | mono |
-| Badge label | 11px | 500 | 0.03em | sans |
+| Role            | Size | Weight | Spacing | Font               |
+| --------------- | ---- | ------ | ------- | ------------------ |
+| Page title      | 16px | 600    | -0.01em | sans               |
+| Section heading | 13px | 600    | 0.01em  | sans, uppercase    |
+| Body            | 13px | 400    | 0       | sans               |
+| Table header    | 11px | 600    | 0.05em  | sans, uppercase    |
+| Table cell      | 13px | 400    | 0       | sans               |
+| Data / scores   | 13px | 500    | 0       | mono, tabular-nums |
+| Stat number     | 24px | 600    | -0.02em | mono, tabular-nums |
+| Stat label      | 11px | 500    | 0.04em  | sans, uppercase    |
+| Code / rubric   | 12px | 400    | 0       | mono               |
+| Badge label     | 11px | 500    | 0.03em  | sans               |
 
 **Critical**: All numeric data uses `font-variant-numeric: tabular-nums` and mono stack. Numbers in columns must align.
 
@@ -141,27 +149,35 @@ Why: Dark canvas, tool aesthetic, terminal feel. Shadows imply physical light wh
 ## Component Patterns
 
 ### Navigation
+
 Left sidebar (220px, `--bg-base`, `1px` right border). Three sections: Datasets, Graders, Experiments. Active item: 2px left-border in `--accent`. Section headings: 10px, 600, uppercase, `--fg-tertiary`.
 
 ### Dataset List
+
 Dense table rows. Name (primary), item count + field count (mono, secondary), timestamp (tertiary). Hover: `--bg-surface-1` fill. Row separator: `1px solid --border-subtle`.
 
 ### Dataset Detail
+
 Two-panel split. Left (30%): schema fields as definition list. Right (70%): items table. Separated by `1px solid --border-default` vertical divider.
 
 ### Grader List
+
 Same as dataset list. Type badge (`LLM` in `--accent-subtle` bg) distinguishes grader types.
 
 ### Grader Detail
+
 Rubric editor in `--bg-inset` textarea, mono font, 12px. Auto-grows. Focus: `--border-focus`. Unsaved changes: `1px solid --error` left-border on form panel.
 
 ### Experiment List
+
 Left-border accent per status: Running (`--accent`), Pass (`--pass`), Fail below threshold (`--fail`), Error (`--error`), Queued (`--neutral`). Running rows show 2px progress line at bottom.
 
 ### Results Table (Core View)
+
 Rows = dataset items, Columns = graders. Default sort: fail count descending — failures at top.
 
 **Cell anatomy:**
+
 - Height: 44px
 - 2px left-border in semantic color
 - Background tint: fail/error cells only (`--fail-subtle`, `--error-subtle`)
@@ -169,6 +185,7 @@ Rows = dataset items, Columns = graders. Default sort: fail count descending —
 - No text labels — glyph + color communicates
 
 **Hover popover** (150ms delay):
+
 - `--bg-surface-3`, `1px solid --border-strong`, `border-radius: 6px`
 - Shows: item key, grader name, model output (mono, 12px), rationale
 - Max-width: 320px, anchored to cell
@@ -176,12 +193,15 @@ Rows = dataset items, Columns = graders. Default sort: fail count descending —
 **Aggregate row** (pinned bottom): Each column's pass rate + inline mini-bar (Tremor ProgressBar, 8px). `--bg-surface-2` background.
 
 ### Aggregate Stats Banner
+
 Above results table, 80px height, `--bg-surface-1`.
+
 1. Pass rate headline: 24px mono, colored by threshold
 2. Cell count: `"120 items × 3 graders = 360 evaluations"`
 3. Per-grader breakdown: Tremor BarChart
 
 ### Pass/Fail/Error Cell (Atomic Unit)
+
 ```
 Container: 44px height, 8px 12px padding
 Left border: 2px solid <semantic-color>
@@ -192,29 +212,29 @@ Hover: popover after 150ms delay
 
 ## States
 
-| View | Loading | Empty | Error | Populated |
-|---|---|---|---|---|
-| Lists | 3 row shimmers | Inset panel + icon + action | Inset panel + alert + retry | Dense rows |
-| Dataset schema | Block shimmer | Dashed border + "+" button | Inline alert | Definition list |
-| Dataset items | Row shimmers + visible headers | Inset panel with column headers shown | Alert in table body | Scrollable table |
-| Results table | Grid shimmer (headers first) | Centered inset panel | Error strip + partial data | Dense matrix |
-| Aggregate stats | `—` + Loader2 spinner | N/A | Error strip | Stats + chart |
+| View            | Loading                        | Empty                                 | Error                       | Populated        |
+| --------------- | ------------------------------ | ------------------------------------- | --------------------------- | ---------------- |
+| Lists           | 3 row shimmers                 | Inset panel + icon + action           | Inset panel + alert + retry | Dense rows       |
+| Dataset schema  | Block shimmer                  | Dashed border + "+" button            | Inline alert                | Definition list  |
+| Dataset items   | Row shimmers + visible headers | Inset panel with column headers shown | Alert in table body         | Scrollable table |
+| Results table   | Grid shimmer (headers first)   | Centered inset panel                  | Error strip + partial data  | Dense matrix     |
+| Aggregate stats | `—` + Loader2 spinner          | N/A                                   | Error strip                 | Stats + chart    |
 
 **Universal rule**: Error never hides existing data. Show stale data + error bar: `"Last updated 4 min ago · Refresh failed"`.
 
 ## Animation (Motion library)
 
-| Element | Transition | Duration | Easing |
-|---|---|---|---|
-| Cell hover popover | opacity 0→1, y 4→0 | 150ms | ease-out |
-| Popover dismiss | opacity 1→0 | 100ms | ease-in |
-| Nav item active | left-border 0→2px | 150ms | ease-out |
-| New experiment row | height 0→auto, opacity 0→1 | 200ms | ease-out |
-| Result cell fill (live) | opacity 0.4→1 | 200ms | ease-out |
-| Breathing cell (pending) | opacity 0.4↔0.7 | 1500ms loop | ease-in-out |
-| Slide panel open | x 100%→0 | 250ms | ease-out |
-| Slide panel close | x 0→100% | 200ms | ease-in |
-| Tab content switch | opacity 0→1 | 100ms | ease-out |
+| Element                  | Transition                 | Duration    | Easing      |
+| ------------------------ | -------------------------- | ----------- | ----------- |
+| Cell hover popover       | opacity 0→1, y 4→0         | 150ms       | ease-out    |
+| Popover dismiss          | opacity 1→0                | 100ms       | ease-in     |
+| Nav item active          | left-border 0→2px          | 150ms       | ease-out    |
+| New experiment row       | height 0→auto, opacity 0→1 | 200ms       | ease-out    |
+| Result cell fill (live)  | opacity 0.4→1              | 200ms       | ease-out    |
+| Breathing cell (pending) | opacity 0.4↔0.7            | 1500ms loop | ease-in-out |
+| Slide panel open         | x 100%→0                   | 250ms       | ease-out    |
+| Slide panel close        | x 0→100%                   | 200ms       | ease-in     |
+| Tab content switch       | opacity 0→1                | 100ms       | ease-out    |
 
 **Does NOT animate**: Table row reorder, page navigation, form states, badge changes, modal backdrop. If it wouldn't fit in `htop`, it doesn't belong.
 

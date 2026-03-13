@@ -59,7 +59,10 @@ describe('POST /graders', () => {
   })
 
   it('returns 400 when service fails (name exists)', async () => {
-    mockService.createGrader.mockResolvedValue({ success: false, error: 'Grader name already exists' })
+    mockService.createGrader.mockResolvedValue({
+      success: false,
+      error: 'Grader name already exists',
+    })
     const res = await jsonPost('/graders', { name: 'dup', rubric: 'Some rubric' })
     expect(res.status).toBe(400)
     const body = await res.json()

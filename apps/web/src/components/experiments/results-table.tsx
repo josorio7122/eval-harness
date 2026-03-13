@@ -11,12 +11,7 @@ interface ResultsTableProps {
 
 function getInputLabel(values: Record<string, string>): string {
   // Prefer 'input', then 'prompt', then first value
-  return (
-    values['input'] ??
-    values['prompt'] ??
-    Object.values(values)[0] ??
-    '(no label)'
-  )
+  return values['input'] ?? values['prompt'] ?? Object.values(values)[0] ?? '(no label)'
 }
 
 function failCount(itemId: string, results: ExperimentResult[]): number {
@@ -26,9 +21,7 @@ function failCount(itemId: string, results: ExperimentResult[]): number {
 }
 
 function passCount(itemId: string, results: ExperimentResult[]): number {
-  return results.filter(
-    (r) => r.datasetRevisionItemId === itemId && r.verdict === 'pass',
-  ).length
+  return results.filter((r) => r.datasetRevisionItemId === itemId && r.verdict === 'pass').length
 }
 
 export function ResultsTable({ experiment }: ResultsTableProps) {
@@ -39,9 +32,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   const results = experiment.results ?? []
 
   // Sort items: fail count descending (failures float to top)
-  const sortedItems = [...items].sort(
-    (a, b) => failCount(b.id, results) - failCount(a.id, results),
-  )
+  const sortedItems = [...items].sort((a, b) => failCount(b.id, results) - failCount(a.id, results))
 
   // Apply filter
   const filteredItems = sortedItems.filter((item) => {
@@ -97,7 +88,15 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetRevisionItemId))
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{
+        flex: 1,
+        overflow: 'auto',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* Aggregate stats — filter-aware, only when results exist */}
       {results.length > 0 && (
         <AggregateStats
@@ -133,7 +132,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
         </span>
         {(['all', 'passed-all', 'any-failed'] as ResultsFilter[]).map((opt) => {
           const labels: Record<ResultsFilter, string> = {
-            'all': 'All',
+            all: 'All',
             'passed-all': 'Passed All',
             'any-failed': 'Any Failed',
           }
@@ -195,7 +194,9 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
           }}
         >
           <thead>
-            <tr style={{ background: 'var(--bg-surface-2)', position: 'sticky', top: 0, zIndex: 10 }}>
+            <tr
+              style={{ background: 'var(--bg-surface-2)', position: 'sticky', top: 0, zIndex: 10 }}
+            >
               {/* Input column header */}
               <th
                 style={{
@@ -235,7 +236,14 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                       minWidth: '80px',
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px',
+                      }}
+                    >
                       <span>{eg.grader.name}</span>
                       {gs && gs.total > 0 && (
                         <span
@@ -295,7 +303,9 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               filteredItems.map((item) => {
                 const inputLabel = getInputLabel(item.values)
                 const itemPassCount = passCount(item.id, results)
-                const itemResultCount = results.filter((r) => r.datasetRevisionItemId === item.id).length
+                const itemResultCount = results.filter(
+                  (r) => r.datasetRevisionItemId === item.id,
+                ).length
                 const allPass = itemPassCount === graders.length && graders.length > 0
                 const anyFail = failCount(item.id, results) > 0
 
@@ -377,14 +387,20 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                             color: allPass
                               ? 'var(--pass-fg)'
                               : anyFail
-                              ? 'var(--fail-fg)'
-                              : 'var(--fg-secondary)',
+                                ? 'var(--fail-fg)'
+                                : 'var(--fg-secondary)',
                           }}
                         >
                           {itemPassCount}/{graders.length}
                         </span>
                       ) : (
-                        <span style={{ fontSize: '11px', color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            color: 'var(--fg-muted)',
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                        >
                           —
                         </span>
                       )}
@@ -433,7 +449,14 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                     }}
                   >
                     {rate !== null ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          alignItems: 'center',
+                        }}
+                      >
                         <span
                           style={{
                             fontSize: '12px',
@@ -465,7 +488,13 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                         </div>
                       </div>
                     ) : (
-                      <span style={{ fontSize: '12px', color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+                      <span
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--fg-muted)',
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
                         —
                       </span>
                     )}
@@ -477,7 +506,10 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                 {(() => {
                   const totalPasses = graderPassRates.reduce((sum, gs) => sum + gs.passes, 0)
                   const totalFilteredCells = filteredItems.length * graders.length
-                  const overallPct = totalFilteredCells > 0 ? Math.round((totalPasses / totalFilteredCells) * 100) : null
+                  const overallPct =
+                    totalFilteredCells > 0
+                      ? Math.round((totalPasses / totalFilteredCells) * 100)
+                      : null
                   return (
                     <span
                       style={{

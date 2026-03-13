@@ -93,10 +93,7 @@ export function useRerunExperiment() {
 }
 
 // SSE hook for live experiment updates
-export function useExperimentSSE(
-  experimentId: string | undefined,
-  status: string | undefined,
-) {
+export function useExperimentSSE(experimentId: string | undefined, status: string | undefined) {
   const qc = useQueryClient()
   const [progress, setProgress] = useState({ cellsCompleted: 0, totalCells: 0 })
 
@@ -108,21 +105,21 @@ export function useExperimentSSE(
 
     es.addEventListener('progress', (e) => {
       const progressData = JSON.parse(e.data)
-      setProgress({ cellsCompleted: progressData.cellsCompleted, totalCells: progressData.totalCells })
+      setProgress({
+        cellsCompleted: progressData.cellsCompleted,
+        totalCells: progressData.totalCells,
+      })
 
       if (progressData.result) {
-        qc.setQueryData(
-          ['experiments', experimentId],
-          (old: Experiment | undefined) => {
-            if (!old) return old
-            const existingIds = new Set(old.results?.map((r) => r.id) ?? [])
-            if (existingIds.has(progressData.result.id)) return old
-            return {
-              ...old,
-              results: [...(old.results ?? []), progressData.result],
-            }
-          },
-        )
+        qc.setQueryData(['experiments', experimentId], (old: Experiment | undefined) => {
+          if (!old) return old
+          const existingIds = new Set(old.results?.map((r) => r.id) ?? [])
+          if (existingIds.has(progressData.result.id)) return old
+          return {
+            ...old,
+            results: [...(old.results ?? []), progressData.result],
+          }
+        })
       }
     })
 
