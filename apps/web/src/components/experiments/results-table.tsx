@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 import { VerdictCell } from './verdict-cell'
 import { AggregateStats } from './aggregate-stats'
@@ -40,7 +42,6 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
     const itemResults = results.filter((r) => r.datasetRevisionItemId === item.id)
     const graderCount = graders.length
     if (filter === 'passed-all') {
-      // All graders must have a pass verdict (and result must exist)
       const passes = itemResults.filter((r) => r.verdict === 'pass').length
       return passes === graderCount && graderCount > 0
     }
@@ -52,16 +53,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
 
   if (items.length === 0 || graders.length === 0) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '40px',
-          color: 'var(--fg-muted)',
-          fontSize: '13px',
-        }}
-      >
+      <div className="flex items-center justify-center p-10 text-muted-foreground/70 text-sm">
         No data to display.
       </div>
     )
@@ -87,16 +79,14 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   // Filtered results for AggregateStats
   const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetRevisionItemId))
 
+  const filterLabels: Record<ResultsFilter, string> = {
+    all: 'All',
+    'passed-all': 'Passed All',
+    'any-failed': 'Any Failed',
+  }
+
   return (
-    <div
-      style={{
-        flex: 1,
-        overflow: 'auto',
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div className="flex-1 overflow-auto relative flex flex-col">
       {/* Aggregate stats — filter-aware, only when results exist */}
       {results.length > 0 && (
         <AggregateStats
@@ -107,198 +97,76 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
       )}
 
       {/* Filter controls */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '8px 16px',
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'var(--bg-surface-1)',
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            fontSize: '10px',
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: 'var(--fg-muted)',
-            marginRight: '4px',
-          }}
-        >
+      <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card flex-shrink-0">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mr-1">
           Filter
         </span>
         {(['all', 'passed-all', 'any-failed'] as ResultsFilter[]).map((opt) => {
-          const labels: Record<ResultsFilter, string> = {
-            all: 'All',
-            'passed-all': 'Passed All',
-            'any-failed': 'Any Failed',
-          }
           const isActive = filter === opt
           return (
-            <button
+            <Button
               key={opt}
+              variant={isActive ? 'secondary' : 'ghost'}
+              size="sm"
               onClick={() => setFilter(opt)}
-              style={{
-                height: '24px',
-                padding: '0 8px',
-                fontSize: '11px',
-                fontWeight: isActive ? 600 : 400,
-                background: isActive ? 'var(--bg-surface-3)' : 'transparent',
-                color: isActive ? 'var(--fg-primary)' : 'var(--fg-tertiary)',
-                border: isActive ? '1px solid var(--border-strong)' : '1px solid transparent',
-                borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer',
-                transition: 'all 120ms ease-out',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = 'var(--fg-secondary)'
-                  e.currentTarget.style.background = 'var(--bg-surface-2)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = 'var(--fg-tertiary)'
-                  e.currentTarget.style.background = 'transparent'
-                }
-              }}
+              className="h-6 px-2 text-[11px]"
             >
-              {labels[opt]}
-            </button>
+              {filterLabels[opt]}
+            </Button>
           )
         })}
         {filter !== 'all' && (
-          <span
-            style={{
-              fontSize: '11px',
-              color: 'var(--fg-muted)',
-              fontFamily: 'var(--font-mono)',
-              marginLeft: '4px',
-            }}
-          >
+          <span className="font-mono text-xs text-muted-foreground tabular-nums ml-1">
             {filteredItems.length}/{items.length}
           </span>
         )}
       </div>
 
       {/* Table */}
-      <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            tableLayout: 'auto',
-          }}
-        >
-          <thead>
-            <tr
-              style={{ background: 'var(--bg-surface-2)', position: 'sticky', top: 0, zIndex: 10 }}
-            >
+      <div className="flex-1 overflow-auto relative">
+        <table className="w-full border-collapse" style={{ tableLayout: 'auto' }}>
+          <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableRow className="hover:bg-card">
               {/* Input column header */}
-              <th
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'left',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  borderRight: '1px solid var(--border-subtle)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--fg-tertiary)',
-                  whiteSpace: 'nowrap',
-                  minWidth: '200px',
-                  maxWidth: '320px',
-                }}
-              >
+              <TableHead className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border-b border-border border-r border-r-border whitespace-nowrap min-w-[200px] max-w-[320px] px-4 py-2.5">
                 Input
-              </th>
+              </TableHead>
               {/* Grader column headers with pass rate */}
               {graders.map((eg) => {
                 const gs = graderPassRates.find((g) => g.graderId === eg.graderId)
                 return (
-                  <th
+                  <TableHead
                     key={eg.graderId}
-                    style={{
-                      padding: '10px 16px',
-                      textAlign: 'center',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      borderRight: '1px solid var(--border-subtle)',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      color: 'var(--fg-tertiary)',
-                      whiteSpace: 'nowrap',
-                      minWidth: '80px',
-                    }}
+                    className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground text-center border-b border-border border-r border-r-border whitespace-nowrap min-w-[80px] px-4 py-2.5"
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '2px',
-                      }}
-                    >
+                    <div className="flex flex-col items-center gap-0.5">
                       <span>{eg.grader.name}</span>
                       {gs && gs.total > 0 && (
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontWeight: 400,
-                            fontSize: '10px',
-                            color: 'var(--fg-tertiary)',
-                            textTransform: 'none',
-                            letterSpacing: 0,
-                          }}
-                        >
+                        <span className="font-mono tabular-nums font-normal text-[10px] text-muted-foreground normal-case tracking-normal">
                           {gs.passes}/{gs.total} — {gs.pct}%
                         </span>
                       )}
                     </div>
-                  </th>
+                  </TableHead>
                 )
               })}
               {/* Summary column header */}
-              <th
-                style={{
-                  padding: '10px 16px',
-                  textAlign: 'center',
-                  borderBottom: '1px solid var(--border-subtle)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--fg-tertiary)',
-                  whiteSpace: 'nowrap',
-                  minWidth: '72px',
-                }}
-              >
+              <TableHead className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground text-center border-b border-border whitespace-nowrap min-w-[72px] px-4 py-2.5">
                 Pass
-              </th>
-            </tr>
-          </thead>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
 
-          <tbody>
+          <TableBody>
             {filteredItems.length === 0 ? (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={graders.length + 2}
-                  style={{
-                    padding: '32px',
-                    textAlign: 'center',
-                    color: 'var(--fg-muted)',
-                    fontSize: '12px',
-                  }}
+                  className="py-8 text-center text-xs text-muted-foreground/70"
                 >
                   No items match the current filter.
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               filteredItems.map((item) => {
                 const inputLabel = getInputLabel(item.values)
@@ -310,78 +178,41 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                 const anyFail = failCount(item.id, results) > 0
 
                 return (
-                  <tr
-                    key={item.id}
-                    style={{ borderBottom: '1px solid var(--border-subtle)' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-surface-1)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent'
-                    }}
-                  >
+                  <TableRow key={item.id} className="border-b border-border hover:bg-accent">
                     {/* Input label cell */}
-                    <td
-                      style={{
-                        padding: '10px 16px',
-                        borderRight: '1px solid var(--border-subtle)',
-                        maxWidth: '320px',
-                        minWidth: '200px',
-                      }}
-                    >
+                    <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[200px] min-w-[200px] border-r border-border px-4 py-2.5">
                       <span
-                        style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          color: 'var(--fg-secondary)',
-                          fontFamily: 'var(--font-mono)',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
+                        className="block truncate"
                         title={inputLabel}
                       >
                         {inputLabel}
                       </span>
-                    </td>
+                    </TableCell>
 
                     {/* Verdict cells */}
                     {graders.map((eg) => {
                       const result = results.find(
-                        (r) => r.datasetRevisionItemId === item.id && r.graderId === eg.graderId,
+                        (r) =>
+                          r.datasetRevisionItemId === item.id && r.graderId === eg.graderId,
                       )
                       return (
-                        <td
-                          key={eg.graderId}
-                          style={{
-                            padding: 0,
-                            borderRight: '1px solid var(--border-subtle)',
-                          }}
-                        >
+                        <TableCell key={eg.graderId} className="p-0 border-r border-border">
                           <VerdictCell
                             verdict={result?.verdict ?? null}
                             reason={result?.reason}
                             itemLabel={inputLabel}
                             graderName={eg.grader.name}
                           />
-                        </td>
+                        </TableCell>
                       )
                     })}
 
                     {/* Per-item pass summary */}
-                    <td
-                      style={{
-                        padding: '10px 16px',
-                        textAlign: 'center',
-                      }}
-                    >
+                    <TableCell className="text-center px-4 py-2.5">
                       {itemResultCount > 0 ? (
                         <span
+                          className="text-[11px] font-mono tabular-nums font-medium"
                           style={{
-                            fontSize: '11px',
-                            fontFamily: 'var(--font-mono)',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontWeight: 500,
                             color: allPass
                               ? 'var(--pass-fg)'
                               : anyFail
@@ -392,45 +223,19 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                           {itemPassCount}/{graders.length}
                         </span>
                       ) : (
-                        <span
-                          style={{
-                            fontSize: '11px',
-                            color: 'var(--fg-muted)',
-                            fontFamily: 'var(--font-mono)',
-                          }}
-                        >
-                          —
-                        </span>
+                        <span className="text-[11px] font-mono text-muted-foreground/70">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })
             )}
 
-            {/* Aggregate row — pinned at bottom visually (sticky via position) */}
-            <tr
-              style={{
-                background: 'var(--bg-surface-2)',
-                borderTop: '1px solid var(--border-default)',
-                position: 'sticky',
-                bottom: 0,
-                zIndex: 10,
-              }}
-            >
-              <td
-                style={{
-                  padding: '10px 16px',
-                  borderRight: '1px solid var(--border-subtle)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'var(--fg-tertiary)',
-                }}
-              >
+            {/* Aggregate footer row — sticky at bottom */}
+            <TableRow className="bg-card border-t border-border sticky bottom-0 z-10 hover:bg-card">
+              <TableCell className="px-4 py-2.5 border-r border-border text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                 Pass Rate
-              </td>
+              </TableCell>
               {graderPassRates.map((gs) => {
                 const rate = gs.rate
                 let barColor = 'var(--pass)'
@@ -438,69 +243,33 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                 else if (rate !== null && rate < 0.8) barColor = 'var(--error)'
 
                 return (
-                  <td
+                  <TableCell
                     key={gs.graderId}
-                    style={{
-                      padding: '10px 16px',
-                      borderRight: '1px solid var(--border-subtle)',
-                      textAlign: 'center',
-                    }}
+                    className="px-4 py-2.5 border-r border-border text-center"
                   >
                     {rate !== null ? (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          alignItems: 'center',
-                        }}
-                      >
+                      <div className="flex flex-col gap-1 items-center">
                         <span
-                          style={{
-                            fontSize: '12px',
-                            fontFamily: 'var(--font-mono)',
-                            fontVariantNumeric: 'tabular-nums',
-                            fontWeight: 500,
-                            color: barColor,
-                          }}
+                          className="text-xs font-mono tabular-nums font-medium"
+                          style={{ color: barColor }}
                         >
                           {gs.pct}%
                         </span>
-                        <div
-                          style={{
-                            height: '4px',
-                            width: '48px',
-                            background: 'var(--bg-surface-3)',
-                            borderRadius: '2px',
-                            overflow: 'hidden',
-                          }}
-                        >
+                        <div className="h-1 w-12 bg-secondary rounded-full overflow-hidden">
                           <div
-                            style={{
-                              height: '100%',
-                              width: `${gs.pct ?? 0}%`,
-                              background: barColor,
-                              borderRadius: '2px',
-                            }}
+                            className="h-full rounded-full"
+                            style={{ width: `${gs.pct ?? 0}%`, background: barColor }}
                           />
                         </div>
                       </div>
                     ) : (
-                      <span
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--fg-muted)',
-                          fontFamily: 'var(--font-mono)',
-                        }}
-                      >
-                        —
-                      </span>
+                      <span className="text-xs font-mono text-muted-foreground/70">—</span>
                     )}
-                  </td>
+                  </TableCell>
                 )
               })}
               {/* Summary aggregate */}
-              <td style={{ padding: '10px 16px', textAlign: 'center' }}>
+              <TableCell className="px-4 py-2.5 text-center">
                 {(() => {
                   const totalPasses = graderPassRates.reduce((sum, gs) => sum + gs.passes, 0)
                   const totalFilteredCells = filteredItems.length * graders.length
@@ -509,22 +278,15 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                       ? Math.round((totalPasses / totalFilteredCells) * 100)
                       : null
                   return (
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontFamily: 'var(--font-mono)',
-                        fontVariantNumeric: 'tabular-nums',
-                        color: 'var(--fg-tertiary)',
-                      }}
-                    >
+                    <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
                       {totalPasses}/{totalFilteredCells}
                       {overallPct !== null && ` — ${overallPct}%`}
                     </span>
                   )
                 })()}
-              </td>
-            </tr>
-          </tbody>
+              </TableCell>
+            </TableRow>
+          </TableBody>
         </table>
       </div>
     </div>

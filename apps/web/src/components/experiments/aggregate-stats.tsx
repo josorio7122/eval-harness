@@ -1,3 +1,4 @@
+import { Separator } from '@/components/ui/separator'
 import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 
 interface AggregateStatsProps {
@@ -27,7 +28,7 @@ export function AggregateStats({
   const overallPct = totalCells > 0 ? Math.round((overallPassCount / totalCells) * 100) : 0
   const overallRate = totalCells > 0 ? overallPassCount / totalCells : 0
 
-  // Determine headline color
+  // Determine headline color (dynamic semantic — kept as inline style)
   let headlineColor = 'var(--pass-fg)'
   if (overallRate < 0.5) headlineColor = 'var(--fail-fg)'
   else if (overallRate < 0.8) headlineColor = 'var(--error-fg)'
@@ -48,149 +49,57 @@ export function AggregateStats({
   })
 
   return (
-    <div
-      style={{
-        background: 'var(--bg-surface-1)',
-        borderBottom: '1px solid var(--border-default)',
-        padding: '12px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '32px',
-        minHeight: '80px',
-        flexShrink: 0,
-      }}
-    >
+    <div className="bg-card border-b border-border px-6 py-3 flex items-center gap-8 min-h-[80px] flex-shrink-0">
       {/* Overall pass rate */}
-      <div style={{ flexShrink: 0 }}>
+      <div className="shrink-0">
         <div
-          style={{
-            fontSize: '24px',
-            fontWeight: 600,
-            fontFamily: 'var(--font-mono)',
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '-0.02em',
-            color: headlineColor,
-            lineHeight: 1,
-          }}
+          className="text-2xl font-semibold font-mono tabular-nums leading-none"
+          style={{ color: headlineColor }}
         >
           {overallPassCount}/{totalCells} — {overallPct}%
         </div>
-        <div
-          style={{
-            fontSize: '11px',
-            fontWeight: 500,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            color: 'var(--fg-tertiary)',
-            marginTop: '4px',
-          }}
-        >
+        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-1">
           Pass Rate
         </div>
       </div>
 
-      {/* Divider */}
-      <div
-        style={{
-          width: '1px',
-          height: '40px',
-          background: 'var(--border-default)',
-          flexShrink: 0,
-        }}
-      />
+      <Separator orientation="vertical" className="h-10" />
 
       {/* Cell count */}
-      <div style={{ flexShrink: 0 }}>
-        <div
-          style={{
-            fontSize: '13px',
-            fontFamily: 'var(--font-mono)',
-            fontVariantNumeric: 'tabular-nums',
-            color: 'var(--fg-secondary)',
-          }}
-        >
+      <div className="shrink-0">
+        <p className="font-mono text-sm tabular-nums text-muted-foreground">
           {itemCount} items × {graders.length} graders = {totalCells} evals
-        </div>
-        <div
-          style={{
-            fontSize: '11px',
-            color: 'var(--fg-tertiary)',
-            marginTop: '2px',
-          }}
-        >
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
           {results.length} completed · {totalCells - results.length} pending
-        </div>
+        </p>
       </div>
 
       {/* Per-grader breakdown */}
       {graderStats.length > 0 && (
         <>
-          <div
-            style={{
-              width: '1px',
-              height: '40px',
-              background: 'var(--border-default)',
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ display: 'flex', gap: '20px', flex: 1, overflow: 'hidden' }}>
+          <Separator orientation="vertical" className="h-10" />
+          <div className="flex gap-5 flex-1 overflow-hidden">
             {graderStats.map((gs) => {
               let barColor = 'var(--pass)'
               if (gs.rate < 0.5) barColor = 'var(--fail)'
               else if (gs.rate < 0.8) barColor = 'var(--error)'
 
               return (
-                <div key={gs.id} style={{ minWidth: '100px', flex: '1 1 0', maxWidth: '180px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'baseline',
-                      marginBottom: '4px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        color: 'var(--fg-tertiary)',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '110px',
-                      }}
-                    >
+                <div key={gs.id} className="min-w-[100px] flex-1 max-w-[180px]">
+                  <div className="flex justify-between items-baseline mb-1">
+                    <span className="text-[11px] text-muted-foreground truncate max-w-[110px]">
                       {gs.name}
                     </span>
-                    <span
-                      style={{
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-mono)',
-                        fontVariantNumeric: 'tabular-nums',
-                        color: 'var(--fg-secondary)',
-                        flexShrink: 0,
-                        marginLeft: '4px',
-                      }}
-                    >
+                    <p className="font-mono text-sm tabular-nums text-muted-foreground shrink-0 ml-1">
                       {gs.passes}/{gs.total} — {gs.pct}%
-                    </span>
+                    </p>
                   </div>
-                  {/* Progress bar */}
-                  <div
-                    style={{
-                      height: '4px',
-                      background: 'var(--bg-surface-2)',
-                      borderRadius: '2px',
-                      overflow: 'hidden',
-                    }}
-                  >
+                  {/* Progress bar — dynamic width + color stay inline */}
+                  <div className="h-1 bg-secondary rounded-full overflow-hidden">
                     <div
-                      style={{
-                        height: '100%',
-                        width: `${gs.pct}%`,
-                        background: barColor,
-                        borderRadius: '2px',
-                        transition: 'width 300ms ease-out',
-                      }}
+                      className="h-full rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${gs.pct}%`, background: barColor }}
                     />
                   </div>
                 </div>

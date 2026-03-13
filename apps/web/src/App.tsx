@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { Layout } from './components/layout'
 import { DatasetsPage } from './pages/datasets'
 import { GradersPage } from './pages/graders'
@@ -17,6 +18,7 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -30,6 +32,7 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }
