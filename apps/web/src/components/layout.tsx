@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { Database, FlaskConical, GraduationCap } from 'lucide-react'
+import { Toaster } from '@/components/ui/sonner'
 
 const navItems = [
   { to: '/datasets', label: 'Datasets', icon: Database },
@@ -38,6 +39,7 @@ export function Layout() {
       <main className="flex-1 overflow-auto bg-background">
         <Outlet />
       </main>
+      <Toaster />
     </div>
   )
 }

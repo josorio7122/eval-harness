@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react'
 import { ListSkeleton } from './list-skeleton'
 import { EmptyState, type EmptyStateProps } from './empty-state'
+import { SectionLabel } from './section-label'
 
 export interface Column<T> {
   header: string
@@ -58,9 +59,9 @@ export function DataTable<T>({
               {columns.map((col) => (
                 <span
                   key={col.header}
-                  className={`text-[10px] font-semibold uppercase tracking-wider text-muted-foreground${col.headerAlign === 'right' ? ' text-right' : ''}`}
+                  className={col.headerAlign === 'right' ? 'text-right' : undefined}
                 >
-                  {col.header}
+                  <SectionLabel>{col.header}</SectionLabel>
                 </span>
               ))}
             </div>

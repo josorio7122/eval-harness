@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useCreateItem, useUpdateItem } from '@/hooks/use-datasets'
 import type { DatasetItem } from '@/hooks/use-datasets'
+import { SectionLabel } from '@/components/shared/section-label'
 
 // ── Add Item Dialog (trigger-controlled) ──────────────────────────────────────
 
@@ -139,12 +140,7 @@ function ItemDialogContent({
         ) : (
           attributes.map((attr) => (
             <div key={attr} className="flex flex-col gap-1.5">
-              <label
-                htmlFor={`item-${attr}`}
-                className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
-              >
-                {attr}
-              </label>
+              <SectionLabel>{attr}</SectionLabel>
               <Input
                 id={`item-${attr}`}
                 value={values[attr] ?? ''}

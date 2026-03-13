@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { ArrowLeft, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
 import { useGrader, useUpdateGrader, useDeleteGrader } from '@/hooks/use-graders'
+import { PageHeader } from '@/components/shared/page-header'
 import { useExperiments } from '@/hooks/use-experiments'
 import { GraderForm } from './grader-form'
 import { GraderDeleteDialog } from './grader-delete-dialog'
@@ -110,20 +110,9 @@ export function GraderDetail({ id }: GraderDetailProps) {
   return (
     <div className="flex flex-col h-full overflow-auto">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-border flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/graders')}
-          className="text-muted-foreground h-7 w-7 p-0"
-        >
-          <ArrowLeft size={16} />
-        </Button>
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          /
-        </span>
+      <PageHeader onBack={() => navigate('/graders')} className="flex-shrink-0">
         <h2 className="text-base font-semibold text-foreground">{grader.name}</h2>
-      </div>
+      </PageHeader>
 
       <GraderForm
         grader={grader}

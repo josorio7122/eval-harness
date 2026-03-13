@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { useCreateGrader } from '@/hooks/use-graders'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface CreateGraderDialogProps {
   open: boolean
@@ -71,9 +71,7 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Name <span className="text-destructive">*</span>
-            </Label>
+            <SectionLabel>Name <span className="text-destructive">*</span></SectionLabel>
             <Input
               ref={nameRef}
               value={name}
@@ -85,10 +83,10 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
 
           {/* Description */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <SectionLabel>
               Description{' '}
               <span className="text-xs font-normal text-muted-foreground/70">(optional)</span>
-            </Label>
+            </SectionLabel>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -98,9 +96,7 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
 
           {/* Rubric */}
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Rubric <span className="text-destructive">*</span>
-            </Label>
+            <SectionLabel>Rubric <span className="text-destructive">*</span></SectionLabel>
             <Textarea
               value={rubric}
               onChange={(e) => setRubric(e.target.value)}

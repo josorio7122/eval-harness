@@ -14,57 +14,46 @@ Evaluation, rubric, verdict, pass/fail, test case, grader, experiment run, datas
 
 ### Color World
 
-Deep slate (terminal backgrounds), phosphor green (passing signal), warning amber (instrument panels), error red (system alerts), steel blue (scientific instruments), off-white (lab notebook paper), ink black (dense data tables). Dark mode, cool temperature, desaturated except for semantic signals.
+Clean white canvas (light mode), phosphor green (passing signal), warning amber (instrument panels), error red (system alerts), saturated blue (primary accent), off-white surfaces (subtle depth). Light mode, cool temperature, desaturated except for semantic signals.
 
 ### Signature Element
 
-The **results grid cell** — a dense, borderless grid where each cell has a 2px colored left-border accent (green/red/amber) and a verdict glyph (✓/✗/!). Hover expands to show the grader rationale in an inline popover. This IS the product.
+The **results grid cell** — a dense table where each cell has a 2px colored left-border accent (green/red/amber) and a verdict glyph (✓/✗/!). Hover expands to show the grader rationale in an inline popover. This IS the product.
 
 ### Defaults Rejected
 
 | Default                                 | Replacement                                                                     |
 | --------------------------------------- | ------------------------------------------------------------------------------- |
-| White card grid with soft shadows       | Dark canvas, borders-only depth, sharp radius (4px)                             |
+| Generic blue primary actions            | Saturated blue accent (hsl 215, 65%, 50%) — precise, not generic               |
 | Color-coded status badges (pill-shaped) | Left-border accent on table rows — color at the edge, not inside a badge        |
-| Blue primary action buttons             | Near-white buttons on dark surfaces — the results speak louder than the buttons |
+| Soft shadows and rounded cards          | Subtle borders, minimal radius, structured depth                                |
 
 ## Token Architecture
 
-### Foreground
+### shadcn CSS Variables
+
+The app uses shadcn's default CSS variable system for base tokens:
 
 ```
---fg-primary:     hsl(240, 5%, 90%)     ← default text
---fg-secondary:   hsl(240, 4%, 66%)     ← supporting text
---fg-tertiary:    hsl(240, 4%, 54%)     ← metadata
---fg-muted:       hsl(240, 3%, 38%)     ← disabled, placeholder
---fg-inverted:    hsl(240, 6%, 7%)      ← text on light surfaces
+--background          ← page canvas (white)
+--foreground          ← default text
+--primary             ← primary button fill
+--primary-foreground  ← text on primary
+--muted               ← subtle backgrounds
+--muted-foreground    ← secondary/supporting text
+--card                ← card/panel backgrounds
+--card-foreground     ← text on cards
+--border              ← default border color
+--input               ← input border
+--ring                ← focus ring
+--accent              ← hover/active surface tint
+--accent-foreground   ← text on accent surface
 ```
 
-### Background / Surfaces
+### Primary Accent
 
 ```
---bg-base:        hsl(240, 6%, 7%)      ← canvas
---bg-surface-1:   hsl(240, 5%, 11%)     ← panels, cards
---bg-surface-2:   hsl(240, 4%, 16%)     ← inputs, table headers
---bg-surface-3:   hsl(240, 3%, 20%)     ← dropdowns, popovers, modals
---bg-inset:       hsl(240, 6%, 5%)      ← recessed areas, empty states
-```
-
-### Borders
-
-```
---border-subtle:  rgba(255,255,255,0.05)   ← table row dividers
---border-default: rgba(255,255,255,0.08)   ← card/panel borders
---border-strong:  rgba(255,255,255,0.12)   ← interactive element borders
---border-focus:   hsl(215, 60%, 58%)       ← focus ring (accent)
-```
-
-### Accent
-
-```
---accent:         hsl(215, 60%, 58%)       ← steel-blue, selection/focus only
---accent-subtle:  hsla(215, 60%, 58%, 0.12)
---accent-strong:  hsl(215, 60%, 70%)
+--primary-accent: hsl(215, 65%, 50%)   ← saturated blue — selection, active nav, focus rings
 ```
 
 ### Semantic Colors
@@ -72,19 +61,19 @@ The **results grid cell** — a dense, borderless grid where each cell has a 2px
 ```
 --pass:           hsl(142, 52%, 44%)       ← phosphor green
 --pass-subtle:    hsla(142, 52%, 44%, 0.08)
---pass-fg:        hsl(142, 52%, 70%)
+--pass-fg:        hsl(142, 52%, 34%)       ← darkened for light backgrounds
 
 --fail:           hsl(0, 60%, 52%)         ← deep red
---fail-subtle:    hsla(0, 60%, 52%, 0.10)
---fail-fg:        hsl(0, 60%, 75%)
+--fail-subtle:    hsla(0, 60%, 52%, 0.08)
+--fail-fg:        hsl(0, 60%, 42%)         ← darkened for light backgrounds
 
 --error:          hsl(38, 85%, 52%)        ← instrument amber
---error-subtle:   hsla(38, 85%, 52%, 0.10)
---error-fg:       hsl(38, 85%, 75%)
+--error-subtle:   hsla(38, 85%, 52%, 0.08)
+--error-fg:       hsl(38, 85%, 38%)        ← darkened for light backgrounds
 
---neutral:        hsl(240, 3%, 40%)        ← pending/skipped
---neutral-subtle: hsla(240, 3%, 40%, 0.15)
---neutral-fg:     hsl(240, 4%, 60%)
+--neutral:        hsl(240, 3%, 60%)        ← pending/skipped
+--neutral-subtle: hsla(240, 3%, 60%, 0.12)
+--neutral-fg:     hsl(240, 4%, 45%)
 ```
 
 **Rule**: Semantic colors appear only in three places — result cells, status indicators, and aggregate stats. Nowhere else.
@@ -129,13 +118,13 @@ Base unit: **4px**
 
 ## Depth Strategy
 
-**Borders-only. No shadows. No exceptions.**
+**Borders and subtle backgrounds. No heavy shadows.**
 
-Why: Dark canvas, tool aesthetic, terminal feel. Shadows imply physical light which contradicts the precision instrument mental model. Borders communicate structure without physicality.
+Light mode uses the `--border` token for structural separation and `--muted` surface tint for depth. Elevation is communicated with surface color steps, not drop shadows.
 
 - `0.5px` borders within data structures (table dividers)
 - `1px` borders around panels, cards, interactive elements
-- Always `rgba(255,255,255, X)` — never `solid #333`
+- `--border` token — never hardcoded hex
 
 ## Radius
 
@@ -146,31 +135,32 @@ Why: Dark canvas, tool aesthetic, terminal feel. Shadows imply physical light wh
 --radius-xl:  8px    ← modals, popovers
 ```
 
-## Component Patterns
+## Layout Architecture
 
 ### Navigation
 
-Left sidebar (220px, `--bg-base`, `1px` right border). Three sections: Datasets, Graders, Experiments. Active item: 2px left-border in `--accent`. Section headings: 10px, 600, uppercase, `--fg-tertiary`.
+Left sidebar (220px, `--background`, `1px` right `--border`). Three sections: Datasets, Graders, Experiments. Active item: blue tint background (`hsla(215, 65%, 50%, 0.08)`) + `--primary-accent` text color. Section headings: 10px, 600, uppercase, `--muted-foreground`.
 
-### Dataset List
+### List Views (full-page)
 
-Dense table rows. Name (primary), item count + field count (mono, secondary), timestamp (tertiary). Hover: `--bg-surface-1` fill. Row separator: `1px solid --border-subtle`.
+All list views use a shared `DataTable` component. Full-page layout — no split panes. Each row is clickable and navigates to a detail page.
+
+- Dense table rows, `1px solid --border` row separator
+- Hover: `--muted` fill
+- Click row → navigate to detail page (full page replacement, not slide panel)
+- Back button in detail page header returns to list
 
 ### Dataset Detail
 
-Two-panel split. Left (30%): schema fields as definition list. Right (70%): items table. Separated by `1px solid --border-default` vertical divider.
-
-### Grader List
-
-Same as dataset list. Type badge (`LLM` in `--accent-subtle` bg) distinguishes grader types.
+Full-page. Schema fields as definition list above, items table below (or tabbed). No vertical split pane.
 
 ### Grader Detail
 
-Rubric editor in `--bg-inset` textarea, mono font, 12px. Auto-grows. Focus: `--border-focus`. Unsaved changes: `1px solid --error` left-border on form panel.
+Full-page. Rubric editor in a `--muted` textarea, mono font, 12px. Auto-grows. Focus: `--ring`. Unsaved changes: `1px solid --fail` left-border on form panel.
 
 ### Experiment List
 
-Left-border accent per status: Running (`--accent`), Pass (`--pass`), Fail below threshold (`--fail`), Error (`--error`), Queued (`--neutral`). Running rows show 2px progress line at bottom.
+Left-border accent per status: Running (`--primary-accent`), Pass (`--pass`), Fail below threshold (`--fail`), Error (`--error`), Queued (`--neutral`). Running rows show 2px progress line at bottom.
 
 ### Results Table (Core View)
 
@@ -186,19 +176,19 @@ Rows = dataset items, Columns = graders. Default sort: fail count descending —
 
 **Hover popover** (150ms delay):
 
-- `--bg-surface-3`, `1px solid --border-strong`, `border-radius: 6px`
+- `--card` background, `1px solid --border`, `border-radius: 6px`
 - Shows: item key, grader name, model output (mono, 12px), rationale
 - Max-width: 320px, anchored to cell
 
-**Aggregate row** (pinned bottom): Each column's pass rate + inline mini-bar (Tremor ProgressBar, 8px). `--bg-surface-2` background.
+**Aggregate row** (pinned bottom): Each column's pass rate. `--muted` background.
 
 ### Aggregate Stats Banner
 
-Above results table, 80px height, `--bg-surface-1`.
+Above results table, 80px height, `--card` background.
 
 1. Pass rate headline: 24px mono, colored by threshold
 2. Cell count: `"120 items × 3 graders = 360 evaluations"`
-3. Per-grader breakdown: Tremor BarChart
+3. Per-grader breakdown
 
 ### Pass/Fail/Error Cell (Atomic Unit)
 
@@ -214,27 +204,33 @@ Hover: popover after 150ms delay
 
 | View            | Loading                        | Empty                                 | Error                       | Populated        |
 | --------------- | ------------------------------ | ------------------------------------- | --------------------------- | ---------------- |
-| Lists           | 3 row shimmers                 | Inset panel + icon + action           | Inset panel + alert + retry | Dense rows       |
-| Dataset schema  | Block shimmer                  | Dashed border + "+" button            | Inline alert                | Definition list  |
-| Dataset items   | Row shimmers + visible headers | Inset panel with column headers shown | Alert in table body         | Scrollable table |
-| Results table   | Grid shimmer (headers first)   | Centered inset panel                  | Error strip + partial data  | Dense matrix     |
-| Aggregate stats | `—` + Loader2 spinner          | N/A                                   | Error strip                 | Stats + chart    |
+| Lists           | Skeleton rows (3)              | Inset panel + icon + action           | Inset panel + alert + retry | Dense rows       |
+| Dataset schema  | Skeleton block                 | Dashed border + "+" button            | Inline alert                | Definition list  |
+| Dataset items   | Skeleton rows + visible headers| Inset panel with column headers shown | Alert in table body         | Scrollable table |
+| Results table   | Skeleton grid (headers first)  | Centered inset panel                  | Error strip + partial data  | Dense matrix     |
+| Aggregate stats | `—` placeholder                | N/A                                   | Error strip                 | Stats + chart    |
 
 **Universal rule**: Error never hides existing data. Show stale data + error bar: `"Last updated 4 min ago · Refresh failed"`.
 
-## Animation (Motion library)
+**Pending cells**: Show `<Skeleton>` — no breathing/pulse animation (not implemented).
 
-| Element                  | Transition                 | Duration    | Easing      |
+## Animation (CSS transitions only)
+
+No JS animation library. All transitions use native CSS `transition` property.
+
+| Element                  | CSS property               | Duration    | Easing      |
 | ------------------------ | -------------------------- | ----------- | ----------- |
-| Cell hover popover       | opacity 0→1, y 4→0         | 150ms       | ease-out    |
-| Popover dismiss          | opacity 1→0                | 100ms       | ease-in     |
-| Nav item active          | left-border 0→2px          | 150ms       | ease-out    |
-| New experiment row       | height 0→auto, opacity 0→1 | 200ms       | ease-out    |
-| Result cell fill (live)  | opacity 0.4→1              | 200ms       | ease-out    |
-| Breathing cell (pending) | opacity 0.4↔0.7            | 1500ms loop | ease-in-out |
-| Slide panel open         | x 100%→0                   | 250ms       | ease-out    |
-| Slide panel close        | x 0→100%                   | 200ms       | ease-in     |
-| Tab content switch       | opacity 0→1                | 100ms       | ease-out    |
+| Cell hover popover       | opacity, transform (y 4px) | 150ms       | ease-out    |
+| Popover dismiss          | opacity                    | 100ms       | ease-in     |
+| Nav item active state    | background-color, color    | 150ms       | ease-out    |
+| Button hover             | background-color           | 150ms       | ease-out    |
+| Row hover fill           | background-color           | 100ms       | ease-out    |
+| Tab content switch       | opacity                    | 100ms       | ease-out    |
+
+**Not implemented / not used**:
+- Breathing cell animation — pending cells use `<Skeleton>` instead
+- Slide panel open/close — navigation is full-page, no side panels
+- New row enter animation — lists refresh in place
 
 **Does NOT animate**: Table row reorder, page navigation, form states, badge changes, modal backdrop. If it wouldn't fit in `htop`, it doesn't belong.
 
@@ -242,5 +238,5 @@ Hover: popover after 150ms delay
 
 1. **Swap test**: Remove left-border accents, change to system font, generic blue accent → it becomes a generic admin panel. Those three elements are load-bearing identity.
 2. **Squint test**: Fail cells (tinted backgrounds, red borders) cluster at the top. You can locate problems before your eyes focus.
-3. **Signature test**: (1) left-border cell accents, (2) progress line at row bottom, (3) pinned aggregate row with mini-bars, (4) rubric editor unsaved-state border, (5) breathing cell animation.
-4. **Token test**: Variable names (`--pass-fg`, `--fail-subtle`, `--bg-inset`) sound like a scientific instrument's interface, not `--primary`, `--success`, `--danger`.
+3. **Signature test**: (1) left-border cell accents, (2) progress line at running-experiment row bottom, (3) pinned aggregate row, (4) rubric editor unsaved-state border, (5) full-page DataTable with click-to-detail navigation.
+4. **Token test**: Semantic variable names (`--pass-fg`, `--fail-subtle`) communicate domain intent. shadcn base tokens (`--muted`, `--border`) handle structural chrome.

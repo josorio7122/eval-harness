@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useAddAttribute } from '@/hooks/use-datasets'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface AddAttributeDialogProps {
   datasetId: string
@@ -38,12 +39,7 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="attr-name"
-                className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
-              >
-                Attribute Name
-              </label>
+              <SectionLabel>Attribute Name</SectionLabel>
               <Input
                 id="attr-name"
                 placeholder="e.g. expected_output"

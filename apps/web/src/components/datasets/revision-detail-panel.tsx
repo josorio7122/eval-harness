@@ -10,6 +10,8 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface RevisionDetailPanelProps {
   datasetId: string
@@ -90,88 +92,99 @@ export function RevisionDetailPanel({ datasetId, revisionId }: RevisionDetailPan
 
       <div className="px-5 py-4 flex flex-col gap-5">
         {/* Attributes */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-            Attributes
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {revision.attributes.map((attr) => (
-              <Badge key={attr} variant="outline" className="font-mono text-xs">
-                {attr}
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        {/* Items table */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              Items ({revision.items.length})
-            </p>
-            <span className="text-[10px] text-muted-foreground/70 italic">Read-only</span>
-          </div>
-
-          {revision.items.length === 0 ? (
-            <div className="p-5 text-center text-muted-foreground/70 text-xs bg-muted border border-border rounded-md">
-              No items in this revision.
-            </div>
-          ) : (
-            <div className="border border-border rounded-md overflow-auto opacity-90">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {revision.attributes.map((attr) => (
-                      <TableHead
-                        key={attr}
-                        className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground bg-secondary whitespace-nowrap"
-                      >
-                        {attr}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {revision.items.map((item) => (
-                    <TableRow key={item.id}>
-                      {revision.attributes.map((attr) => (
-                        <TableCell
-                          key={attr}
-                          className="text-xs text-muted-foreground font-mono max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap"
-                        >
-                          {item.values[attr] ?? ''}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-
-        {/* Experiments */}
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-            Experiments ({revision.experiments.length})
-          </p>
-          {revision.experiments.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">No experiments</p>
-          ) : (
-            <div className="flex flex-col gap-1">
-              {revision.experiments.map((exp) => (
-                <button
-                  key={exp.id}
-                  onClick={() => navigate(`/experiments/${exp.id}`)}
-                  className="w-full text-left px-2.5 py-1.5 bg-card border border-border rounded-sm flex items-center justify-between hover:bg-accent transition-colors"
-                >
-                  <span className="text-sm text-foreground font-medium">{exp.name}</span>
-                  <StatusBadge status={exp.status} />
-                </button>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>
+              <SectionLabel>Attributes</SectionLabel>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-1.5">
+              {revision.attributes.map((attr) => (
+                <Badge key={attr} variant="outline" className="font-mono text-xs">
+                  {attr}
+                </Badge>
               ))}
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
+
+        {/* Items table */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>
+              <div className="flex items-center justify-between">
+                <SectionLabel>Items ({revision.items.length})</SectionLabel>
+                <span className="text-[10px] text-muted-foreground/70 italic font-normal">Read-only</span>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {revision.items.length === 0 ? (
+              <div className="p-5 text-center text-muted-foreground/70 text-xs bg-muted border border-border rounded-md">
+                No items in this revision.
+              </div>
+            ) : (
+              <div className="border border-border rounded-md overflow-auto opacity-90">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {revision.attributes.map((attr) => (
+                        <TableHead
+                          key={attr}
+                          className="bg-secondary whitespace-nowrap"
+                        >
+                          <SectionLabel>{attr}</SectionLabel>
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {revision.items.map((item) => (
+                      <TableRow key={item.id}>
+                        {revision.attributes.map((attr) => (
+                          <TableCell
+                            key={attr}
+                            className="text-xs text-muted-foreground font-mono max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap"
+                          >
+                            {item.values[attr] ?? ''}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Experiments */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>
+              <SectionLabel>Experiments ({revision.experiments.length})</SectionLabel>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {revision.experiments.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No experiments</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {revision.experiments.map((exp) => (
+                  <button
+                    key={exp.id}
+                    onClick={() => navigate(`/experiments/${exp.id}`)}
+                    className="w-full text-left px-2.5 py-1.5 bg-card border border-border rounded-sm flex items-center justify-between hover:bg-accent transition-colors"
+                  >
+                    <span className="text-sm text-foreground font-medium">{exp.name}</span>
+                    <StatusBadge status={exp.status} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

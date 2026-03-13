@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 import { VerdictCell } from './verdict-cell'
 import { AggregateStats } from './aggregate-stats'
+import { SectionLabel } from '@/components/shared/section-label'
 
 type ResultsFilter = 'all' | 'passed-all' | 'any-failed'
 
@@ -98,9 +99,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
 
       {/* Filter controls */}
       <div className="flex items-center gap-1.5 px-4 py-2 border-b border-border bg-card flex-shrink-0">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mr-1">
-          Filter
-        </span>
+        <SectionLabel className="mr-1">Filter</SectionLabel>
         {(['all', 'passed-all', 'any-failed'] as ResultsFilter[]).map((opt) => {
           const isActive = filter === opt
           return (
@@ -124,12 +123,12 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
 
       {/* Table */}
       <div className="flex-1 overflow-auto relative">
-        <table className="w-full border-collapse" style={{ tableLayout: 'auto' }}>
+        <Table className="border-collapse" style={{ tableLayout: 'auto' }}>
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow className="hover:bg-card">
               {/* Input column header */}
-              <TableHead className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground border-b border-border border-r border-r-border whitespace-nowrap min-w-[200px] max-w-[320px] px-4 py-2.5">
-                Input
+              <TableHead className="border-b border-border border-r border-r-border whitespace-nowrap min-w-[200px] max-w-[320px] px-4 py-2.5">
+                <SectionLabel>Input</SectionLabel>
               </TableHead>
               {/* Grader column headers with pass rate */}
               {graders.map((eg) => {
@@ -137,10 +136,10 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                 return (
                   <TableHead
                     key={eg.graderId}
-                    className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground text-center border-b border-border border-r border-r-border whitespace-nowrap min-w-[80px] px-4 py-2.5"
+                    className="text-center border-b border-border border-r border-r-border whitespace-nowrap min-w-[80px] px-4 py-2.5"
                   >
                     <div className="flex flex-col items-center gap-0.5">
-                      <span>{eg.grader.name}</span>
+                      <SectionLabel>{eg.grader.name}</SectionLabel>
                       {gs && gs.total > 0 && (
                         <span className="font-mono tabular-nums font-normal text-[10px] text-muted-foreground normal-case tracking-normal">
                           {gs.passes}/{gs.total} — {gs.pct}%
@@ -151,8 +150,8 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                 )
               })}
               {/* Summary column header */}
-              <TableHead className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground text-center border-b border-border whitespace-nowrap min-w-[72px] px-4 py-2.5">
-                Pass
+              <TableHead className="text-center border-b border-border whitespace-nowrap min-w-[72px] px-4 py-2.5">
+                <SectionLabel>Pass</SectionLabel>
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -233,8 +232,8 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
 
             {/* Aggregate footer row — sticky at bottom */}
             <TableRow className="bg-card border-t border-border sticky bottom-0 z-10 hover:bg-card">
-              <TableCell className="px-4 py-2.5 border-r border-border text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                Pass Rate
+              <TableCell className="px-4 py-2.5 border-r border-border">
+                <SectionLabel>Pass Rate</SectionLabel>
               </TableCell>
               {graderPassRates.map((gs) => {
                 const rate = gs.rate
@@ -287,7 +286,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               </TableCell>
             </TableRow>
           </TableBody>
-        </table>
+        </Table>
       </div>
     </div>
   )

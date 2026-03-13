@@ -1,8 +1,9 @@
-import { ArrowLeft, Play, RotateCcw, Trash2, Loader2, Download } from 'lucide-react'
+import { Play, RotateCcw, Trash2, Loader2, Download } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import type { Experiment } from '@/hooks/use-experiments'
+import { PageHeader } from '@/components/shared/page-header'
 
 interface ExperimentHeaderProps {
   experiment: Experiment
@@ -69,20 +70,7 @@ export function ExperimentHeader({
   const isComplete = experiment.status === 'complete'
 
   return (
-    <div className="flex items-center gap-3 px-6 py-4 border-b border-border flex-shrink-0">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate('/experiments')}
-        className="text-muted-foreground h-7 w-7 p-0"
-      >
-        <ArrowLeft size={14} />
-      </Button>
-
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-        /
-      </span>
-
+    <PageHeader onBack={() => navigate('/experiments')} className="flex-shrink-0">
       <h2 className="text-lg font-semibold text-foreground truncate flex-1 min-w-0">
         {experiment.name}
       </h2>
@@ -160,6 +148,6 @@ export function ExperimentHeader({
           Delete
         </Button>
       </div>
-    </div>
+    </PageHeader>
   )
 }

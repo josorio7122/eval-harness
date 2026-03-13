@@ -18,6 +18,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface DatasetCsvDialogProps {
   open: boolean
@@ -127,9 +128,9 @@ export default function DatasetCsvDialog({
                     {csvPreview.headers.map((h) => (
                       <TableHead
                         key={h}
-                        className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground bg-secondary whitespace-nowrap"
+                        className="bg-secondary whitespace-nowrap"
                       >
-                        {h}
+                        <SectionLabel>{h}</SectionLabel>
                       </TableHead>
                     ))}
                   </TableRow>

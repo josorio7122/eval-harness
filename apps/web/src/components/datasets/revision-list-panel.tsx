@@ -2,6 +2,7 @@ import { useRevisions } from '@/hooks/use-datasets'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface RevisionListPanelProps {
   datasetId: string
@@ -37,9 +38,7 @@ export function RevisionListPanel({ datasetId, selectedRevisionId, onSelect }: R
     <div className="w-[40%] min-w-[200px] border-r border-border flex flex-col overflow-hidden">
       {/* List header */}
       <div className="px-4 py-2.5 border-b border-border">
-        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          History
-        </span>
+        <SectionLabel>History</SectionLabel>
       </div>
 
       <div className="flex-1 overflow-y-auto">

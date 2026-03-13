@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useCreateDataset } from '@/hooks/use-datasets'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface CreateDatasetDialogProps {
   trigger: React.ReactNode
@@ -41,12 +42,7 @@ export function CreateDatasetDialog({ trigger, onCreated }: CreateDatasetDialogP
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-2">
             <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="dataset-name"
-                className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground"
-              >
-                Name
-              </label>
+              <SectionLabel>Name</SectionLabel>
               <Input
                 id="dataset-name"
                 placeholder="e.g. customer-qa-pairs"

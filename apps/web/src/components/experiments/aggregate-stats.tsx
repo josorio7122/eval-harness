@@ -1,5 +1,6 @@
 import { Separator } from '@/components/ui/separator'
 import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface AggregateStatsProps {
   experiment: Experiment
@@ -58,9 +59,7 @@ export function AggregateStats({
         >
           {overallPassCount}/{totalCells} — {overallPct}%
         </div>
-        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-1">
-          Pass Rate
-        </div>
+        <SectionLabel className="mt-1">Pass Rate</SectionLabel>
       </div>
 
       <Separator orientation="vertical" className="h-10" />

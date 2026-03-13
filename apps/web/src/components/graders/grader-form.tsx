@@ -3,9 +3,9 @@ import { Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
+import { SectionLabel } from '@/components/shared/section-label'
 
 interface GraderFormProps {
   grader: { id: string; name: string; description: string; rubric: string }
@@ -59,9 +59,7 @@ export function GraderForm({
     >
       {/* Name */}
       <div className="flex flex-col gap-1.5">
-        <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Name
-        </Label>
+        <SectionLabel>Name</SectionLabel>
         <Input
           value={name}
           onChange={(e) => onNameChange(e.target.value)}
@@ -70,9 +68,7 @@ export function GraderForm({
 
       {/* Description */}
       <div className="flex flex-col gap-1.5">
-        <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Description
-        </Label>
+        <SectionLabel>Description</SectionLabel>
         <Input
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
@@ -83,9 +79,7 @@ export function GraderForm({
       {/* Rubric */}
       <div className="flex flex-col gap-1.5 flex-1">
         <div className="flex items-center justify-between">
-          <Label className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-            Rubric
-          </Label>
+          <SectionLabel>Rubric</SectionLabel>
           <Badge variant="secondary">LLM</Badge>
         </div>
         <Textarea

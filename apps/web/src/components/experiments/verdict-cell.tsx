@@ -1,5 +1,6 @@
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import type { ExperimentResult } from '@/hooks/use-experiments'
+import { SectionLabel } from '@/components/shared/section-label'
 
 type Verdict = ExperimentResult['verdict'] | null
 
@@ -80,9 +81,7 @@ export function VerdictCell({ verdict, reason, itemLabel, graderName }: VerdictC
           {(graderName || itemLabel) && (
             <div className="flex gap-2 flex-wrap">
               {graderName && (
-                <span className="text-[10px] font-semibold uppercase tracking-widest opacity-70">
-                  {graderName}
-                </span>
+                <SectionLabel className="opacity-70">{graderName}</SectionLabel>
               )}
               {itemLabel && (
                 <span className="text-[10px] font-mono opacity-60 truncate max-w-[200px]">
