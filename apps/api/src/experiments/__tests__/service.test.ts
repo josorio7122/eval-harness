@@ -14,6 +14,11 @@ const mockRepo = {
   createResult: vi.fn(),
   findResultsByExperimentId: vi.fn(),
   countResultsByExperimentId: vi.fn(),
+  findResultsWithDetails: vi.fn(),
+}
+
+const mockRunner = {
+  enqueue: vi.fn(),
 }
 
 const mockDatasetRepo = {
@@ -42,7 +47,7 @@ const mockGraderRepo = {
   remove: vi.fn(),
 }
 
-const service = createExperimentService(mockRepo, mockDatasetRepo, mockGraderRepo)
+const service = createExperimentService(mockRepo, mockDatasetRepo, mockGraderRepo, mockRunner)
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -191,5 +196,156 @@ describe('rerunExperiment', () => {
     mockRepo.findById.mockResolvedValue(null)
     const result = await service.rerunExperiment(VALID_UUID)
     expect(result).toEqual({ success: false, error: 'Experiment not found' })
+  })
+})
+
+describe('runExperiment', () => {
+  it('returns ok with status queued when experiment is found and status is queued', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'queued',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [{ id: 'item-1', values: { input: 'hi' } }] },
+      graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    mockRunner.enqueue.mockResolvedValue(undefined)
+
+    const result = await service.runExperiment(VALID_UUID)
+    expect(result).toEqual({ success: true, data: { status: 'queued' } })
+    expect(mockRunner.enqueue).toHaveBeenCalledWith(
+      VALID_UUID,
+      [{ id: 'item-1', values: { input: 'hi' } }],
+      [{ id: VALID_UUID_3, rubric: 'judge it' }],
+    )
+  })
+
+  it('returns fail when experiment not found', async () => {
+    mockRepo.findById.mockResolvedValue(null)
+    const result = await service.runExperiment(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Experiment not found' })
+    expect(mockRunner.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('returns fail when experiment is already running', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'running',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+
+    const result = await service.runExperiment(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Experiment is not in a runnable state' })
+    expect(mockRunner.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('returns fail when experiment is complete', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+
+    const result = await service.runExperiment(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Experiment is not in a runnable state' })
+  })
+})
+
+describe('exportCsv', () => {
+  it('returns csv string with header and rows', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    mockRepo.findResultsWithDetails.mockResolvedValue([
+      {
+        id: 'r1',
+        experimentId: VALID_UUID,
+        datasetItemId: 'item-1',
+        graderId: VALID_UUID_3,
+        verdict: 'pass',
+        reason: 'Looks good',
+        datasetItem: { values: { input: 'hello', expected_output: 'world' } },
+        grader: { name: 'accuracy-grader' },
+      },
+    ])
+
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const lines = result.data.trim().split('\n')
+    expect(lines[0]).toBe('item_input,item_expected_output,grader_name,verdict,reason')
+    expect(lines[1]).toBe('hello,world,accuracy-grader,pass,Looks good')
+  })
+
+  it('returns fail when experiment not found', async () => {
+    mockRepo.findById.mockResolvedValue(null)
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Experiment not found' })
+  })
+
+  it('returns fail when experiment is not complete', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'running',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Experiment is not complete' })
+  })
+
+  it('escapes commas and quotes in CSV values', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(experiment)
+    mockRepo.findResultsWithDetails.mockResolvedValue([
+      {
+        id: 'r1',
+        experimentId: VALID_UUID,
+        datasetItemId: 'item-1',
+        graderId: VALID_UUID_3,
+        verdict: 'pass',
+        reason: 'Has, comma and "quotes"',
+        datasetItem: { values: { input: 'hello, world', expected_output: 'ok' } },
+        grader: { name: 'grader-1' },
+      },
+    ])
+
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const lines = result.data.trim().split('\n')
+    expect(lines[1]).toContain('"hello, world"')
+    expect(lines[1]).toContain('"Has, comma and ""quotes"""')
   })
 })

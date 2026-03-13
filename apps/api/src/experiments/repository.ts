@@ -60,4 +60,14 @@ export const experimentRepository = {
   countResultsByExperimentId(experimentId: string) {
     return prisma.experimentResult.count({ where: { experimentId } })
   },
+
+  findResultsWithDetails(experimentId: string) {
+    return prisma.experimentResult.findMany({
+      where: { experimentId },
+      include: {
+        datasetItem: true,
+        grader: true,
+      },
+    })
+  },
 }

@@ -11,6 +11,8 @@ const mockService = {
   createExperiment: vi.fn(),
   deleteExperiment: vi.fn(),
   rerunExperiment: vi.fn(),
+  runExperiment: vi.fn(),
+  exportCsv: vi.fn(),
 }
 
 const app = createExperimentRouter(mockService)
@@ -146,5 +148,48 @@ describe('POST /experiments/:id/rerun', () => {
 
     const res = await jsonPost(`/experiments/${VALID_UUID}/rerun`, {})
     expect(res.status).toBe(404)
+  })
+})
+
+describe('POST /experiments/:id/run', () => {
+  it('returns 202 on success', async () => {
+    mockService.runExperiment.mockResolvedValue({ success: true, data: { status: 'queued' } })
+
+    const res = await jsonPost(`/experiments/${VALID_UUID}/run`, {})
+    expect(res.status).toBe(202)
+    const body = await res.json()
+    expect(body.data).toEqual({ status: 'queued' })
+  })
+
+  it('returns 400 when service fails', async () => {
+    mockService.runExperiment.mockResolvedValue({
+      success: false,
+      error: 'Experiment is not in a runnable state',
+    })
+
+    const res = await jsonPost(`/experiments/${VALID_UUID}/run`, {})
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.success).toBe(false)
+  })
+})
+
+describe('GET /experiments/:id/csv/export', () => {
+  it('returns 200 with CSV content', async () => {
+    const csv = 'item_input,item_expected_output,grader_name,verdict,reason\nhello,world,g1,pass,ok'
+    mockService.exportCsv.mockResolvedValue({ success: true, data: csv })
+
+    const res = await app.request(`/experiments/${VALID_UUID}/csv/export`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get('Content-Type')).toContain('text/csv')
+    const body = await res.text()
+    expect(body).toBe(csv)
+  })
+
+  it('returns 400 when experiment not found or not complete', async () => {
+    mockService.exportCsv.mockResolvedValue({ success: false, error: 'Experiment is not complete' })
+
+    const res = await app.request(`/experiments/${VALID_UUID}/csv/export`)
+    expect(res.status).toBe(400)
   })
 })
