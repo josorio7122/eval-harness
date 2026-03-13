@@ -230,6 +230,9 @@ importers:
 
   packages/shared:
     devDependencies:
+      '@repo/typescript-config':
+        specifier: workspace:^
+        version: link:../typescript-config
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
