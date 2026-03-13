@@ -34,25 +34,27 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
       const tasks = datasetItems.flatMap((item) =>
         graders.map((grader) =>
           evalQueue.add(async () => {
-            let savedResult: Awaited<ReturnType<typeof repo.createResult>>
+            let savedResult: unknown
             try {
               const result = await evaluate(grader.rubric, item.values)
-              savedResult = await repo.createResult({
+              const saveResult = await repo.createResult({
                 experimentId,
                 datasetRevisionItemId: item.id,
                 graderId: grader.id,
                 verdict: result.verdict,
                 reason: result.reason,
               })
+              savedResult = saveResult.success ? saveResult.data : null
             } catch (err) {
               errorCount++
-              savedResult = await repo.createResult({
+              const saveResult = await repo.createResult({
                 experimentId,
                 datasetRevisionItemId: item.id,
                 graderId: grader.id,
                 verdict: 'error',
                 reason: err instanceof Error ? err.message : 'Unknown error',
               })
+              savedResult = saveResult.success ? saveResult.data : null
             }
 
             cellsCompleted++

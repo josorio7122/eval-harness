@@ -1,8 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
+import { type Result } from '@eval-harness/shared'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
 import { experimentRepository } from '../../experiments/repository.js'
 import { createExperimentService } from '../../experiments/service.js'
+
+/** Extract data from Result, fail test if not successful */
+function unwrap<T>(result: Result<T>): T {
+  expect(result.success).toBe(true)
+  if (!result.success) throw new Error(result.error)
+  return result.data
+}
 
 const mockRunner = { enqueue: vi.fn().mockResolvedValue(undefined) }
 const service = createExperimentService(
@@ -18,17 +26,19 @@ function uid(prefix: string) {
 }
 
 async function seedDatasetWithItems() {
-  const ds = await datasetRepository.create(uid('exp-svc-ds'))
-  await datasetRepository.createItem(ds.id, { input: 'q1', expected_output: 'a1' })
+  const ds = unwrap(await datasetRepository.create(uid('exp-svc-ds')))
+  unwrap(await datasetRepository.createItem(ds.id, { input: 'q1', expected_output: 'a1' }))
   return ds
 }
 
 async function seedGrader() {
-  return graderRepository.create({
-    name: uid('exp-svc-grader'),
-    description: 'test grader',
-    rubric: 'award points',
-  })
+  return unwrap(
+    await graderRepository.create({
+      name: uid('exp-svc-grader'),
+      description: 'test grader',
+      rubric: 'award points',
+    }),
+  )
 }
 
 describe('experiments service (integration)', () => {
@@ -45,7 +55,7 @@ describe('experiments service (integration)', () => {
   })
 
   it('createExperiment with empty dataset returns fail', async () => {
-    const ds = await datasetRepository.create(uid('exp-empty-ds'))
+    const ds = unwrap(await datasetRepository.create(uid('exp-empty-ds')))
     const grader = await seedGrader()
     const result = await service.createExperiment({
       name: uid('exp-empty'),
@@ -84,15 +94,14 @@ describe('experiments service (integration)', () => {
     if (!result.success) return
 
     // Verify datasetRevisionId is set
-    const found = await experimentRepository.findById(result.data.id)
-    expect(found).not.toBeNull()
-    expect(found!.datasetRevisionId).toBeDefined()
-    expect(found!.datasetId).toBe(ds.id)
-    expect(found!.graders).toHaveLength(2)
+    const found = unwrap(await experimentRepository.findById((result.data as { id: string }).id))
+    expect(found.datasetRevisionId).toBeDefined()
+    expect(found.datasetId).toBe(ds.id)
+    expect(found.graders).toHaveLength(2)
 
     // Verify it points to the latest revision
-    const revisions = await datasetRepository.findRevisions(ds.id)
-    expect(found!.datasetRevisionId).toBe(revisions[0].id)
+    const revisions = unwrap(await datasetRepository.findRevisions(ds.id))
+    expect(found.datasetRevisionId).toBe(revisions[0].id)
   })
 
   it('rerunExperiment creates a new experiment referencing latest revision', async () => {
@@ -100,23 +109,25 @@ describe('experiments service (integration)', () => {
     const grader = await seedGrader()
 
     // Get revision for direct create
-    const revisions = await datasetRepository.findRevisions(ds.id)
-    const original = await experimentRepository.create({
-      name: uid('exp-rerun-orig'),
-      datasetId: ds.id,
-      datasetRevisionId: revisions[0].id,
-      graderIds: [grader.id],
-    })
+    const revisions = unwrap(await datasetRepository.findRevisions(ds.id))
+    const original = unwrap(
+      await experimentRepository.create({
+        name: uid('exp-rerun-orig'),
+        datasetId: ds.id,
+        datasetRevisionId: revisions[0].id,
+        graderIds: [grader.id],
+      }),
+    )
 
     const result = await service.rerunExperiment(original.id)
 
     expect(result.success).toBe(true)
     if (!result.success) return
 
-    expect(result.data.id).not.toBe(original.id)
-    expect(result.data.name).toContain('re-run')
+    expect((result.data as { id: string; name: string }).id).not.toBe(original.id)
+    expect((result.data as { id: string; name: string }).name).toContain('re-run')
 
-    const stillExists = await experimentRepository.findById(original.id)
+    const stillExists = unwrap(await experimentRepository.findById(original.id))
     expect(stillExists).not.toBeNull()
   })
 
@@ -124,24 +135,26 @@ describe('experiments service (integration)', () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
 
-    const revisions = await datasetRepository.findRevisions(ds.id)
-    const experiment = await experimentRepository.create({
-      name: uid('exp-delete'),
-      datasetId: ds.id,
-      datasetRevisionId: revisions[0].id,
-      graderIds: [grader.id],
-    })
+    const revisions = unwrap(await datasetRepository.findRevisions(ds.id))
+    const experiment = unwrap(
+      await experimentRepository.create({
+        name: uid('exp-delete'),
+        datasetId: ds.id,
+        datasetRevisionId: revisions[0].id,
+        graderIds: [grader.id],
+      }),
+    )
 
     const result = await service.deleteExperiment(experiment.id)
     expect(result.success).toBe(true)
 
     const expFound = await experimentRepository.findById(experiment.id)
-    expect(expFound).toBeNull()
+    expect(expFound.success).toBe(false)
 
-    const dsFound = await datasetRepository.findById(ds.id)
+    const dsFound = unwrap(await datasetRepository.findById(ds.id))
     expect(dsFound).not.toBeNull()
 
-    const graderFound = await graderRepository.findById(grader.id)
+    const graderFound = unwrap(await graderRepository.findById(grader.id))
     expect(graderFound).not.toBeNull()
   })
 
@@ -165,9 +178,9 @@ describe('experiments service (integration)', () => {
     expect(resultB.success).toBe(true)
     if (!resultA.success || !resultB.success) return
 
-    const expA = await experimentRepository.findById(resultA.data.id)
-    const expB = await experimentRepository.findById(resultB.data.id)
-    expect(expA!.datasetRevisionId).toBe(expB!.datasetRevisionId)
+    const expA = unwrap(await experimentRepository.findById((resultA.data as { id: string }).id))
+    const expB = unwrap(await experimentRepository.findById((resultB.data as { id: string }).id))
+    expect(expA.datasetRevisionId).toBe(expB.datasetRevisionId)
   })
 
   // B18 strengthen: verify first experiment's revisionId unchanged after dataset edit
@@ -183,14 +196,18 @@ describe('experiments service (integration)', () => {
     expect(resultA.success).toBe(true)
     if (!resultA.success) return
 
-    const originalRevId = (await experimentRepository.findById(resultA.data.id))!.datasetRevisionId
+    const originalRevId = unwrap(
+      await experimentRepository.findById((resultA.data as { id: string }).id),
+    ).datasetRevisionId
 
     // Edit dataset (creates new revision)
-    await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' })
+    unwrap(await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' }))
 
     // Verify experiment still points to original revision
-    const afterEdit = await experimentRepository.findById(resultA.data.id)
-    expect(afterEdit!.datasetRevisionId).toBe(originalRevId)
+    const afterEdit = unwrap(
+      await experimentRepository.findById((resultA.data as { id: string }).id),
+    )
+    expect(afterEdit.datasetRevisionId).toBe(originalRevId)
   })
 
   // B18 — different revisions after edit
@@ -207,7 +224,7 @@ describe('experiments service (integration)', () => {
     if (!resultA.success) return
 
     // Edit dataset (creates new revision)
-    await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' })
+    unwrap(await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' }))
 
     const resultB = await service.createExperiment({
       name: uid('exp-after-edit'),
@@ -217,8 +234,8 @@ describe('experiments service (integration)', () => {
     expect(resultB.success).toBe(true)
     if (!resultB.success) return
 
-    const expA = await experimentRepository.findById(resultA.data.id)
-    const expB = await experimentRepository.findById(resultB.data.id)
-    expect(expA!.datasetRevisionId).not.toBe(expB!.datasetRevisionId)
+    const expA = unwrap(await experimentRepository.findById((resultA.data as { id: string }).id))
+    const expB = unwrap(await experimentRepository.findById((resultB.data as { id: string }).id))
+    expect(expA.datasetRevisionId).not.toBe(expB.datasetRevisionId)
   })
 })

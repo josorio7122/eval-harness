@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
+import { type Result } from '@eval-harness/shared'
 import { datasetRepository } from '../../datasets/repository.js'
 import { createDatasetService } from '../../datasets/service.js'
+
+/** Extract data from Result, fail test if not successful */
+function unwrap<T>(result: Result<T>): T {
+  expect(result.success).toBe(true)
+  if (!result.success) throw new Error(result.error)
+  return result.data
+}
 
 const service = createDatasetService(datasetRepository)
 
@@ -18,11 +26,10 @@ describe('datasets service (integration)', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
 
-    const found = await datasetRepository.findById(result.data.id)
-    expect(found).not.toBeNull()
-    expect(found!.name).toBe(name)
-    expect(found!.attributes).toEqual(['input', 'expected_output'])
-    expect(found!.schemaVersion).toBe(1)
+    const found = unwrap(await datasetRepository.findById((result.data as { id: string }).id))
+    expect(found.name).toBe(name)
+    expect(found.attributes).toEqual(['input', 'expected_output'])
+    expect(found.schemaVersion).toBe(1)
   })
 
   // 2. createDataset duplicate name → returns fail('Dataset name already exists')
@@ -39,25 +46,29 @@ describe('datasets service (integration)', () => {
 
   // 3. addAttribute → items in DB have new key backfilled with ''
   it('addAttribute backfills existing items with empty string', async () => {
-    const ds = await datasetRepository.create(uid('svc-attr-ds'))
-    const item1 = await datasetRepository.createItem(ds.id, { input: 'q1', expected_output: 'a1' })
-    const item2 = await datasetRepository.createItem(ds.id, { input: 'q2', expected_output: 'a2' })
+    const ds = unwrap(await datasetRepository.create(uid('svc-attr-ds')))
+    const item1 = unwrap(
+      await datasetRepository.createItem(ds.id, { input: 'q1', expected_output: 'a1' }),
+    )
+    const item2 = unwrap(
+      await datasetRepository.createItem(ds.id, { input: 'q2', expected_output: 'a2' }),
+    )
 
     const result = await service.addAttribute(ds.id, { name: 'context' })
 
     expect(result.success).toBe(true)
     if (!result.success) return
-    expect(result.data.schemaVersion).toBe(2)
+    expect((result.data as { schemaVersion: number }).schemaVersion).toBe(2)
 
-    const found1 = await datasetRepository.findItemById(item1.itemId)
-    const found2 = await datasetRepository.findItemById(item2.itemId)
-    expect((found1!.values as Record<string, string>).context).toBe('')
-    expect((found2!.values as Record<string, string>).context).toBe('')
+    const found1 = unwrap(await datasetRepository.findItemById(item1.itemId))
+    const found2 = unwrap(await datasetRepository.findItemById(item2.itemId))
+    expect((found1.values as Record<string, string>).context).toBe('')
+    expect((found2.values as Record<string, string>).context).toBe('')
   })
 
   // 4. removeAttribute rejects built-in 'input' → returns fail
   it('removeAttribute on built-in attribute returns fail', async () => {
-    const ds = await datasetRepository.create(uid('svc-rm-builtin'))
+    const ds = unwrap(await datasetRepository.create(uid('svc-rm-builtin')))
 
     const result = await service.removeAttribute(ds.id, 'input')
 
@@ -68,7 +79,7 @@ describe('datasets service (integration)', () => {
 
   // 5. createItem with correct schema → item persisted in DB
   it('createItem with correct values persists item in DB', async () => {
-    const ds = await datasetRepository.create(uid('svc-item-ok'))
+    const ds = unwrap(await datasetRepository.create(uid('svc-item-ok')))
 
     const result = await service.createItem(ds.id, {
       values: { input: 'hello', expected_output: 'world' },
@@ -77,14 +88,15 @@ describe('datasets service (integration)', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
 
-    const found = await datasetRepository.findItemById(result.data.itemId)
-    expect(found).not.toBeNull()
-    expect(found!.values).toEqual({ input: 'hello', expected_output: 'world' })
+    const found = unwrap(
+      await datasetRepository.findItemById((result.data as { itemId: string }).itemId),
+    )
+    expect(found.values).toEqual({ input: 'hello', expected_output: 'world' })
   })
 
   // 6. createItem with unknown keys → extra keys are ignored, item is created
   it('createItem with unknown keys ignores extras and creates item', async () => {
-    const ds = await datasetRepository.create(uid('svc-item-bad'))
+    const ds = unwrap(await datasetRepository.create(uid('svc-item-bad')))
 
     const result = await service.createItem(ds.id, {
       values: { input: 'hi', expected_output: 'there', bogus: 'extra' },
@@ -92,7 +104,7 @@ describe('datasets service (integration)', () => {
 
     expect(result.success).toBe(true)
 
-    const items = await datasetRepository.findItemsByDatasetId(ds.id)
+    const items = unwrap(await datasetRepository.findItemsByDatasetId(ds.id))
     expect(items).toHaveLength(1)
     expect((items[0].values as Record<string, string>).input).toBe('hi')
     expect((items[0].values as Record<string, string>).expected_output).toBe('there')
@@ -101,10 +113,10 @@ describe('datasets service (integration)', () => {
 
   // 7. importCsv creates items → items exist in DB with correct values, single new revision
   it('importCsv creates items in DB with correct values', async () => {
-    const ds = await datasetRepository.create(uid('svc-csv-ok'))
+    const ds = unwrap(await datasetRepository.create(uid('svc-csv-ok')))
     const csv = `input,expected_output\nhello,world\nfoo,bar`
 
-    const revisionsBefore = await datasetRepository.findRevisions(ds.id)
+    const revisionsBefore = unwrap(await datasetRepository.findRevisions(ds.id))
 
     const result = await service.importCsv(ds.id, csv)
 
@@ -113,7 +125,7 @@ describe('datasets service (integration)', () => {
     expect(result.data.imported).toBe(2)
     expect(result.data.skipped).toBe(0)
 
-    const items = await datasetRepository.findItemsByDatasetId(ds.id)
+    const items = unwrap(await datasetRepository.findItemsByDatasetId(ds.id))
     expect(items).toHaveLength(2)
     const values = items.map((i) => i.values as Record<string, string>)
     expect(values).toEqual(
@@ -123,13 +135,13 @@ describe('datasets service (integration)', () => {
       ]),
     )
 
-    const revisionsAfter = await datasetRepository.findRevisions(ds.id)
+    const revisionsAfter = unwrap(await datasetRepository.findRevisions(ds.id))
     expect(revisionsAfter.length).toBe(revisionsBefore.length + 1)
   })
 
   // 8. importCsv with mixed-case headers → items created (case-insensitive)
   it('importCsv with mixed-case headers creates items', async () => {
-    const ds = await datasetRepository.create(uid('svc-csv-case'))
+    const ds = unwrap(await datasetRepository.create(uid('svc-csv-case')))
     const csv = `Input,Expected_Output\nhello,world`
 
     const result = await service.importCsv(ds.id, csv)
@@ -138,7 +150,7 @@ describe('datasets service (integration)', () => {
     if (!result.success) return
     expect(result.data.imported).toBe(1)
 
-    const items = await datasetRepository.findItemsByDatasetId(ds.id)
+    const items = unwrap(await datasetRepository.findItemsByDatasetId(ds.id))
     expect(items).toHaveLength(1)
     expect(items[0].values as Record<string, string>).toEqual({
       input: 'hello',

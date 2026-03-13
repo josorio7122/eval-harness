@@ -1,8 +1,10 @@
 import { prisma } from '../lib/prisma.js'
+import { ok, tryCatch } from '@eval-harness/shared'
 import { randomUUID } from 'crypto'
 
-async function getLatestRevision(datasetId: string) {
-  return prisma.datasetRevision.findFirst({
+/** Returns the most recent revision for a dataset. Throws if no revisions exist. */
+async function getLatestRevisionOrThrow(datasetId: string) {
+  return prisma.datasetRevision.findFirstOrThrow({
     where: { datasetId },
     orderBy: { createdAt: 'desc' },
     include: { items: { orderBy: { createdAt: 'asc' } } },
@@ -19,7 +21,14 @@ async function createRevision(
   },
 ) {
   const baseVersion =
-    options.currentSchemaVersion ?? (await getLatestRevision(datasetId))?.schemaVersion ?? 0
+    options.currentSchemaVersion ??
+    (
+      await prisma.datasetRevision.findFirst({
+        where: { datasetId },
+        orderBy: { createdAt: 'desc' },
+      })
+    )?.schemaVersion ??
+    0
   const newSchemaVersion = baseVersion + options.schemaVersionDelta
 
   return prisma.datasetRevision.create({
@@ -54,255 +63,278 @@ async function buildDatasetResponse(datasetId: string, revision: RevisionWithIte
 
 export const datasetRepository = {
   async findAll() {
-    const datasets = await prisma.dataset.findMany({
-      orderBy: { name: 'asc' },
-      include: {
-        revisions: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          include: { _count: { select: { items: true } } },
+    return tryCatch(async () => {
+      const datasets = await prisma.dataset.findMany({
+        orderBy: { name: 'asc' },
+        include: {
+          revisions: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: { _count: { select: { items: true } } },
+          },
         },
-      },
-    })
+      })
 
-    return datasets.map((ds) => ({
-      id: ds.id,
-      name: ds.name,
-      itemCount: ds.revisions[0]?._count.items ?? 0,
-    }))
+      return ok(
+        datasets.map((ds) => ({
+          id: ds.id,
+          name: ds.name,
+          itemCount: ds.revisions[0]?._count.items ?? 0,
+        })),
+      )
+    })
   },
 
   async findById(id: string) {
-    const dataset = await prisma.dataset.findUnique({ where: { id } })
-    if (!dataset) return null
-
-    const latest = await getLatestRevision(id)
-    if (!latest) return null
-
-    return {
-      id: dataset.id,
-      name: dataset.name,
-      attributes: latest.attributes,
-      schemaVersion: latest.schemaVersion,
-      items: latest.items,
-    }
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(id)
+      return ok(await buildDatasetResponse(id, latest))
+    })
   },
 
+  /** Returns null when no match — used by services to check name availability. */
   findByName(name: string) {
     return prisma.dataset.findUnique({ where: { name } })
   },
 
   async create(name: string) {
-    const dataset = await prisma.dataset.create({ data: { name } })
+    return tryCatch(async () => {
+      const dataset = await prisma.dataset.create({ data: { name } })
 
-    const revision = await createRevision(dataset.id, {
-      schemaVersionDelta: 1,
-      attributes: ['input', 'expected_output'],
-      items: [],
+      const revision = await createRevision(dataset.id, {
+        schemaVersionDelta: 1,
+        attributes: ['input', 'expected_output'],
+        items: [],
+      })
+
+      return ok(await buildDatasetResponse(dataset.id, revision))
     })
-
-    return buildDatasetResponse(dataset.id, revision)
   },
 
   async update(id: string, name: string) {
-    return prisma.dataset.update({ where: { id }, data: { name } })
+    return tryCatch(async () => {
+      const dataset = await prisma.dataset.update({ where: { id }, data: { name } })
+      return ok(dataset)
+    })
   },
 
   async remove(id: string) {
-    return prisma.dataset.delete({ where: { id } })
+    return tryCatch(async () => {
+      await prisma.dataset.delete({ where: { id } })
+      return ok({ deleted: true as const })
+    })
   },
 
   async addAttribute(id: string, attributeName: string) {
-    const latest = await getLatestRevision(id)
-    if (!latest) throw new Error('Dataset has no revisions')
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(id)
 
-    const newAttributes = [...latest.attributes, attributeName]
-    const newItems = latest.items.map((item) => ({
-      itemId: item.itemId,
-      values: { ...(item.values as Record<string, string>), [attributeName]: '' },
-      createdAt: item.createdAt,
-    }))
+      const newAttributes = [...latest.attributes, attributeName]
+      const newItems = latest.items.map((item) => ({
+        itemId: item.itemId,
+        values: { ...(item.values as Record<string, string>), [attributeName]: '' },
+        createdAt: item.createdAt,
+      }))
 
-    const revision = await createRevision(id, {
-      schemaVersionDelta: 1,
-      attributes: newAttributes,
-      items: newItems,
-      currentSchemaVersion: latest.schemaVersion,
+      const revision = await createRevision(id, {
+        schemaVersionDelta: 1,
+        attributes: newAttributes,
+        items: newItems,
+        currentSchemaVersion: latest.schemaVersion,
+      })
+
+      return ok(await buildDatasetResponse(id, revision))
     })
-
-    return buildDatasetResponse(id, revision)
   },
 
   async removeAttribute(id: string, attributeName: string) {
-    const latest = await getLatestRevision(id)
-    if (!latest) throw new Error('Dataset has no revisions')
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(id)
 
-    const newAttributes = latest.attributes.filter((a) => a !== attributeName)
-    const newItems = latest.items.map((item) => {
-      const values = { ...(item.values as Record<string, string>) }
-      delete values[attributeName]
-      return { itemId: item.itemId, values, createdAt: item.createdAt }
+      const newAttributes = latest.attributes.filter((a) => a !== attributeName)
+      const newItems = latest.items.map((item) => {
+        const values = { ...(item.values as Record<string, string>) }
+        delete values[attributeName]
+        return { itemId: item.itemId, values, createdAt: item.createdAt }
+      })
+
+      const revision = await createRevision(id, {
+        schemaVersionDelta: 1,
+        attributes: newAttributes,
+        items: newItems,
+        currentSchemaVersion: latest.schemaVersion,
+      })
+
+      return ok(await buildDatasetResponse(id, revision))
     })
-
-    const revision = await createRevision(id, {
-      schemaVersionDelta: 1,
-      attributes: newAttributes,
-      items: newItems,
-      currentSchemaVersion: latest.schemaVersion,
-    })
-
-    return buildDatasetResponse(id, revision)
   },
 
   async findItemsByDatasetId(datasetId: string) {
-    const latest = await getLatestRevision(datasetId)
-    return latest?.items ?? []
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(datasetId)
+      return ok(latest.items)
+    })
   },
 
   async findItemById(itemId: string) {
-    const item = await prisma.datasetRevisionItem.findFirst({
-      where: { itemId },
-      orderBy: { revision: { createdAt: 'desc' } },
+    return tryCatch(async () => {
+      const item = await prisma.datasetRevisionItem.findFirstOrThrow({
+        where: { itemId },
+        orderBy: { revision: { createdAt: 'desc' } },
+      })
+      return ok(item)
     })
-    return item
   },
 
   async createItem(datasetId: string, values: Record<string, string>) {
-    const latest = await getLatestRevision(datasetId)
-    if (!latest) throw new Error('Dataset has no revisions')
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(datasetId)
 
-    const newItemId = randomUUID()
-    const existingItems = latest.items.map((item) => ({
-      itemId: item.itemId,
-      values: item.values as Record<string, string>,
-      createdAt: item.createdAt,
-    }))
-
-    const revision = await createRevision(datasetId, {
-      schemaVersionDelta: 0,
-      attributes: latest.attributes,
-      items: [...existingItems, { itemId: newItemId, values }],
-    })
-
-    return revision.items.find((i) => i.itemId === newItemId)!
-  },
-
-  async updateItem(itemId: string, values: Record<string, string>) {
-    const existingItem = await prisma.datasetRevisionItem.findFirst({
-      where: { itemId },
-      orderBy: { revision: { createdAt: 'desc' } },
-      include: { revision: true },
-    })
-    if (!existingItem) throw new Error('Item not found')
-
-    const datasetId = existingItem.revision.datasetId
-    const latest = await getLatestRevision(datasetId)
-    if (!latest) throw new Error('Dataset has no revisions')
-
-    const newItems = latest.items.map((item) => ({
-      itemId: item.itemId,
-      values: item.itemId === itemId ? values : (item.values as Record<string, string>),
-      createdAt: item.createdAt,
-    }))
-
-    const revision = await createRevision(datasetId, {
-      schemaVersionDelta: 0,
-      attributes: latest.attributes,
-      items: newItems,
-    })
-
-    return revision.items.find((i) => i.itemId === itemId)!
-  },
-
-  async removeItem(itemId: string) {
-    const existingItem = await prisma.datasetRevisionItem.findFirst({
-      where: { itemId },
-      orderBy: { revision: { createdAt: 'desc' } },
-      include: { revision: true },
-    })
-    if (!existingItem) throw new Error('Item not found')
-
-    const datasetId = existingItem.revision.datasetId
-    const latest = await getLatestRevision(datasetId)
-    if (!latest) throw new Error('Dataset has no revisions')
-
-    const newItems = latest.items
-      .filter((item) => item.itemId !== itemId)
-      .map((item) => ({
+      const newItemId = randomUUID()
+      const existingItems = latest.items.map((item) => ({
         itemId: item.itemId,
         values: item.values as Record<string, string>,
         createdAt: item.createdAt,
       }))
 
-    await createRevision(datasetId, {
-      schemaVersionDelta: 0,
-      attributes: latest.attributes,
-      items: newItems,
+      const revision = await createRevision(datasetId, {
+        schemaVersionDelta: 0,
+        attributes: latest.attributes,
+        items: [...existingItems, { itemId: newItemId, values }],
+      })
+
+      return ok(revision.items.find((i) => i.itemId === newItemId)!)
+    })
+  },
+
+  async updateItem(itemId: string, values: Record<string, string>) {
+    return tryCatch(async () => {
+      const existingItem = await prisma.datasetRevisionItem.findFirstOrThrow({
+        where: { itemId },
+        orderBy: { revision: { createdAt: 'desc' } },
+        include: { revision: true },
+      })
+
+      const datasetId = existingItem.revision.datasetId
+      const latest = await getLatestRevisionOrThrow(datasetId)
+
+      const newItems = latest.items.map((item) => ({
+        itemId: item.itemId,
+        values: item.itemId === itemId ? values : (item.values as Record<string, string>),
+        createdAt: item.createdAt,
+      }))
+
+      const revision = await createRevision(datasetId, {
+        schemaVersionDelta: 0,
+        attributes: latest.attributes,
+        items: newItems,
+      })
+
+      return ok(revision.items.find((i) => i.itemId === itemId)!)
+    })
+  },
+
+  async removeItem(itemId: string) {
+    return tryCatch(async () => {
+      const existingItem = await prisma.datasetRevisionItem.findFirstOrThrow({
+        where: { itemId },
+        orderBy: { revision: { createdAt: 'desc' } },
+        include: { revision: true },
+      })
+
+      const datasetId = existingItem.revision.datasetId
+      const latest = await getLatestRevisionOrThrow(datasetId)
+
+      const newItems = latest.items
+        .filter((item) => item.itemId !== itemId)
+        .map((item) => ({
+          itemId: item.itemId,
+          values: item.values as Record<string, string>,
+          createdAt: item.createdAt,
+        }))
+
+      await createRevision(datasetId, {
+        schemaVersionDelta: 0,
+        attributes: latest.attributes,
+        items: newItems,
+      })
+
+      return ok({ deleted: true as const })
     })
   },
 
   async countItems(datasetId: string) {
-    const latest = await getLatestRevision(datasetId)
-    return latest?.items.length ?? 0
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(datasetId)
+      return ok(latest.items.length)
+    })
   },
 
   async importItems(datasetId: string, valuesArray: Record<string, string>[]) {
-    const latest = await getLatestRevision(datasetId)
-    if (!latest) throw new Error('Dataset has no revisions')
+    return tryCatch(async () => {
+      const latest = await getLatestRevisionOrThrow(datasetId)
 
-    const existingItems = latest.items.map((item) => ({
-      itemId: item.itemId,
-      values: item.values as Record<string, string>,
-      createdAt: item.createdAt,
-    }))
+      const existingItems = latest.items.map((item) => ({
+        itemId: item.itemId,
+        values: item.values as Record<string, string>,
+        createdAt: item.createdAt,
+      }))
 
-    const newItems = valuesArray.map((values) => ({
-      itemId: randomUUID(),
-      values,
-    }))
+      const newItems = valuesArray.map((values) => ({
+        itemId: randomUUID(),
+        values,
+      }))
 
-    await createRevision(datasetId, {
-      schemaVersionDelta: 0,
-      attributes: latest.attributes,
-      items: [...existingItems, ...newItems],
+      const revision = await createRevision(datasetId, {
+        schemaVersionDelta: 0,
+        attributes: latest.attributes,
+        items: [...existingItems, ...newItems],
+      })
+
+      return ok(revision)
     })
   },
 
   async findRevisions(datasetId: string) {
-    const revisions = await prisma.datasetRevision.findMany({
-      where: { datasetId },
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { items: true, experiments: true } } },
-    })
+    return tryCatch(async () => {
+      const revisions = await prisma.datasetRevision.findMany({
+        where: { datasetId },
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { items: true, experiments: true } } },
+      })
 
-    return revisions.map((r, i) => ({
-      id: r.id,
-      schemaVersion: r.schemaVersion,
-      attributes: r.attributes,
-      createdAt: r.createdAt,
-      itemCount: r._count.items,
-      experimentCount: r._count.experiments,
-      isCurrent: i === 0,
-    }))
+      return ok(
+        revisions.map((r, i) => ({
+          id: r.id,
+          schemaVersion: r.schemaVersion,
+          attributes: r.attributes,
+          createdAt: r.createdAt,
+          itemCount: r._count.items,
+          experimentCount: r._count.experiments,
+          isCurrent: i === 0,
+        })),
+      )
+    })
   },
 
   async findRevisionById(datasetId: string, revisionId: string) {
-    const revision = await prisma.datasetRevision.findFirst({
-      where: { id: revisionId, datasetId },
-      include: {
-        items: { orderBy: { createdAt: 'asc' } },
-        experiments: { select: { id: true, name: true, status: true } },
-      },
-    })
-    if (!revision) return null
+    return tryCatch(async () => {
+      const revision = await prisma.datasetRevision.findFirstOrThrow({
+        where: { id: revisionId, datasetId },
+        include: {
+          items: { orderBy: { createdAt: 'asc' } },
+          experiments: { select: { id: true, name: true, status: true } },
+        },
+      })
 
-    return {
-      id: revision.id,
-      schemaVersion: revision.schemaVersion,
-      attributes: revision.attributes,
-      createdAt: revision.createdAt,
-      items: revision.items,
-      experiments: revision.experiments,
-    }
+      return ok({
+        id: revision.id,
+        schemaVersion: revision.schemaVersion,
+        attributes: revision.attributes,
+        createdAt: revision.createdAt,
+        items: revision.items,
+        experiments: revision.experiments,
+      })
+    })
   },
 }

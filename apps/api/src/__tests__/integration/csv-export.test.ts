@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { type Result } from '@eval-harness/shared'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
 import { createExperimentService } from '../../experiments/service.js'
+
+/** Extract data from Result, fail test if not successful */
+function unwrap<T>(result: Result<T>): T {
+  expect(result.success).toBe(true)
+  if (!result.success) throw new Error(result.error)
+  return result.data
+}
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
 
@@ -15,41 +23,45 @@ async function seedAndRun(
   mockEvaluate: EvaluateFn,
 ) {
   const n = ++seedCounter
-  const dataset = await datasetRepository.create(`csv-dataset-${n}`)
+  const dataset = unwrap(await datasetRepository.create(`csv-dataset-${n}`))
 
   for (const values of itemValues) {
-    await datasetRepository.createItem(dataset.id, values)
+    unwrap(await datasetRepository.createItem(dataset.id, values))
   }
 
   // Get items from the latest revision
-  const latestData = await datasetRepository.findById(dataset.id)
-  const items = latestData!.items.map((item) => ({
+  const latestData = unwrap(await datasetRepository.findById(dataset.id))
+  const items = latestData.items.map((item) => ({
     id: item.id,
     values: item.values as Record<string, string>,
   }))
 
   // Get revision ID
-  const revisions = await datasetRepository.findRevisions(dataset.id)
+  const revisions = unwrap(await datasetRepository.findRevisions(dataset.id))
   const revisionId = revisions[0].id
 
   const graders: Array<{ id: string; rubric: string }> = []
   for (const def of graderDefs) {
-    const grader = await graderRepository.create({
-      name: `${def.name}-${n}`,
-      description: 'test grader',
-      rubric: def.rubric,
-    })
+    const grader = unwrap(
+      await graderRepository.create({
+        name: `${def.name}-${n}`,
+        description: 'test grader',
+        rubric: def.rubric,
+      }),
+    )
     graders.push({ id: grader.id, rubric: grader.rubric })
   }
 
   const graderIds = graders.map((g) => g.id)
-  const experiment = await experimentRepository.create({
-    name: `csv-exp-${n}`,
-    datasetId: dataset.id,
-    datasetRevisionId: revisionId,
-    graderIds,
-  })
-  await experimentRepository.updateStatus(experiment.id, 'running')
+  const experiment = unwrap(
+    await experimentRepository.create({
+      name: `csv-exp-${n}`,
+      datasetId: dataset.id,
+      datasetRevisionId: revisionId,
+      graderIds,
+    }),
+  )
+  unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
 
   const runner = createExperimentRunner(experimentRepository, mockEvaluate)
   await runner.enqueue(experiment.id, items, graders)
@@ -77,8 +89,8 @@ describe('CSV export (integration)', () => {
     )
 
     // graders[0].id gives us the grader id but we need the name; fetch from DB
-    const graderRecord = await graderRepository.findById(graders[0].id)
-    const graderName = graderRecord!.name
+    const graderRecord = unwrap(await graderRepository.findById(graders[0].id))
+    const graderName = graderRecord.name
 
     const result = await service.exportCsv(experiment.id)
     expect(result.success).toBe(true)
@@ -121,8 +133,8 @@ describe('CSV export (integration)', () => {
       mockEvaluate,
     )
 
-    const graderRecord = await graderRepository.findById(graders[0].id)
-    const graderName = graderRecord!.name
+    const graderRecord = unwrap(await graderRepository.findById(graders[0].id))
+    const graderName = graderRecord.name
 
     const result = await service.exportCsv(experiment.id)
     expect(result.success).toBe(true)
@@ -164,20 +176,26 @@ describe('CSV export (integration)', () => {
   })
 
   it('export fails for non-complete experiment', async () => {
-    const dataset = await datasetRepository.create(`csv-incomplete-dataset-${++seedCounter}`)
-    await datasetRepository.createItem(dataset.id, { input: 'q', expected_output: 'a' })
-    const grader = await graderRepository.create({
-      name: `csv-incomplete-grader-${seedCounter}`,
-      description: 'test',
-      rubric: 'rubric',
-    })
-    const revisions = await datasetRepository.findRevisions(dataset.id)
-    const experiment = await experimentRepository.create({
-      name: `csv-incomplete-exp-${seedCounter}`,
-      datasetId: dataset.id,
-      datasetRevisionId: revisions[0].id,
-      graderIds: [grader.id],
-    })
+    const dataset = unwrap(
+      await datasetRepository.create(`csv-incomplete-dataset-${++seedCounter}`),
+    )
+    unwrap(await datasetRepository.createItem(dataset.id, { input: 'q', expected_output: 'a' }))
+    const grader = unwrap(
+      await graderRepository.create({
+        name: `csv-incomplete-grader-${seedCounter}`,
+        description: 'test',
+        rubric: 'rubric',
+      }),
+    )
+    const revisions = unwrap(await datasetRepository.findRevisions(dataset.id))
+    const experiment = unwrap(
+      await experimentRepository.create({
+        name: `csv-incomplete-exp-${seedCounter}`,
+        datasetId: dataset.id,
+        datasetRevisionId: revisions[0].id,
+        graderIds: [grader.id],
+      }),
+    )
     // Status is 'queued' (default), not 'complete'
 
     const result = await service.exportCsv(experiment.id)

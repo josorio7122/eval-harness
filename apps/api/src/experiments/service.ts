@@ -7,7 +7,6 @@ import { graderRepository } from '../graders/repository.js'
 import type { createExperimentRunner } from './runner.js'
 
 type Runner = ReturnType<typeof createExperimentRunner>
-type ExperimentWithDetails = NonNullable<Awaited<ReturnType<typeof experimentRepository.findById>>>
 
 export function createExperimentService(
   repo: typeof experimentRepository,
@@ -16,96 +15,87 @@ export function createExperimentService(
   runner?: Runner,
 ) {
   return {
-    listExperiments(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
-      return tryCatch(async () => {
-        const experiments = await repo.findAll()
-        return ok(experiments)
-      })
-    },
+    listExperiments: repo.findAll.bind(repo),
 
-    getExperiment(
-      id: string,
-    ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
-      return tryCatch(async () => {
-        const experiment = await repo.findById(id)
-        if (!experiment) return fail('Experiment not found')
-        return ok(experiment)
-      })
-    },
+    getExperiment: repo.findById.bind(repo),
 
     createExperiment(input: {
       name: string
       datasetId: string
       graderIds: string[]
-    }): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
+    }): Promise<Result<unknown>> {
       return tryCatch(async () => {
-        const dataset = await datasetRepo.findById(input.datasetId)
-        if (!dataset) return fail('Dataset not found')
+        const datasetResult = await datasetRepo.findById(input.datasetId)
+        if (!datasetResult.success) return fail('Dataset not found')
 
-        const itemCount = await datasetRepo.countItems(input.datasetId)
-        if (itemCount === 0) return fail('Dataset has no items')
+        const countResult = await datasetRepo.countItems(input.datasetId)
+        if (!countResult.success) return countResult
+        if (countResult.data === 0) return fail('Dataset has no items')
 
         for (const graderId of input.graderIds) {
-          const grader = await graderRepo.findById(graderId)
-          if (!grader) return fail('Grader not found')
+          const graderResult = await graderRepo.findById(graderId)
+          if (!graderResult.success) return fail('Grader not found')
         }
 
-        const revisions = await datasetRepo.findRevisions(input.datasetId)
-        if (revisions.length === 0) return fail('Dataset has no revisions')
-        const datasetRevisionId = revisions[0].id
+        const revisionsResult = await datasetRepo.findRevisions(input.datasetId)
+        if (!revisionsResult.success) return revisionsResult
+        if (revisionsResult.data.length === 0) return fail('Dataset has no revisions')
+        const datasetRevisionId = revisionsResult.data[0].id
 
-        const created = await repo.create({ ...input, datasetRevisionId })
-        return ok(created)
+        return repo.create({ ...input, datasetRevisionId })
       })
     },
 
-    deleteExperiment(id: string): Promise<Result<{ deleted: true }>> {
+    deleteExperiment: repo.remove.bind(repo),
+
+    rerunExperiment(id: string): Promise<Result<unknown>> {
       return tryCatch(async () => {
-        const experiment = await repo.findById(id)
-        if (!experiment) return fail('Experiment not found')
-        await repo.remove(id)
-        return ok({ deleted: true as const })
-      })
-    },
+        const expResult = await repo.findById(id)
+        if (!expResult.success) return expResult
+        const experiment = expResult.data as {
+          name: string
+          datasetId: string
+          graders: Array<{ graderId: string }>
+        }
 
-    rerunExperiment(id: string): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
-      return tryCatch(async () => {
-        const experiment = await repo.findById(id)
-        if (!experiment) return fail('Experiment not found')
+        const revisionsResult = await datasetRepo.findRevisions(experiment.datasetId)
+        if (!revisionsResult.success) return revisionsResult
+        if (revisionsResult.data.length === 0) return fail('Dataset has no revisions')
+        const datasetRevisionId = revisionsResult.data[0].id
 
-        const revisions = await datasetRepo.findRevisions(experiment.datasetId)
-        if (revisions.length === 0) return fail('Dataset has no revisions')
-        const datasetRevisionId = revisions[0].id
-
-        const graderIds = experiment.graders.map((eg: { graderId: string }) => eg.graderId)
-        const created = await repo.create({
+        const graderIds = experiment.graders.map((eg) => eg.graderId)
+        return repo.create({
           name: `${experiment.name} (re-run)`,
           datasetId: experiment.datasetId,
           datasetRevisionId,
           graderIds,
         })
-        return ok(created)
       })
     },
 
     runExperiment(id: string): Promise<Result<{ status: ExperimentStatus }>> {
       return tryCatch(async () => {
-        const experiment = await repo.findById(id)
-        if (!experiment) return fail('Experiment not found')
+        const result = await repo.findById(id)
+        if (!result.success) return result
+
+        const experiment = result.data as {
+          status: ExperimentStatus
+          revision?: { items: Array<{ id: string; values: unknown }> }
+          graders: Array<{ grader: { id: string; rubric: string } }>
+        }
 
         if (experiment.status !== 'queued') {
           return fail('Experiment is not in a runnable state')
         }
 
-        const typedExperiment = experiment as ExperimentWithDetails
-        const rawItems = typedExperiment.revision?.items ?? []
+        const rawItems = experiment.revision?.items ?? []
         if (rawItems.length === 0) return fail('Dataset has no items')
         const datasetItems = rawItems.map((item) => ({
           id: item.id,
           values: item.values as Record<string, string>,
         }))
 
-        const graders = typedExperiment.graders.map((eg) => ({
+        const graders = experiment.graders.map((eg) => ({
           id: eg.grader.id,
           rubric: eg.grader.rubric,
         }))
@@ -118,13 +108,20 @@ export function createExperimentService(
 
     exportCsv(id: string): Promise<Result<string>> {
       return tryCatch(async () => {
-        const experiment = await repo.findById(id)
-        if (!experiment) return fail('Experiment not found')
+        const expResult = await repo.findById(id)
+        if (!expResult.success) return expResult
+
+        const experiment = expResult.data as {
+          status: ExperimentStatus
+          revision?: { attributes?: string[] }
+        }
+
         if (experiment.status === 'queued' || experiment.status === 'running')
           return fail('Experiment has not finished running')
 
-        const results = await repo.findResultsWithDetails(id)
-        if (results.length === 0) return fail('No results to export')
+        const resultsResult = await repo.findResultsWithDetails(id)
+        if (!resultsResult.success) return resultsResult
+        if (resultsResult.data.length === 0) return fail('No results to export')
 
         type DetailedResult = {
           datasetRevisionItemId: string
@@ -133,7 +130,7 @@ export function createExperimentService(
           verdict: string
           reason: string
         }
-        const typedResults = results as DetailedResult[]
+        const typedResults = resultsResult.data as DetailedResult[]
 
         // Collect unique grader names (preserving order of first appearance)
         const graderNames: string[] = []
@@ -167,8 +164,7 @@ export function createExperimentService(
         }
 
         // Get dataset attributes for header (input + expected_output + any extras)
-        const expWithRevision = experiment as ExperimentWithDetails
-        const datasetAttributes: string[] = expWithRevision.revision?.attributes ?? [
+        const datasetAttributes: string[] = experiment.revision?.attributes ?? [
           'input',
           'expected_output',
         ]

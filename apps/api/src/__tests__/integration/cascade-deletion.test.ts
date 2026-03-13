@@ -1,8 +1,16 @@
 import { describe, it, expect } from 'vitest'
+import { type Result } from '@eval-harness/shared'
 import { datasetRepository as datasetRepo } from '../../datasets/repository.js'
 import { graderRepository as graderRepo } from '../../graders/repository.js'
 import { experimentRepository as experimentRepo } from '../../experiments/repository.js'
 import { prisma } from '../../lib/prisma.js'
+
+/** Extract data from Result, fail test if not successful */
+function unwrap<T>(result: Result<T>): T {
+  expect(result.success).toBe(true)
+  if (!result.success) throw new Error(result.error)
+  return result.data
+}
 
 let counter = 0
 
@@ -15,40 +23,46 @@ async function seedFullScenario() {
   const id = uid()
 
   // 1. Create dataset with one item
-  const dataset = await datasetRepo.create(`cascade-dataset-${id}`)
-  await datasetRepo.createItem(dataset.id, { input: 'hello', expected_output: 'world' })
+  const dataset = unwrap(await datasetRepo.create(`cascade-dataset-${id}`))
+  unwrap(await datasetRepo.createItem(dataset.id, { input: 'hello', expected_output: 'world' }))
 
   // 2. Get the latest revision (after item was added)
-  const revisions = await datasetRepo.findRevisions(dataset.id)
+  const revisions = unwrap(await datasetRepo.findRevisions(dataset.id))
   const latestRevision = revisions[0]
 
   // 3. Get the revision item ID (the DatasetRevisionItem.id, not itemId)
-  const revisionDetail = await datasetRepo.findRevisionById(dataset.id, latestRevision.id)
-  const revisionItemId = revisionDetail!.items[0].id
+  const revisionDetail = unwrap(await datasetRepo.findRevisionById(dataset.id, latestRevision.id))
+  const revisionItemId = revisionDetail.items[0].id
 
   // 4. Create grader
-  const grader = await graderRepo.create({
-    name: `cascade-grader-${id}`,
-    description: 'Grader for cascade tests',
-    rubric: 'Grade this item',
-  })
+  const grader = unwrap(
+    await graderRepo.create({
+      name: `cascade-grader-${id}`,
+      description: 'Grader for cascade tests',
+      rubric: 'Grade this item',
+    }),
+  )
 
   // 5. Create experiment
-  const experiment = await experimentRepo.create({
-    name: `cascade-experiment-${id}`,
-    datasetId: dataset.id,
-    datasetRevisionId: latestRevision.id,
-    graderIds: [grader.id],
-  })
+  const experiment = unwrap(
+    await experimentRepo.create({
+      name: `cascade-experiment-${id}`,
+      datasetId: dataset.id,
+      datasetRevisionId: latestRevision.id,
+      graderIds: [grader.id],
+    }),
+  )
 
   // 6. Create experiment result
-  const result = await experimentRepo.createResult({
-    experimentId: experiment.id,
-    datasetRevisionItemId: revisionItemId,
-    graderId: grader.id,
-    verdict: 'pass',
-    reason: 'Looks good',
-  })
+  const result = unwrap(
+    await experimentRepo.createResult({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItemId,
+      graderId: grader.id,
+      verdict: 'pass',
+      reason: 'Looks good',
+    }),
+  )
 
   return { dataset, grader, experiment, result, revisionItemId, latestRevision }
 }
@@ -57,15 +71,15 @@ describe('DatasetDelete cascade', () => {
   it('deleting a dataset removes its experiments and their results', async () => {
     const { dataset, grader, experiment } = await seedFullScenario()
 
-    await datasetRepo.remove(dataset.id)
+    unwrap(await datasetRepo.remove(dataset.id))
 
     // dataset is gone
     const foundDataset = await datasetRepo.findById(dataset.id)
-    expect(foundDataset).toBeNull()
+    expect(foundDataset.success).toBe(false)
 
     // experiment is gone
     const foundExperiment = await experimentRepo.findById(experiment.id)
-    expect(foundExperiment).toBeNull()
+    expect(foundExperiment.success).toBe(false)
 
     // results are gone
     const resultCount = await prisma.experimentResult.count({
@@ -74,19 +88,18 @@ describe('DatasetDelete cascade', () => {
     expect(resultCount).toBe(0)
 
     // grader is unaffected
-    const foundGrader = await graderRepo.findById(grader.id)
-    expect(foundGrader).not.toBeNull()
-    expect(foundGrader!.id).toBe(grader.id)
+    const foundGrader = unwrap(await graderRepo.findById(grader.id))
+    expect(foundGrader.id).toBe(grader.id)
   })
 
   it('deleting a dataset removes all revisions and revision items', async () => {
     const { dataset, latestRevision } = await seedFullScenario()
 
     // Verify revisions exist before delete
-    const revisionsBefore = await datasetRepo.findRevisions(dataset.id)
+    const revisionsBefore = unwrap(await datasetRepo.findRevisions(dataset.id))
     expect(revisionsBefore.length).toBeGreaterThan(0)
 
-    await datasetRepo.remove(dataset.id)
+    unwrap(await datasetRepo.remove(dataset.id))
 
     // revisions are gone
     const revisionsAfter = await prisma.datasetRevision.count({
@@ -106,15 +119,15 @@ describe('GraderDelete cascade', () => {
   it('removeWithCascade deletes grader, experiments, and their results', async () => {
     const { dataset, grader, experiment } = await seedFullScenario()
 
-    await graderRepo.removeWithCascade(grader.id)
+    unwrap(await graderRepo.removeWithCascade(grader.id))
 
     // grader is gone
     const foundGrader = await graderRepo.findById(grader.id)
-    expect(foundGrader).toBeNull()
+    expect(foundGrader.success).toBe(false)
 
     // experiment is gone
     const foundExperiment = await experimentRepo.findById(experiment.id)
-    expect(foundExperiment).toBeNull()
+    expect(foundExperiment.success).toBe(false)
 
     // results are gone
     const resultCount = await prisma.experimentResult.count({
@@ -123,23 +136,20 @@ describe('GraderDelete cascade', () => {
     expect(resultCount).toBe(0)
 
     // dataset is unaffected
-    const foundDataset = await datasetRepo.findById(dataset.id)
-    expect(foundDataset).not.toBeNull()
-    expect(foundDataset!.id).toBe(dataset.id)
+    const foundDataset = unwrap(await datasetRepo.findById(dataset.id))
+    expect(foundDataset.id).toBe(dataset.id)
   })
-
-
 })
 
 describe('ExperimentDelete isolation', () => {
   it('deleting an experiment removes results but leaves dataset and grader intact', async () => {
     const { dataset, grader, experiment } = await seedFullScenario()
 
-    await experimentRepo.remove(experiment.id)
+    unwrap(await experimentRepo.remove(experiment.id))
 
     // experiment is gone
     const foundExperiment = await experimentRepo.findById(experiment.id)
-    expect(foundExperiment).toBeNull()
+    expect(foundExperiment.success).toBe(false)
 
     // results are gone
     const resultCount = await prisma.experimentResult.count({
@@ -148,14 +158,12 @@ describe('ExperimentDelete isolation', () => {
     expect(resultCount).toBe(0)
 
     // dataset still exists with its items
-    const foundDataset = await datasetRepo.findById(dataset.id)
-    expect(foundDataset).not.toBeNull()
-    expect(foundDataset!.items).toHaveLength(1)
+    const foundDataset = unwrap(await datasetRepo.findById(dataset.id))
+    expect(foundDataset.items).toHaveLength(1)
 
     // grader still exists
-    const foundGrader = await graderRepo.findById(grader.id)
-    expect(foundGrader).not.toBeNull()
-    expect(foundGrader!.id).toBe(grader.id)
+    const foundGrader = unwrap(await graderRepo.findById(grader.id))
+    expect(foundGrader.id).toBe(grader.id)
   })
 })
 
@@ -164,59 +172,69 @@ describe('GraderDelete with multiple experiments', () => {
     const id = uid()
 
     // Create dataset
-    const dataset = await datasetRepo.create(`multi-exp-dataset-${id}`)
-    await datasetRepo.createItem(dataset.id, { input: 'q', expected_output: 'a' })
-    const revisions = await datasetRepo.findRevisions(dataset.id)
+    const dataset = unwrap(await datasetRepo.create(`multi-exp-dataset-${id}`))
+    unwrap(await datasetRepo.createItem(dataset.id, { input: 'q', expected_output: 'a' }))
+    const revisions = unwrap(await datasetRepo.findRevisions(dataset.id))
     const latestRevision = revisions[0]
-    const revisionDetail = await datasetRepo.findRevisionById(dataset.id, latestRevision.id)
-    const revisionItemId = revisionDetail!.items[0].id
+    const revisionDetail = unwrap(await datasetRepo.findRevisionById(dataset.id, latestRevision.id))
+    const revisionItemId = revisionDetail.items[0].id
 
     // Create grader
-    const grader = await graderRepo.create({
-      name: `shared-grader-${id}`,
-      description: 'Used by multiple experiments',
-      rubric: 'Multi-exp rubric',
-    })
+    const grader = unwrap(
+      await graderRepo.create({
+        name: `shared-grader-${id}`,
+        description: 'Used by multiple experiments',
+        rubric: 'Multi-exp rubric',
+      }),
+    )
 
     // Create two experiments using the same grader
-    const expA = await experimentRepo.create({
-      name: `multi-exp-a-${id}`,
-      datasetId: dataset.id,
-      datasetRevisionId: latestRevision.id,
-      graderIds: [grader.id],
-    })
-    const expB = await experimentRepo.create({
-      name: `multi-exp-b-${id}`,
-      datasetId: dataset.id,
-      datasetRevisionId: latestRevision.id,
-      graderIds: [grader.id],
-    })
+    const expA = unwrap(
+      await experimentRepo.create({
+        name: `multi-exp-a-${id}`,
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader.id],
+      }),
+    )
+    const expB = unwrap(
+      await experimentRepo.create({
+        name: `multi-exp-b-${id}`,
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader.id],
+      }),
+    )
 
     // Create a result for each experiment
-    await experimentRepo.createResult({
-      experimentId: expA.id,
-      datasetRevisionItemId: revisionItemId,
-      graderId: grader.id,
-      verdict: 'pass',
-      reason: 'result A',
-    })
-    await experimentRepo.createResult({
-      experimentId: expB.id,
-      datasetRevisionItemId: revisionItemId,
-      graderId: grader.id,
-      verdict: 'fail',
-      reason: 'result B',
-    })
+    unwrap(
+      await experimentRepo.createResult({
+        experimentId: expA.id,
+        datasetRevisionItemId: revisionItemId,
+        graderId: grader.id,
+        verdict: 'pass',
+        reason: 'result A',
+      }),
+    )
+    unwrap(
+      await experimentRepo.createResult({
+        experimentId: expB.id,
+        datasetRevisionItemId: revisionItemId,
+        graderId: grader.id,
+        verdict: 'fail',
+        reason: 'result B',
+      }),
+    )
 
     // Delete grader with cascade
-    await graderRepo.removeWithCascade(grader.id)
+    unwrap(await graderRepo.removeWithCascade(grader.id))
 
     // Both experiments are gone
     const foundExpA = await experimentRepo.findById(expA.id)
-    expect(foundExpA).toBeNull()
+    expect(foundExpA.success).toBe(false)
 
     const foundExpB = await experimentRepo.findById(expB.id)
-    expect(foundExpB).toBeNull()
+    expect(foundExpB.success).toBe(false)
 
     // Both results are gone
     const resultCountA = await prisma.experimentResult.count({
@@ -230,8 +248,7 @@ describe('GraderDelete with multiple experiments', () => {
     expect(resultCountB).toBe(0)
 
     // Dataset still exists
-    const foundDataset = await datasetRepo.findById(dataset.id)
-    expect(foundDataset).not.toBeNull()
-    expect(foundDataset!.id).toBe(dataset.id)
+    const foundDataset = unwrap(await datasetRepo.findById(dataset.id))
+    expect(foundDataset.id).toBe(dataset.id)
   })
 })

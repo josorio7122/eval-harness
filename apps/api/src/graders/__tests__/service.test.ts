@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ok, fail } from '@eval-harness/shared'
 import { createGraderService } from '../service.js'
 
 const mockRepo = {
@@ -19,7 +20,7 @@ beforeEach(() => {
 describe('listGraders', () => {
   it('returns ok with graders array', async () => {
     const graders = [{ id: '1', name: 'g1', description: '', rubric: 'some rubric' }]
-    mockRepo.findAll.mockResolvedValue(graders)
+    mockRepo.findAll.mockResolvedValue(ok(graders))
     const result = await service.listGraders()
     expect(result).toEqual({ success: true, data: graders })
   })
@@ -28,13 +29,13 @@ describe('listGraders', () => {
 describe('getGrader', () => {
   it('returns ok when found', async () => {
     const grader = { id: '1', name: 'g1', description: '', rubric: 'some rubric' }
-    mockRepo.findById.mockResolvedValue(grader)
+    mockRepo.findById.mockResolvedValue(ok(grader))
     const result = await service.getGrader('1')
     expect(result).toEqual({ success: true, data: grader })
   })
 
   it('returns fail when not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Grader not found'))
     const result = await service.getGrader('999')
     expect(result).toEqual({ success: false, error: 'Grader not found' })
   })
@@ -44,7 +45,7 @@ describe('createGrader', () => {
   it('creates successfully', async () => {
     mockRepo.findByName.mockResolvedValue(null)
     const created = { id: '1', name: 'g1', description: '', rubric: 'some rubric' }
-    mockRepo.create.mockResolvedValue(created)
+    mockRepo.create.mockResolvedValue(ok(created))
     const result = await service.createGrader({
       name: 'g1',
       description: '',
@@ -71,27 +72,31 @@ describe('createGrader', () => {
 
 describe('updateGrader', () => {
   it('updates successfully', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'g1',
-      description: '',
-      rubric: 'old rubric',
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'g1',
+        description: '',
+        rubric: 'old rubric',
+      }),
+    )
     mockRepo.findByName.mockResolvedValue(null)
     const updated = { id: '1', name: 'g2', description: '', rubric: 'old rubric' }
-    mockRepo.update.mockResolvedValue(updated)
+    mockRepo.update.mockResolvedValue(ok(updated))
     const result = await service.updateGrader('1', { name: 'g2' })
     expect(result).toEqual({ success: true, data: updated })
   })
 
   it('fails when not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Grader not found'))
     const result = await service.updateGrader('999', { name: 'g2' })
     expect(result).toEqual({ success: false, error: 'Grader not found' })
   })
 
   it('fails on duplicate name', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'g1', description: '', rubric: 'rubric' })
+    mockRepo.findById.mockResolvedValue(
+      ok({ id: '1', name: 'g1', description: '', rubric: 'rubric' }),
+    )
     mockRepo.findByName.mockResolvedValue({
       id: '2',
       name: 'g2',
@@ -104,9 +109,9 @@ describe('updateGrader', () => {
 
   it('allows updating with same name', async () => {
     const existing = { id: '1', name: 'g1', description: '', rubric: 'rubric' }
-    mockRepo.findById.mockResolvedValue(existing)
+    mockRepo.findById.mockResolvedValue(ok(existing))
     mockRepo.findByName.mockResolvedValue(existing)
-    mockRepo.update.mockResolvedValue(existing)
+    mockRepo.update.mockResolvedValue(ok(existing))
     const result = await service.updateGrader('1', { name: 'g1' })
     expect(result.success).toBe(true)
   })
@@ -114,15 +119,14 @@ describe('updateGrader', () => {
 
 describe('deleteGrader', () => {
   it('deletes successfully using removeWithCascade', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'g1', description: '', rubric: 'rubric' })
-    mockRepo.removeWithCascade.mockResolvedValue({ id: '1' })
+    mockRepo.removeWithCascade.mockResolvedValue(ok({ deleted: true as const }))
     const result = await service.deleteGrader('1')
     expect(result).toEqual({ success: true, data: { deleted: true } })
     expect(mockRepo.removeWithCascade).toHaveBeenCalledWith('1')
   })
 
   it('fails when not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.removeWithCascade.mockResolvedValue(fail('Grader not found'))
     const result = await service.deleteGrader('999')
     expect(result).toEqual({ success: false, error: 'Grader not found' })
   })

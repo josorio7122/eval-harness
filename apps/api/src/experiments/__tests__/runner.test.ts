@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ok } from '@eval-harness/shared'
 import { createExperimentRunner, experimentEvents } from '../runner.js'
 
 type ExperimentEvent = Record<string, unknown>
@@ -12,8 +13,8 @@ const mockEvaluate = vi.fn()
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mockRepo.updateStatus.mockResolvedValue({})
-  mockRepo.createResult.mockResolvedValue({})
+  mockRepo.updateStatus.mockResolvedValue(ok({}))
+  mockRepo.createResult.mockResolvedValue(ok({}))
 })
 
 const datasetItems = [
@@ -69,13 +70,15 @@ describe('createExperimentRunner', () => {
 
   it('emits progress events for each cell', async () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
-    mockRepo.createResult.mockResolvedValue({
-      id: 'result-1',
-      datasetRevisionItemId: 'item-1',
-      graderId: 'grader-1',
-      verdict: 'pass',
-      reason: 'ok',
-    })
+    mockRepo.createResult.mockResolvedValue(
+      ok({
+        id: 'result-1',
+        datasetRevisionItemId: 'item-1',
+        graderId: 'grader-1',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+    )
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
     const events: ExperimentEvent[] = []

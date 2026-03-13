@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ok, fail } from '@eval-harness/shared'
 import { createDatasetService } from '../service.js'
 
 const mockRepo = {
@@ -30,7 +31,7 @@ beforeEach(() => {
 describe('listDatasets', () => {
   it('returns ok with datasets array', async () => {
     const datasets = [{ id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }]
-    mockRepo.findAll.mockResolvedValue(datasets)
+    mockRepo.findAll.mockResolvedValue(ok(datasets))
     const result = await service.listDatasets()
     expect(result).toEqual({ success: true, data: datasets })
   })
@@ -39,13 +40,13 @@ describe('listDatasets', () => {
 describe('getDataset', () => {
   it('returns ok when found', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'], items: [] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const result = await service.getDataset('1')
     expect(result).toEqual({ success: true, data: dataset })
   })
 
   it('returns fail when not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.getDataset('999')
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -55,7 +56,7 @@ describe('createDataset', () => {
   it('creates successfully', async () => {
     mockRepo.findByName.mockResolvedValue(null)
     const created = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.create.mockResolvedValue(created)
+    mockRepo.create.mockResolvedValue(ok(created))
     const result = await service.createDataset({ name: 'ds1' })
     expect(result).toEqual({ success: true, data: created })
   })
@@ -69,30 +70,21 @@ describe('createDataset', () => {
 
 describe('updateDataset', () => {
   it('updates successfully', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds1',
-      attributes: ['input', 'expected_output'],
-    })
     mockRepo.findByName.mockResolvedValue(null)
     const updated = { id: '1', name: 'ds2', attributes: ['input', 'expected_output'] }
-    mockRepo.update.mockResolvedValue(updated)
+    mockRepo.update.mockResolvedValue(ok(updated))
     const result = await service.updateDataset('1', { name: 'ds2' })
     expect(result).toEqual({ success: true, data: updated })
   })
 
   it('fails when not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findByName.mockResolvedValue(null)
+    mockRepo.update.mockResolvedValue(fail('Dataset not found'))
     const result = await service.updateDataset('999', { name: 'ds2' })
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
 
   it('fails on duplicate name', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds1',
-      attributes: ['input', 'expected_output'],
-    })
     mockRepo.findByName.mockResolvedValue({ id: '2', name: 'ds2' })
     const result = await service.updateDataset('1', { name: 'ds2' })
     expect(result).toEqual({ success: false, error: 'Dataset name already exists' })
@@ -100,9 +92,8 @@ describe('updateDataset', () => {
 
   it('allows updating with same name', async () => {
     const existing = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(existing)
     mockRepo.findByName.mockResolvedValue(existing)
-    mockRepo.update.mockResolvedValue(existing)
+    mockRepo.update.mockResolvedValue(ok(existing))
     const result = await service.updateDataset('1', { name: 'ds1' })
     expect(result.success).toBe(true)
   })
@@ -110,14 +101,13 @@ describe('updateDataset', () => {
 
 describe('deleteDataset', () => {
   it('deletes successfully', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1' })
-    mockRepo.remove.mockResolvedValue({ id: '1' })
+    mockRepo.remove.mockResolvedValue(ok({ deleted: true as const }))
     const result = await service.deleteDataset('1')
     expect(result).toEqual({ success: true, data: { deleted: true } })
   })
 
   it('fails when not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.remove.mockResolvedValue(fail('Dataset not found'))
     const result = await service.deleteDataset('999')
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -126,22 +116,22 @@ describe('deleteDataset', () => {
 describe('addAttribute', () => {
   it('adds attribute successfully', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const updated = { ...dataset, attributes: ['input', 'expected_output', 'context'] }
-    mockRepo.addAttribute.mockResolvedValue(updated)
+    mockRepo.addAttribute.mockResolvedValue(ok(updated))
     const result = await service.addAttribute('1', { name: 'context' })
     expect(result).toEqual({ success: true, data: updated })
   })
 
   it('fails on duplicate attribute', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const result = await service.addAttribute('1', { name: 'input' })
     expect(result).toEqual({ success: false, error: 'Attribute already exists' })
   })
 
   it('fails when dataset not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.addAttribute('999', { name: 'context' })
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -150,36 +140,36 @@ describe('addAttribute', () => {
 describe('removeAttribute', () => {
   it('removes custom attribute successfully', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output', 'context'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const updated = { ...dataset, attributes: ['input', 'expected_output'] }
-    mockRepo.removeAttribute.mockResolvedValue(updated)
+    mockRepo.removeAttribute.mockResolvedValue(ok(updated))
     const result = await service.removeAttribute('1', 'context')
     expect(result).toEqual({ success: true, data: updated })
   })
 
   it('fails on built-in attribute "input"', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const result = await service.removeAttribute('1', 'input')
     expect(result).toEqual({ success: false, error: 'Cannot remove built-in attribute' })
   })
 
   it('fails on built-in attribute "expected_output"', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const result = await service.removeAttribute('1', 'expected_output')
     expect(result).toEqual({ success: false, error: 'Cannot remove built-in attribute' })
   })
 
   it('fails when dataset not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.removeAttribute('999', 'context')
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
 
   it('fails when attribute does not exist', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const result = await service.removeAttribute('1', 'nonexistent')
     expect(result).toEqual({ success: false, error: 'Attribute not found' })
   })
@@ -188,9 +178,9 @@ describe('removeAttribute', () => {
 describe('createItem', () => {
   it('creates item with matching schema', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const item = { id: 'i1', datasetId: '1', values: { input: 'hello', expected_output: 'world' } }
-    mockRepo.createItem.mockResolvedValue(item)
+    mockRepo.createItem.mockResolvedValue(ok(item))
     const result = await service.createItem('1', {
       values: { input: 'hello', expected_output: 'world' },
     })
@@ -198,19 +188,23 @@ describe('createItem', () => {
   })
 
   it('defaults missing attributes to empty string', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output', 'context'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.createItem.mockResolvedValue({
-      id: 'item1',
-      itemId: 'itemId1',
-      revisionId: 'rev1',
-      values: {},
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output', 'context'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
+    mockRepo.createItem.mockResolvedValue(
+      ok({
+        id: 'item1',
+        itemId: 'itemId1',
+        revisionId: 'rev1',
+        values: {},
+      }),
+    )
     const result = await service.createItem('1', {
       values: { input: 'hello', expected_output: 'world' },
     })
@@ -220,19 +214,23 @@ describe('createItem', () => {
   })
 
   it('ignores extra keys not in schema', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.createItem.mockResolvedValue({
-      id: 'item1',
-      itemId: 'itemId1',
-      revisionId: 'rev1',
-      values: {},
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
+    mockRepo.createItem.mockResolvedValue(
+      ok({
+        id: 'item1',
+        itemId: 'itemId1',
+        revisionId: 'rev1',
+        values: {},
+      }),
+    )
     const result = await service.createItem('1', {
       values: { input: 'hello', expected_output: 'world', extra: 'ignored' },
     })
@@ -242,7 +240,7 @@ describe('createItem', () => {
   })
 
   it('fails when dataset not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.createItem('999', {
       values: { input: 'hello', expected_output: 'world' },
     })
@@ -253,10 +251,9 @@ describe('createItem', () => {
 describe('updateItem', () => {
   it('updates item successfully', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const updated = { id: 'i1', datasetId: '1', values: { input: 'new', expected_output: 'val' } }
-    mockRepo.updateItem.mockResolvedValue(updated)
+    mockRepo.updateItem.mockResolvedValue(ok(updated))
     const result = await service.updateItem('1', 'i1', {
       values: { input: 'new', expected_output: 'val' },
     })
@@ -264,16 +261,17 @@ describe('updateItem', () => {
   })
 
   it('defaults missing attributes to empty string on update', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output', 'context'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output', 'context'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const updated = { id: 'i1', datasetId: '1', values: {} }
-    mockRepo.updateItem.mockResolvedValue(updated)
+    mockRepo.updateItem.mockResolvedValue(ok(updated))
     const result = await service.updateItem('1', 'i1', {
       values: { input: 'new', expected_output: 'val' },
     })
@@ -283,16 +281,17 @@ describe('updateItem', () => {
   })
 
   it('ignores extra keys not in schema on update', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const updated = { id: 'i1', datasetId: '1', values: {} }
-    mockRepo.updateItem.mockResolvedValue(updated)
+    mockRepo.updateItem.mockResolvedValue(ok(updated))
     const result = await service.updateItem('1', 'i1', {
       values: { input: 'new', expected_output: 'val', extra: 'ignored' },
     })
@@ -303,8 +302,8 @@ describe('updateItem', () => {
 
   it('fails when item not found', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.findItemById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.updateItem.mockResolvedValue(fail('Item not found'))
     const result = await service.updateItem('1', '999', {
       values: { input: 'x', expected_output: 'y' },
     })
@@ -314,16 +313,15 @@ describe('updateItem', () => {
 
 describe('deleteItem', () => {
   it('deletes item successfully', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1' })
-    mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1' })
-    mockRepo.removeItem.mockResolvedValue({ id: 'i1' })
+    mockRepo.findById.mockResolvedValue(ok({ id: '1', name: 'ds1' }))
+    mockRepo.removeItem.mockResolvedValue(ok({ deleted: true as const }))
     const result = await service.deleteItem('1', 'i1')
     expect(result).toEqual({ success: true, data: { deleted: true } })
   })
 
   it('fails when item not found', async () => {
-    mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1' })
-    mockRepo.findItemById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(ok({ id: '1', name: 'ds1' }))
+    mockRepo.removeItem.mockResolvedValue(fail('Item not found'))
     const result = await service.deleteItem('1', '999')
     expect(result).toEqual({ success: false, error: 'Item not found' })
   })
@@ -332,7 +330,7 @@ describe('deleteItem', () => {
 describe('getCsvTemplate', () => {
   it('returns CSV header and dataset name', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output', 'context'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const result = await service.getCsvTemplate('1')
     expect(result).toEqual({
       success: true,
@@ -344,11 +342,13 @@ describe('getCsvTemplate', () => {
 describe('exportCsv', () => {
   it('returns CSV with header and rows plus dataset name', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.findItemsByDatasetId.mockResolvedValue([
-      { id: 'i1', datasetId: '1', values: { input: 'hello', expected_output: 'world' } },
-      { id: 'i2', datasetId: '1', values: { input: 'foo', expected_output: 'bar' } },
-    ])
+    mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.findItemsByDatasetId.mockResolvedValue(
+      ok([
+        { id: 'i1', datasetId: '1', values: { input: 'hello', expected_output: 'world' } },
+        { id: 'i2', datasetId: '1', values: { input: 'foo', expected_output: 'bar' } },
+      ]),
+    )
     const result = await service.exportCsv('1')
     expect(result.success).toBe(true)
     if (result.success) {
@@ -364,8 +364,8 @@ describe('exportCsv', () => {
 describe('importCsv', () => {
   it('imports items from CSV', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.importItems.mockResolvedValue(undefined)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     const csv = 'input,expected_output\nhello,world\nfoo,bar'
     const result = await service.importCsv('1', csv)
     expect(result).toEqual({ success: true, data: { imported: 2, skipped: 0 } })
@@ -378,8 +378,8 @@ describe('importCsv', () => {
 
   it('skips rows with empty built-in fields and reports count', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.importItems.mockResolvedValue(undefined)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     const csv = 'input,expected_output\nhello,world\n,empty-input\nfoo,bar'
     const result = await service.importCsv('1', csv)
     expect(result).toEqual({ success: true, data: { imported: 2, skipped: 1 } })
@@ -392,7 +392,7 @@ describe('importCsv', () => {
 
   it('fails when CSV has header only (no data rows)', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const csv = 'input,expected_output'
     const result = await service.importCsv('1', csv)
     expect(result).toEqual({ success: false, error: 'No data rows found in CSV' })
@@ -400,7 +400,7 @@ describe('importCsv', () => {
 
   it('fails with distinct error for missing columns', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const csv = 'input\nhello'
     const result = await service.importCsv('1', csv)
     expect(result.success).toBe(false)
@@ -409,7 +409,7 @@ describe('importCsv', () => {
 
   it('fails with distinct error for unknown columns', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     // All required columns present, plus one unknown
     const csv = 'input,expected_output,extra_column\nhello,world,extra'
     const result = await service.importCsv('1', csv)
@@ -420,14 +420,16 @@ describe('importCsv', () => {
 
 describe('importCsv - CRLF handling', () => {
   it('handles CRLF line endings in CSV import', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.importItems.mockResolvedValue(undefined)
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     const result = await service.importCsv(
       '1',
       'input,expected_output\r\nhello,world\r\nfoo,bar\r\n',
@@ -443,14 +445,16 @@ describe('importCsv - CRLF handling', () => {
   })
 
   it('handles CR-only line endings in CSV import', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.importItems.mockResolvedValue(undefined)
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     const result = await service.importCsv('1', 'input,expected_output\rhello,world\rfoo,bar')
     expect(result.success).toBe(true)
     if (result.success) {
@@ -461,52 +465,60 @@ describe('importCsv - CRLF handling', () => {
 
 describe('importCsv - non-CSV detection (C6)', () => {
   it('rejects JSON content as not valid CSV', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const result = await service.importCsv('1', '{"foo":"bar"}')
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('could not be parsed')
   })
 
   it('rejects JSON array content as not valid CSV', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const result = await service.importCsv('1', '[{"foo":"bar"}]')
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('could not be parsed')
   })
 
   it('rejects binary-looking content as not valid CSV', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const result = await service.importCsv('1', '\x00\x01\x02\x03')
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('could not be parsed')
   })
 
   it('returns missing columns error for single-column CSV with multi-column schema', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const result = await service.importCsv('1', 'justonecolumn\nvalue1\nvalue2')
     expect(result.success).toBe(false)
     // Single-column CSV is ambiguous — we give the more precise "missing columns" error
@@ -517,8 +529,8 @@ describe('importCsv - non-CSV detection (C6)', () => {
 describe('importCsv - case-insensitive headers', () => {
   it('accepts CSV with mixed-case headers', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.importItems.mockResolvedValue(undefined)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     const csv = 'Input,Expected_Output\nhello,world\nfoo,bar'
     const result = await service.importCsv('1', csv)
     expect(result).toEqual({ success: true, data: { imported: 2, skipped: 0 } })
@@ -527,8 +539,8 @@ describe('importCsv - case-insensitive headers', () => {
 
   it('accepts CSV with ALL-CAPS headers', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    mockRepo.importItems.mockResolvedValue(undefined)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     const csv = 'INPUT,EXPECTED_OUTPUT\nhello,world'
     const result = await service.importCsv('1', csv)
     expect(result).toEqual({ success: true, data: { imported: 1, skipped: 0 } })
@@ -538,7 +550,7 @@ describe('importCsv - case-insensitive headers', () => {
 describe('previewCsv', () => {
   it('returns valid and skipped rows without creating items', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const csv = 'input,expected_output\nhello,world\n,missing-input\nfoo,bar'
     const result = await service.previewCsv('1', csv)
     expect(result.success).toBe(true)
@@ -552,7 +564,7 @@ describe('previewCsv', () => {
 
   it('handles quoted fields with commas', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.findById.mockResolvedValue(ok(dataset))
     const csv = 'input,expected_output\n"hello, world","foo bar"'
     const result = await service.previewCsv('1', csv)
     expect(result.success).toBe(true)
@@ -563,7 +575,7 @@ describe('previewCsv', () => {
   })
 
   it('fails when dataset not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.previewCsv('999', 'input,expected_output\nhello,world')
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -571,13 +583,15 @@ describe('previewCsv', () => {
 
 describe('listRevisions', () => {
   it('returns ok with revisions when dataset exists', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds1',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds1',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const revisions = [
       {
         id: 'rev1',
@@ -589,14 +603,14 @@ describe('listRevisions', () => {
         isCurrent: true,
       },
     ]
-    mockRepo.findRevisions.mockResolvedValue(revisions)
+    mockRepo.findRevisions.mockResolvedValue(ok(revisions))
     const result = await service.listRevisions('1')
     expect(result).toEqual({ success: true, data: revisions })
     expect((result as { success: true; data: typeof revisions }).data[0].isCurrent).toBe(true)
   })
 
   it('returns fail when dataset not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.listRevisions('999')
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -604,13 +618,15 @@ describe('listRevisions', () => {
 
 describe('getRevision', () => {
   it('returns ok with revision detail', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds1',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds1',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
     const revision = {
       id: 'rev1',
       schemaVersion: 1,
@@ -619,26 +635,28 @@ describe('getRevision', () => {
       items: [],
       experiments: [],
     }
-    mockRepo.findRevisionById.mockResolvedValue(revision)
+    mockRepo.findRevisionById.mockResolvedValue(ok(revision))
     const result = await service.getRevision('1', 'rev1')
     expect(result).toEqual({ success: true, data: revision })
   })
 
   it('returns fail when revision not found', async () => {
-    mockRepo.findById.mockResolvedValue({
-      id: '1',
-      name: 'ds1',
-      attributes: ['input', 'expected_output'],
-      schemaVersion: 1,
-      items: [],
-    })
-    mockRepo.findRevisionById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        id: '1',
+        name: 'ds1',
+        attributes: ['input', 'expected_output'],
+        schemaVersion: 1,
+        items: [],
+      }),
+    )
+    mockRepo.findRevisionById.mockResolvedValue(fail('Revision not found'))
     const result = await service.getRevision('1', 'rev999')
     expect(result).toEqual({ success: false, error: 'Revision not found' })
   })
 
   it('returns fail when dataset not found', async () => {
-    mockRepo.findById.mockResolvedValue(null)
+    mockRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.getRevision('999', 'rev1')
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
