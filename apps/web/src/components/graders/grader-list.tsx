@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router'
 import { GraduationCap, Plus } from 'lucide-react'
 import { useGraders } from '@/hooks/use-graders'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/shared/empty-state'
 import { ListSkeleton } from '@/components/shared/list-skeleton'
 import { CreateGraderDialog } from './create-grader-dialog'
@@ -46,7 +45,7 @@ export function GraderList() {
           <div className="m-6 rounded-lg border border-border/50 overflow-hidden">
             <div
               className="grid px-6 py-2.5 border-b border-border/50 bg-muted"
-              style={{ gridTemplateColumns: '1fr 1fr 80px' }}
+              style={{ gridTemplateColumns: '1fr 1fr' }}
             >
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Name
@@ -54,22 +53,18 @@ export function GraderList() {
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Description
               </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Type
-              </span>
             </div>
             {graders.map((grader) => (
               <button
                 key={grader.id}
                 onClick={() => navigate(`/graders/${grader.id}`)}
                 className="w-full grid items-center px-6 py-3 border-b border-border/50 last:border-b-0 text-left transition-colors bg-transparent hover:bg-card cursor-pointer"
-                style={{ gridTemplateColumns: '1fr 1fr 80px' }}
+                style={{ gridTemplateColumns: '1fr 1fr' }}
               >
                 <span className="text-sm font-medium text-foreground truncate">{grader.name}</span>
                 <span className="text-sm text-muted-foreground truncate pr-4">
                   {grader.description || '—'}
                 </span>
-                <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">LLM</Badge>
               </button>
             ))}
           </div>
