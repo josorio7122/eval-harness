@@ -15,7 +15,8 @@ datasets:
         -H "Content-Type: application/json" \
         -d '{"name": "my-dataset"}'
     expected_status: 201
-    expected_body: '{ "success": true, "data": { "id": "...", "name": "my-dataset", "attributes": ["input", "expected_output"] } }'
+    expected_body: |
+      { "success": true, "data": { "id": "...", "name": "my-dataset", "attributes": ["input", "expected_output"], "schemaVersion": 1, "items": [] } }
 
   create_duplicate_name:
     description: "Reject duplicate dataset name"
@@ -45,6 +46,7 @@ datasets:
     command: |
       curl http://localhost:3001/datasets/:id
     expected_status: 200
+    notes: "Response includes schemaVersion and items from the latest revision."
 
   rename:
     description: "Rename a dataset"
@@ -67,6 +69,7 @@ datasets:
         -H "Content-Type: application/json" \
         -d '{"name": "context"}'
     expected_status: 201
+    notes: "Creates a new revision with schemaVersion incremented by 1. All items are backfilled with empty string for the new attribute."
 
   add_duplicate_attribute:
     description: "Reject duplicate attribute name"
@@ -81,6 +84,7 @@ datasets:
     command: |
       curl -X DELETE http://localhost:3001/datasets/:id/attributes/context
     expected_status: 200
+    notes: "Creates a new revision with schemaVersion incremented by 1. The attribute is stripped from all items."
 
   remove_builtin_attribute:
     description: "Reject removal of built-in attribute"
@@ -97,6 +101,9 @@ dataset_items:
         -H "Content-Type: application/json" \
         -d '{"values": {"input": "What is 2+2?", "expected_output": "4"}}'
     expected_status: 201
+    expected_body: |
+      { "success": true, "data": { "id": "...", "revisionId": "...", "itemId": "...", "values": { "input": "What is 2+2?", "expected_output": "4" } } }
+    notes: "Creates a new revision containing all existing items plus this new item. The itemId is stable across revisions."
 
   create_missing_builtin:
     description: "Reject item missing required built-in attributes"
@@ -119,12 +126,14 @@ dataset_items:
         -H "Content-Type: application/json" \
         -d '{"values": {"input": "What is 3+3?", "expected_output": "6"}}'
     expected_status: 200
+    notes: "Creates a new revision. The :itemId in the URL is the stable itemId (not the revision-specific id)."
 
   delete:
     description: "Remove a dataset item"
     command: |
       curl -X DELETE http://localhost:3001/datasets/:id/items/:itemId
     expected_status: 200
+    notes: "Creates a new revision. The previous revision still contains the item."
 
   csv_template:
     description: "Download blank CSV template for a dataset (headers only)"
@@ -149,7 +158,7 @@ dataset_items:
         -H "Content-Type: text/plain" \
         --data-binary $'input,expected_output\nWhat is 2+2?,4\nWhat is 3+3?,6'
     expected_status: 200
-    notes: "Sends raw CSV text body (not multipart). Persists all valid rows."
+    notes: "Sends raw CSV text body (not multipart). Persists all valid rows. All imported rows are committed as a single new revision."
 
   csv_export:
     description: "Export all dataset items as CSV"
@@ -157,6 +166,75 @@ dataset_items:
       curl http://localhost:3001/datasets/:id/csv/export -o items.csv
     expected_status: 200
     notes: "Response Content-Type: text/csv; filename: {name}-export.csv"
+
+dataset_revisions:
+
+  list:
+    description: "List all revisions for a dataset (newest first)"
+    command: |
+      curl http://localhost:3001/datasets/:id/revisions
+    expected_status: 200
+    expected_body: |
+      {
+        "success": true,
+        "data": [
+          {
+            "id": "...",
+            "schemaVersion": 1,
+            "attributes": ["input", "expected_output"],
+            "createdAt": "2025-01-01T00:00:00.000Z",
+            "itemCount": 2
+          }
+        ]
+      }
+    notes: "Ordered by createdAt DESC (newest first). First entry is the current revision."
+
+  get:
+    description: "Get a specific revision with its items"
+    command: |
+      curl http://localhost:3001/datasets/:id/revisions/:revisionId
+    expected_status: 200
+    expected_body: |
+      {
+        "success": true,
+        "data": {
+          "id": "...",
+          "schemaVersion": 1,
+          "attributes": ["input", "expected_output"],
+          "createdAt": "2025-01-01T00:00:00.000Z",
+          "items": [
+            { "id": "...", "revisionId": "...", "itemId": "...", "values": { "input": "...", "expected_output": "..." } }
+          ]
+        }
+      }
+    notes: "Read-only snapshot. Items in past revisions cannot be edited."
+
+  get_not_found:
+    description: "404 for non-existent revision"
+    command: |
+      curl http://localhost:3001/datasets/:id/revisions/00000000-0000-0000-0000-000000000000
+    expected_status: 404
+
+  revision_immutability:
+    description: "Verify that editing an item doesn't affect previous revisions"
+    steps: |
+      1. Create dataset: POST /datasets { "name": "immutable-test" }
+      2. Add item: POST /datasets/:id/items { "values": { "input": "original", "expected_output": "value" } }
+      3. Record the revision ID: GET /datasets/:id/revisions → revisions[0].id
+      4. Edit the item: PATCH /datasets/:id/items/:itemId { "values": { "input": "edited", "expected_output": "value" } }
+      5. Get the OLD revision: GET /datasets/:id/revisions/:oldRevisionId
+      6. Verify: old revision still has "original" value
+    notes: "This is the core invariant of copy-on-write: previous revisions are immutable."
+
+  experiment_pinning:
+    description: "Verify experiments are pinned to their creation-time revision"
+    steps: |
+      1. Create dataset + items + grader
+      2. Create experiment → records datasetRevisionId from current latest revision
+      3. Add a new item to the dataset (creates new revision)
+      4. Run the experiment
+      5. Verify: experiment results use items from the ORIGINAL revision, not the new one
+    notes: "Dataset edits after experiment creation don't affect the experiment."
 
 graders:
 
@@ -233,6 +311,9 @@ experiments:
         -H "Content-Type: application/json" \
         -d '{"name": "eval-run-1", "datasetId": ":datasetId", "graderIds": [":graderId"]}'
     expected_status: 201
+    expected_body: |
+      { "success": true, "data": { "id": "...", "name": "eval-run-1", "datasetId": ":datasetId", "datasetRevisionId": "...", "status": "queued" } }
+    notes: "The experiment is pinned to the dataset's latest revision at creation time."
 
   create_no_graders:
     description: "Reject experiment with empty graderIds array"
@@ -261,6 +342,7 @@ experiments:
     command: |
       curl http://localhost:3001/experiments/:id
     expected_status: 200
+    notes: "Response includes revision with items and attributes for the pinned dataset revision."
 
   run:
     description: "Trigger experiment run (async — returns 202)"
@@ -286,7 +368,7 @@ experiments:
     command: |
       curl -X POST http://localhost:3001/experiments/:id/rerun
     expected_status: 201
-    notes: "New experiment gets a derived name (e.g. 'eval-run-1 (2)'). Original is unchanged."
+    notes: "New experiment gets a derived name (e.g. 'eval-run-1 (2)'). Original is unchanged. Creates a new experiment pinned to the dataset's LATEST revision (not the original experiment's revision)."
 
   delete:
     description: "Delete experiment and all its results"
@@ -303,3 +385,17 @@ experiments:
       Response Content-Type: text/csv
       Filename: experiment-{id}.csv
       Columns include item attributes, grader scores, and reasoning per grader.
+
+# ─── Revision Semantics Notes ─────────────────────────────────────────────────
+#
+# Every mutation to a dataset (add/edit/delete item, add/remove attribute, CSV import)
+# creates a new immutable revision. Previous revisions are never modified.
+#
+# schemaVersion increments only on attribute add/remove. Item mutations copy it unchanged.
+#
+# Experiments reference a specific revision, pinned at creation time.
+# Dataset edits after experiment creation produce new revisions but do not affect
+# existing experiments. Two experiments on an unchanged dataset share the same revision.
+#
+# The current state of a dataset is always its latest revision (by createdAt DESC).
+# There is no separate mutable working copy.
