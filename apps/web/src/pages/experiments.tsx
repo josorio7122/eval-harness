@@ -13,7 +13,7 @@ export function ExperimentsPage() {
       </div>
 
       {/* Right panel: detail (70%) */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col" style={{ borderLeft: '1px solid var(--border-default)' }}>
         {id ? (
           <ExperimentDetail key={id} id={id} />
         ) : (

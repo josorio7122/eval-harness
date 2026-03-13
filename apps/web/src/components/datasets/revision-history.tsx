@@ -75,7 +75,7 @@ function ShimmerRow() {
   return (
     <div
       style={{
-        padding: '10px 14px',
+        padding: '10px 16px',
         borderBottom: '1px solid var(--border-subtle)',
         display: 'flex',
         flexDirection: 'column',
@@ -188,7 +188,7 @@ function RevisionDetailPanel({ datasetId, revisionId }: { datasetId: string; rev
         {revision.isCurrent && <CurrentBadge />}
       </div>
 
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Attributes */}
         <div>
           <div
@@ -407,7 +407,7 @@ export function RevisionHistory({ datasetId }: RevisionHistoryProps) {
         {/* List header */}
         <div
           style={{
-            padding: '8px 14px',
+            padding: '10px 16px',
             borderBottom: '1px solid var(--border-subtle)',
           }}
         >
@@ -458,7 +458,7 @@ export function RevisionHistory({ datasetId }: RevisionHistoryProps) {
                   key={rev.id}
                   onClick={() => setSelectedRevisionId(rev.id)}
                   style={{
-                    padding: '10px 14px',
+                    padding: '10px 16px',
                     borderBottom: '1px solid var(--border-subtle)',
                     borderLeft: isSelected ? '2px solid var(--accent)' : '2px solid transparent',
                     background: isSelected ? 'var(--bg-surface-2)' : 'transparent',

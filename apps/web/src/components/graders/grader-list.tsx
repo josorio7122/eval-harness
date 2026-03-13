@@ -10,7 +10,7 @@ interface GraderListProps {
 function ShimmerRow() {
   return (
     <div
-      className="flex items-center gap-3 px-4 py-[8px]"
+      className="flex items-center gap-3 px-4 py-2.5"
       style={{ borderBottom: '1px solid var(--border-subtle)' }}
     >
       <div
@@ -74,7 +74,7 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
 
       {/* Table header */}
       <div
-        className="grid px-4 py-[6px]"
+        className="grid px-4 py-2"
         style={{
           gridTemplateColumns: '1fr auto',
           borderBottom: '1px solid var(--border-subtle)',
@@ -149,7 +149,7 @@ export function GraderList({ selectedId, onCreateClick }: GraderListProps) {
               <div
                 key={grader.id}
                 onClick={() => navigate(`/graders/${grader.id}`)}
-                className="flex items-center gap-3 px-4 py-[8px] cursor-pointer transition-colors"
+                className="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors"
                 style={{
                   borderBottom: '1px solid var(--border-subtle)',
                   borderLeft: isSelected ? '2px solid var(--accent)' : '2px solid transparent',

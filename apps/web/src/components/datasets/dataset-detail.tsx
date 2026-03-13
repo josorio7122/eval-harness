@@ -760,7 +760,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
           alignItems: 'center',
           gap: '0',
           borderBottom: '1px solid var(--border-default)',
-          paddingLeft: '20px',
+          paddingLeft: '24px',
         }}
       >
         {(['items', 'history'] as const).map((tab) => (
@@ -768,8 +768,8 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              height: '36px',
-              padding: '0 14px',
+              height: '40px',
+              padding: '0 16px',
               fontSize: '11px',
               fontWeight: 600,
               textTransform: 'uppercase',
@@ -1030,7 +1030,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
                       {dataset.attributes.map((attr) => (
                         <th
                           key={attr}
-                          className="px-4 py-2 text-left border-b"
+                          className="px-4 py-2.5 text-left border-b"
                           style={{
                             borderColor: 'var(--border-subtle)',
                             fontSize: '10px',
@@ -1045,7 +1045,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
                         </th>
                       ))}
                       <th
-                        className="px-4 py-2 border-b"
+                        className="px-4 py-2.5 border-b"
                         style={{
                           borderColor: 'var(--border-subtle)',
                           width: '60px',
@@ -1106,7 +1106,7 @@ function AttributeRow({
 
   return (
     <div
-      className="flex items-center justify-between px-4 py-2 border-b"
+      className="flex items-center justify-between px-4 py-2.5 border-b"
       style={{
         borderColor: 'var(--border-subtle)',
         background: hovered ? 'var(--bg-surface-1)' : 'transparent',
@@ -1174,7 +1174,7 @@ function ItemRow({
       {attributes.map((attr) => (
         <td
           key={attr}
-          className="px-4 py-2 border-b"
+          className="px-4 py-2.5 border-b"
           style={{
             borderColor: 'var(--border-subtle)',
             fontSize: '12px',
@@ -1190,7 +1190,7 @@ function ItemRow({
         </td>
       ))}
       <td
-        className="px-4 py-2 border-b"
+        className="px-4 py-2.5 border-b"
         style={{ borderColor: 'var(--border-subtle)', width: '60px' }}
       >
         {hovered && (

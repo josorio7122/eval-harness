@@ -249,7 +249,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
         )}
 
         {/* Action row */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between pt-4">
           {/* Delete */}
           <button
             onClick={() => setDeleteDialogOpen(true)}

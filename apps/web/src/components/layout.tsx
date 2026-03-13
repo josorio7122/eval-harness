@@ -22,13 +22,13 @@ export function Layout() {
             Eval Harness
           </h1>
         </div>
-        <nav className="mt-4">
+        <nav className="mt-4 flex flex-col gap-1">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2 text-[13px] transition-colors ${
+                `flex items-center gap-3 px-3 py-2.5 text-[13px] transition-colors ${
                   isActive ? 'border-l-2' : 'border-l-2 border-transparent'
                 }`
               }

@@ -41,7 +41,7 @@ export function DatasetList() {
       {/* Table header */}
       {!isLoading && datasets && datasets.length > 0 && (
         <div
-          className="grid px-6 py-2 border-b"
+          className="grid px-6 py-2.5 border-b"
           style={{
             gridTemplateColumns: '1fr auto',
             borderColor: 'var(--border-subtle)',

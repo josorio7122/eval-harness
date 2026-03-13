@@ -17,7 +17,7 @@ export function GradersPage() {
       </div>
 
       {/* Right panel: detail (70%) */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" style={{ borderLeft: '1px solid var(--border-default)' }}>
         {id ? (
           <GraderDetail key={id} id={id} />
         ) : (

@@ -431,10 +431,10 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
         <ResultsTable experiment={experiment} />
       ) : (
         /* Empty / queued state */
+        <div className="flex flex-col flex-1 overflow-hidden px-6 py-6">
         <div
-          className="flex flex-col items-center justify-center gap-3 m-6 p-10"
+          className="flex flex-col items-center justify-center gap-3 p-10 h-full"
           style={{
-            flex: 1,
             background: 'var(--bg-inset)',
             border: '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-lg)',
@@ -459,6 +459,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
               </p>
             </>
           )}
+        </div>
         </div>
       )}
     </div>

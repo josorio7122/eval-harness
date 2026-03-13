@@ -112,7 +112,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
-          padding: '8px 12px',
+          padding: '8px 16px',
           borderBottom: '1px solid var(--border-subtle)',
           background: 'var(--bg-surface-1)',
           flexShrink: 0,
@@ -200,7 +200,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               {/* Input column header */}
               <th
                 style={{
-                  padding: '8px 12px',
+                  padding: '10px 16px',
                   textAlign: 'left',
                   borderBottom: '1px solid var(--border-subtle)',
                   borderRight: '1px solid var(--border-subtle)',
@@ -223,7 +223,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                   <th
                     key={eg.graderId}
                     style={{
-                      padding: '6px 12px',
+                      padding: '10px 16px',
                       textAlign: 'center',
                       borderBottom: '1px solid var(--border-subtle)',
                       borderRight: '1px solid var(--border-subtle)',
@@ -267,7 +267,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               {/* Summary column header */}
               <th
                 style={{
-                  padding: '6px 12px',
+                  padding: '10px 16px',
                   textAlign: 'center',
                   borderBottom: '1px solid var(--border-subtle)',
                   fontSize: '11px',
@@ -323,9 +323,8 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                     {/* Input label cell */}
                     <td
                       style={{
-                        padding: '0 12px',
+                        padding: '10px 16px',
                         borderRight: '1px solid var(--border-subtle)',
-                        height: '44px',
                         maxWidth: '320px',
                         minWidth: '200px',
                       }}
@@ -372,9 +371,8 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                     {/* Per-item pass summary */}
                     <td
                       style={{
-                        padding: '0 12px',
+                        padding: '10px 16px',
                         textAlign: 'center',
-                        height: '44px',
                       }}
                     >
                       {itemResultCount > 0 ? (
@@ -422,7 +420,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
             >
               <td
                 style={{
-                  padding: '8px 12px',
+                  padding: '10px 16px',
                   borderRight: '1px solid var(--border-subtle)',
                   fontSize: '11px',
                   fontWeight: 600,
@@ -443,7 +441,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                   <td
                     key={gs.graderId}
                     style={{
-                      padding: '6px 12px',
+                      padding: '10px 16px',
                       borderRight: '1px solid var(--border-subtle)',
                       textAlign: 'center',
                     }}
@@ -502,7 +500,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                 )
               })}
               {/* Summary aggregate */}
-              <td style={{ padding: '6px 12px', textAlign: 'center' }}>
+              <td style={{ padding: '10px 16px', textAlign: 'center' }}>
                 {(() => {
                   const totalPasses = graderPassRates.reduce((sum, gs) => sum + gs.passes, 0)
                   const totalFilteredCells = filteredItems.length * graders.length

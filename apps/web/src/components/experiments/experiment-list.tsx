@@ -172,15 +172,13 @@ export function ExperimentList({ selectedId }: ExperimentListProps) {
               <div
                 key={exp.id}
                 onClick={() => navigate(`/experiments/${exp.id}`)}
-                className="relative cursor-pointer transition-colors"
+                className="relative cursor-pointer transition-colors px-4 py-2.5"
                 style={{
                   borderBottom: '1px solid var(--border-subtle)',
                   borderLeft: isSelected ? `2px solid ${borderColor}` : '2px solid transparent',
                   background: isSelected ? 'var(--bg-surface-2)' : 'transparent',
                   paddingLeft: isSelected ? '14px' : '16px',
-                  paddingRight: '16px',
-                  paddingTop: '10px',
-                  paddingBottom: exp.status === 'running' ? '12px' : '10px',
+                  paddingBottom: exp.status === 'running' ? '12px' : undefined,
                 }}
                 onMouseEnter={(e) => {
                   if (!isSelected) e.currentTarget.style.background = 'var(--bg-surface-1)'

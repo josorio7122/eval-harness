@@ -52,7 +52,7 @@ export function AggregateStats({
       style={{
         background: 'var(--bg-surface-1)',
         borderBottom: '1px solid var(--border-default)',
-        padding: '16px 20px',
+        padding: '12px 24px',
         display: 'flex',
         alignItems: 'center',
         gap: '32px',
