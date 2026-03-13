@@ -12,64 +12,90 @@ This document defines the entity model for the lightweight eval harness. Data is
 
 #### 1. `Dataset`
 
-A named collection of structured test cases with a fixed schema.
+A named collection of structured test cases. The current state (attributes and items) is always derived from the latest `DatasetRevision`.
 
 ```ts
 type Dataset = {
   id: uuid                    // System-generated
   name: string                // User-provided. Non-empty, unique across all datasets
-  attributes: string[]        // Managed. Ordered list of attribute names; always starts with ["input", "expected_output"]
 }
 ```
 
 **Constraints:**
 - `name` must be non-empty
 - `name` must be unique across all datasets
-- `attributes` always contains at least `["input", "expected_output"]` from the moment of creation
-- `"input"` and `"expected_output"` cannot be removed from `attributes`
-- All attribute names are stored lowercase — `"Input"` and `"input"` are the same
-- Attribute names must be unique within the dataset
-- Attribute names must be non-empty
-- Attributes are ordered: built-ins first (`"input"`, `"expected_output"`), then custom in insertion order. Order is immutable
-- A `Dataset` with zero items does not appear as selectable when creating an `Experiment`
-- Renaming preserves all items and attributes
+- A `Dataset` whose latest revision has zero items does not appear as selectable when creating an `Experiment`
+- Renaming preserves all revisions and their items
 - Storage: PostgreSQL (latest, via Docker)
 
 **Relationships:**
-- Has many `DatasetItem`s (one-to-many, cascade delete)
+- Has many `DatasetRevision`s (one-to-many, cascade delete)
 - Referenced by many `Experiment`s. On deletion, all referencing experiments and their results are cascade-deleted. User must confirm if experiments exist
 
 ---
 
-#### 2. `DatasetItem`
+#### 2. `DatasetRevision`
 
-A single row in a dataset. Always conforms to the dataset's current schema.
+An immutable snapshot of a dataset's schema and items at a point in time. Created on every mutation (item add/edit/delete, attribute add/remove, CSV import). Never modified after creation.
 
 ```ts
-type DatasetItem = {
+type DatasetRevision = {
   id: uuid                    // System-generated
   datasetId: uuid             // Reference to owning Dataset
-  values: Record<string, string>
-  // Keys are exactly the current attribute names of the owning dataset's attributes.
-  // Values are always strings; missing attributes default to empty string "".
+  schemaVersion: number       // Increments only on schema changes (attribute add/remove). Item mutations copy unchanged.
+  attributes: string[]        // The attribute schema at this revision. Always includes ["input", "expected_output"]
+  createdAt: timestamp        // System-generated. Used to determine latest revision (ORDER BY createdAt DESC LIMIT 1)
 }
 ```
 
 **Constraints:**
-- `values` must contain exactly the keys present in the owning dataset's `schema` — no more, no fewer (ItemSchemaConformance)
-- All values are strings
-- `"input"` and `"expected_output"` keys are always present
-- When an attribute is added to the schema, all existing items gain that key with value `""`
-- When an attribute is removed from the schema, all existing items drop that key
-- Items appear in creation order
+- `schemaVersion` starts at 1 when the dataset is created
+- `schemaVersion` increments by 1 only when attributes change (add or remove). Item-only mutations copy the previous `schemaVersion` unchanged
+- `attributes` always contains at least `["input", "expected_output"]`
+- All attribute names are stored lowercase
+- Attribute names must be unique within the revision
+- Attributes are ordered: built-ins first, then custom in insertion order
+- A revision is immutable once created — its attributes and items are never modified
+- Latest revision is determined by `ORDER BY createdAt DESC LIMIT 1`
 
 **Relationships:**
-- Belongs to exactly one `Dataset` (many-to-one)
-- Cascade-deleted when its owning `Dataset` is deleted
+- Belongs to exactly one `Dataset` (many-to-one, cascade delete when dataset is deleted)
+- Has many `DatasetRevisionItem`s (one-to-many, cascade delete)
+- Referenced by many `Experiment`s. Revisions are never deleted individually — only via cascade when the parent dataset is deleted
 
 ---
 
-#### 3. `Grader`
+#### 3. `DatasetRevisionItem`
+
+A single row in a dataset revision. Immutable once created.
+
+```ts
+type DatasetRevisionItem = {
+  id: uuid                    // System-generated. Unique per revision.
+  revisionId: uuid            // Reference to owning DatasetRevision
+  itemId: uuid                // Stable identity across revisions. Tracks the same logical item.
+  values: Record<string, string>
+  // Keys are exactly the attribute names of the owning revision's attributes.
+  // Values are always strings.
+}
+```
+
+**Constraints:**
+- `values` must contain exactly the keys present in the owning revision's `attributes` — no more, no fewer
+- All values are strings
+- `"input"` and `"expected_output"` keys are always present
+- `itemId` is a stable UUID that persists across revisions for the same logical item
+- When an attribute is added, the new revision's items have that key with value `""`
+- When an attribute is removed, the new revision's items no longer have that key
+- Items are immutable within a revision — edits create a new revision with updated values
+
+**Relationships:**
+- Belongs to exactly one `DatasetRevision` (many-to-one, cascade delete)
+- Referenced by `ExperimentResult` (informational — cascade flows through `Experiment`, not directly)
+
+---
+
+#### 4. `Grader`
 
 An evaluation criterion. Holds the rubric given to the LLM judge.
 
@@ -95,7 +121,7 @@ type Grader = {
 
 ---
 
-#### 4. `Experiment`
+#### 5. `Experiment`
 
 Ties a dataset and one or more graders together. Tracks run status and owns all result cells.
 
@@ -105,7 +131,8 @@ type ExperimentStatus = "queued" | "running" | "complete" | "failed"
 type Experiment = {
   id: uuid                    // System-generated
   name: string                // User-provided. Non-empty; derived from original on re-run
-  datasetId: uuid             // User-selected. Reference to owning Dataset (live reference, not snapshot)
+  datasetId: uuid             // User-selected. Reference to owning Dataset (for grouping/navigation)
+  datasetRevisionId: uuid     // System-set. Reference to the DatasetRevision pinned at creation time
   graderIds: uuid[]           // User-selected. List of Grader IDs; at least one required
   status: ExperimentStatus    // System-managed. Starts as "queued" on creation
 }
@@ -119,16 +146,16 @@ type Experiment = {
 
 **Constraints:**
 - `name` must be non-empty
-- `datasetId` must reference an existing `Dataset` with at least one item at run time
+- `datasetId` must reference an existing `Dataset` whose latest revision has at least one item
 - `graderIds` must contain at least one entry; no upper bound
 - `status` starts as `"queued"` on creation
 - At most one experiment may be `"running"` at a time; others queue
-- Dataset is referenced live — not snapshotted
+- `datasetRevisionId` references the dataset's latest revision at the time of experiment creation. This reference never changes after creation
 - Re-running creates a new `Experiment` with a new `id` and derived `name`; original is preserved
-- No timestamps stored
 
 **Relationships:**
-- References one `Dataset` (many-to-one)
+- References one `Dataset` (many-to-one, for grouping/navigation)
+- References one `DatasetRevision` (many-to-one, pinned at creation — the frozen item set)
 - References one or more `Grader`s (many-to-many via `graderIds[]`)
 - Has many `ExperimentResult`s (one-to-many, cascade delete)
 - Cascade-deleted when its referenced `Dataset` is deleted
@@ -136,7 +163,7 @@ type Experiment = {
 
 ---
 
-#### 5. `ExperimentResult`
+#### 6. `ExperimentResult`
 
 One verdict for a single dataset item × grader pair within an experiment.
 
@@ -146,7 +173,7 @@ type Verdict = "pass" | "fail" | "error"
 type ExperimentResult = {
   id: uuid                    // System-generated
   experimentId: uuid          // Owning experiment
-  datasetItemId: uuid         // The dataset item that was evaluated
+  datasetRevisionItemId: uuid // The revision item that was evaluated
   graderId: uuid              // The grader used for this evaluation
   verdict: Verdict            // "pass", "fail", or "error"
   reason: string              // Explanation from the LLM judge; may be empty on "error"
@@ -159,7 +186,7 @@ type ExperimentResult = {
 - `"error"` — The evaluation call failed; no verdict was produced
 
 **Constraints:**
-- The combination `(experimentId, datasetItemId, graderId)` is unique — exactly one cell per item × grader per experiment
+- The combination `(experimentId, datasetRevisionItemId, graderId)` is unique — exactly one cell per item × grader per experiment
 - `verdict` is always one of the three literal values; never null
 - `reason` is a string; empty string `""` is acceptable on error
 - Error cells are stored, not discarded
@@ -167,21 +194,24 @@ type ExperimentResult = {
 
 **Relationships:**
 - Belongs to exactly one `Experiment` (many-to-one, cascade delete)
-- References one `DatasetItem` and one `Grader` by ID (informational — cascade flows through `Experiment`, not directly)
+- References one `DatasetRevisionItem` and one `Grader` by ID (informational — cascade flows through `Experiment`, not directly)
 
 ---
 
 ### Relationship Diagram
 
 ```
-Dataset ──< DatasetItem            (one-to-many, cascade delete)
-Dataset ──< Experiment             (one-to-many via datasetId, cascade delete)
+Dataset ──< DatasetRevision                  (one-to-many, cascade delete)
+DatasetRevision ──< DatasetRevisionItem      (one-to-many, cascade delete)
 
-Grader  ──< Experiment             (many-to-many via graderIds[], cascade delete on grader deletion)
+Dataset ──< Experiment                       (one-to-many via datasetId, cascade delete)
+DatasetRevision ──< Experiment               (one-to-many via datasetRevisionId, pinned at creation)
 
-Experiment ──< ExperimentResult (one-to-many, cascade delete)
-ExperimentResult >── DatasetItem (many-to-one, reference only)
-ExperimentResult >── Grader      (many-to-one, reference only)
+Grader  ──< Experiment                       (many-to-many via graderIds[], cascade delete on grader deletion)
+
+Experiment ──< ExperimentResult              (one-to-many, cascade delete)
+ExperimentResult >── DatasetRevisionItem     (many-to-one, reference only)
+ExperimentResult >── Grader                  (many-to-one, reference only)
 ```
 
 ---
@@ -190,11 +220,12 @@ ExperimentResult >── Grader      (many-to-one, reference only)
 
 | Entity deleted | Also deletes |
 |---|---|
-| `Dataset` | All its `DatasetItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments |
+| `Dataset` | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments |
+| `DatasetRevision` | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually) |
 | `Grader` | All `Experiment`s referencing it in `graderIds`, all `ExperimentResult`s of those experiments |
 | `Experiment` | All its `ExperimentResult`s |
-| `DatasetItem` | Nothing — item deletion is isolated within the dataset |
-| Attribute removal (from `Dataset.attributes`) | Drops the corresponding key from all `DatasetItem.values`; no experiments or cells deleted |
+| Attribute change | Creates a new revision; previous revisions are unchanged |
+| Item add/edit/delete | Creates a new revision; previous revisions are unchanged |
 
 ---
 
@@ -203,22 +234,27 @@ ExperimentResult >── Grader      (many-to-one, reference only)
 | Entity | System-generated | User-provided |
 |---|---|---|
 | `Dataset` | `id` | `name` |
-| `DatasetItem` | `id` | `values` |
+| `DatasetRevision` | `id`, `schemaVersion`, `createdAt` | *(none — system-produced from mutations)* |
+| `DatasetRevisionItem` | `id`, `itemId` | `values` |
 | `Grader` | `id` | `name`, `description`, `rubric` |
-| `Experiment` | `id`, `status` | `name`, `datasetId`, `graderIds` |
+| `Experiment` | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds` |
 | `ExperimentResult` | `id`, `verdict`, `reason` | *(none — fully system-produced)* |
 
 ---
 
 ### Key Invariants
 
-1. **Schema conformance:** For every `DatasetItem` in a `Dataset`, the keys of `item.values` equal exactly the entries in `dataset.attributes`
-2. **Built-in immutability:** No operation may remove `"input"` or `"expected_output"` from any dataset's schema
-3. **Name uniqueness:** Dataset names are unique across all datasets. Grader names are unique across all graders. Attribute names are unique within a dataset's schema
-4. **Non-empty selection:** A dataset with zero items is never available for experiment creation
-5. **Concurrency limit:** At most two experiments may have `status === "running"` at any time
-6. **Cell uniqueness:** Within an experiment, `(datasetItemId, graderId)` uniquely identifies exactly one cell
-7. **Attribute order stability:** The order of entries in `dataset.attributes` is immutable after insertion. `"input"` and `"expected_output"` are always first
+1. **Revision immutability:** Once a `DatasetRevision` is created, its `attributes` and all its `DatasetRevisionItem` rows are never modified
+2. **Schema conformance:** For every `DatasetRevisionItem` in a revision, the keys of `item.values` equal exactly the entries in `revision.attributes`
+3. **Built-in immutability:** No operation may remove `"input"` or `"expected_output"` from any revision's attributes
+4. **Name uniqueness:** Dataset names are unique across all datasets. Grader names are unique across all graders. Attribute names are unique within a revision's attributes
+5. **Non-empty selection:** A dataset whose latest revision has zero items is never available for experiment creation
+6. **Concurrency limit:** At most two experiments may have `status === "running"` at any time
+7. **Cell uniqueness:** Within an experiment, `(datasetRevisionItemId, graderId)` uniquely identifies exactly one cell
+8. **Attribute order stability:** The order of entries in a revision's `attributes` is immutable. `"input"` and `"expected_output"` are always first
+9. **Stable item identity:** `DatasetRevisionItem.itemId` tracks the same logical item across revisions. A new `itemId` is generated only when a brand-new item is created
+10. **Latest revision:** The current state of a dataset is always its latest revision by `createdAt DESC`. There is no separate mutable working copy
+11. **Experiment pinning:** An experiment's `datasetRevisionId` is set at creation time and never changes. Dataset mutations after creation do not affect the experiment
 
 ---
 
@@ -248,9 +284,9 @@ ExperimentResult >── Grader      (many-to-one, reference only)
 **Module pattern — every domain follows this structure:**
 ```
 datasets/
-  router.ts       # Hono route definitions (CRUD endpoints)
-  service.ts      # Business logic, orchestration, returns Result<T>
-  repository.ts   # Prisma database operations
+  router.ts       # Hono route definitions (CRUD + revision endpoints)
+  service.ts      # Business logic, orchestration, revision creation, returns Result<T>
+  repository.ts   # Prisma database operations (DatasetRevision, DatasetRevisionItem)
   validator.ts    # Zod schemas for request validation
 ```
 
