@@ -4,6 +4,9 @@ import { cors } from 'hono/cors'
 import { datasetRepository } from './datasets/repository.js'
 import { createDatasetService } from './datasets/service.js'
 import { createDatasetRouter } from './datasets/router.js'
+import { graderRepository } from './graders/repository.js'
+import { createGraderService } from './graders/service.js'
+import { createGraderRouter } from './graders/router.js'
 
 const app = new Hono()
 
@@ -16,7 +19,11 @@ app.get('/', (c) => {
 const datasetService = createDatasetService(datasetRepository)
 const datasetRouter = createDatasetRouter(datasetService)
 
+const graderService = createGraderService(graderRepository)
+const graderRouter = createGraderRouter(graderService)
+
 app.route('/', datasetRouter)
+app.route('/', graderRouter)
 
 serve({
   fetch: app.fetch,
