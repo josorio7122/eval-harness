@@ -91,10 +91,21 @@ export function createDatasetRouter(service: DatasetService) {
   })
 
   app.post('/datasets/:id/csv/preview', async (c) => {
+    const id = c.req.param('id')
     const csv = await c.req.text()
-    const result = await service.previewCsv(c.req.param('id'), csv)
+    const datasetResult = await service.getDataset(id)
+    if (!datasetResult.success) return c.json(datasetResult, 404)
+    const result = await service.previewCsv(id, csv)
     if (!result.success) return c.json(result, 400)
-    return c.json(result)
+    return c.json({
+      success: true,
+      data: {
+        headers: datasetResult.data.attributes,
+        rows: result.data.validRows,
+        totalRows: result.data.validRows.length,
+        skippedRows: result.data.skippedRows,
+      },
+    })
   })
 
   app.post('/datasets/:id/csv/import', async (c) => {

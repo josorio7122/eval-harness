@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 import { VerdictCell } from './verdict-cell'
+import { AggregateStats } from './aggregate-stats'
 
 type ResultsFilter = 'all' | 'passed-all' | 'any-failed'
 
@@ -75,9 +76,12 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
     )
   }
 
-  // Per-grader pass rates for column headers and aggregate row
+  // Per-grader pass rates scoped to currently filtered items
+  const filteredItemIds = new Set(filteredItems.map((i) => i.id))
   const graderPassRates = graders.map((eg) => {
-    const graderResults = results.filter((r) => r.graderId === eg.graderId)
+    const graderResults = results.filter(
+      (r) => r.graderId === eg.graderId && filteredItemIds.has(r.datasetItemId),
+    )
     const passes = graderResults.filter((r) => r.verdict === 'pass').length
     const total = graderResults.length
     return {
@@ -89,8 +93,18 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
     }
   })
 
+  // Filtered results for AggregateStats
+  const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetItemId))
+
   return (
     <div style={{ flex: 1, overflow: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+      {/* Aggregate stats — filter-aware */}
+      <AggregateStats
+        experiment={experiment}
+        filteredResults={filteredResults}
+        filteredItemCount={filteredItems.length}
+      />
+
       {/* Filter controls */}
       <div
         style={{

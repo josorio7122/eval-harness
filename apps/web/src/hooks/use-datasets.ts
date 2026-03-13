@@ -165,6 +165,7 @@ export interface CsvPreview {
   headers: string[]
   rows: CsvPreviewRow[]
   totalRows: number
+  skippedRows?: { row: number; reason: string }[]
   warnings?: string[]
 }
 
@@ -177,11 +178,11 @@ export function usePreviewCsv() {
       datasetId: string
       file: File
     }): Promise<CsvPreview> => {
-      const formData = new FormData()
-      formData.append('file', file)
+      const csvContent = await file.text()
       const res = await fetch(`${API_URL}/datasets/${datasetId}/csv/preview`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'text/csv' },
+        body: csvContent,
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `Preview failed: ${res.status}` }))
@@ -203,11 +204,11 @@ export function useImportCsv() {
       datasetId: string
       file: File
     }) => {
-      const formData = new FormData()
-      formData.append('file', file)
+      const csvContent = await file.text()
       const res = await fetch(`${API_URL}/datasets/${datasetId}/csv/import`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'text/csv' },
+        body: csvContent,
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: `Import failed: ${res.status}` }))

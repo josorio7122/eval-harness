@@ -2,6 +2,8 @@ import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 
 interface AggregateStatsProps {
   experiment: Experiment
+  filteredResults?: ExperimentResult[]
+  filteredItemCount?: number
 }
 
 function passRate(results: ExperimentResult[]): number {
@@ -9,12 +11,14 @@ function passRate(results: ExperimentResult[]): number {
   return results.filter((r) => r.verdict === 'pass').length / results.length
 }
 
-export function AggregateStats({ experiment }: AggregateStatsProps) {
-  const results = experiment.results ?? []
+export function AggregateStats({ experiment, filteredResults, filteredItemCount }: AggregateStatsProps) {
+  const allResults = experiment.results ?? []
+  const results = filteredResults ?? allResults
   const graders = experiment.graders ?? []
   const items = experiment.dataset?.items ?? []
 
-  const totalCells = items.length * graders.length
+  const itemCount = filteredItemCount ?? items.length
+  const totalCells = itemCount * graders.length
   const overallRate = passRate(results)
   const overallPct = Math.round(overallRate * 100)
 
@@ -23,7 +27,7 @@ export function AggregateStats({ experiment }: AggregateStatsProps) {
   if (overallRate < 0.5) headlineColor = 'var(--fail-fg)'
   else if (overallRate < 0.8) headlineColor = 'var(--error-fg)'
 
-  // Per-grader pass rates
+  // Per-grader pass rates (uses filtered results when provided)
   const graderStats = graders.map((eg) => {
     const graderResults = results.filter((r) => r.graderId === eg.graderId)
     const rate = passRate(graderResults)
@@ -98,7 +102,7 @@ export function AggregateStats({ experiment }: AggregateStatsProps) {
             color: 'var(--fg-secondary)',
           }}
         >
-          {items.length} items × {graders.length} graders = {totalCells} evals
+          {itemCount} items × {graders.length} graders = {totalCells} evals
         </div>
         <div
           style={{

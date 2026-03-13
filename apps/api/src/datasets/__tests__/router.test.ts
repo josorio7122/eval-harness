@@ -330,12 +330,16 @@ describe('GET /datasets/:id/csv/export', () => {
 // ─── POST /datasets/:id/csv/preview ──────────────────────────────────────────
 
 describe('POST /datasets/:id/csv/preview', () => {
-  it('returns 200 with preview result', async () => {
-    const preview = {
-      validRows: [{ input: 'hello', expected_output: 'world' }],
-      skippedRows: [{ row: 3, reason: 'Empty required field: input' }],
-    }
-    mockService.previewCsv.mockResolvedValue({ success: true, data: preview })
+  it('returns 200 with reshaped preview result', async () => {
+    const dataset = { id: '1', name: 'my-ds', attributes: ['input', 'expected_output'], items: [] }
+    mockService.getDataset.mockResolvedValue({ success: true, data: dataset })
+    mockService.previewCsv.mockResolvedValue({
+      success: true,
+      data: {
+        validRows: [{ input: 'hello', expected_output: 'world' }],
+        skippedRows: [{ row: 3, reason: 'Empty required field: input' }],
+      },
+    })
 
     const res = await app.request('/datasets/1/csv/preview', {
       method: 'POST',
@@ -344,10 +348,17 @@ describe('POST /datasets/:id/csv/preview', () => {
     })
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.data).toEqual(preview)
+    expect(body.data).toEqual({
+      headers: ['input', 'expected_output'],
+      rows: [{ input: 'hello', expected_output: 'world' }],
+      totalRows: 1,
+      skippedRows: [{ row: 3, reason: 'Empty required field: input' }],
+    })
   })
 
   it('returns 400 when service fails', async () => {
+    const dataset = { id: '1', name: 'my-ds', attributes: ['input', 'expected_output'], items: [] }
+    mockService.getDataset.mockResolvedValue({ success: true, data: dataset })
     mockService.previewCsv.mockResolvedValue({ success: false, error: 'Unknown columns: wrong' })
     const res = await app.request('/datasets/1/csv/preview', {
       method: 'POST',

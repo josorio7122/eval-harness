@@ -8,7 +8,6 @@ import {
   useDeleteExperiment,
   useExperimentSSE,
 } from '@/hooks/use-experiments'
-import { AggregateStats } from './aggregate-stats'
 import { ResultsTable } from './results-table'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
@@ -317,11 +316,6 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
             }}
           />
         </div>
-      )}
-
-      {/* Aggregate stats — when complete or has results */}
-      {(isComplete || hasResults) && (
-        <AggregateStats experiment={experiment} />
       )}
 
       {/* Results table — when running (partial) or complete */}
