@@ -16,7 +16,13 @@ export const experimentRepository = {
     return prisma.experiment.findUnique({
       where: { id },
       include: {
-        dataset: true,
+        dataset: {
+          include: {
+            items: {
+              orderBy: { createdAt: 'asc' }
+            }
+          }
+        },
         graders: { include: { grader: true } },
         results: true,
       },
