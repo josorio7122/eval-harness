@@ -1,10 +1,11 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
+import { buildSystemPrompt, buildUserMessage } from './judge-template.js'
 
 const verdictSchema = z.object({
-  verdict: z.enum(['pass', 'fail']),
   reason: z.string(),
+  verdict: z.enum(['pass', 'fail']),
 })
 
 const openrouter = createOpenRouter({
@@ -17,15 +18,13 @@ export const evaluate = async (
 ): Promise<{ verdict: 'pass' | 'fail'; reason: string }> => {
   const model = process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-2.5-flash-preview'
 
-  const prompt = Object.entries(itemAttributes)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join('\n')
-
   const result = await generateText({
     model: openrouter(model),
     output: Output.object({ schema: verdictSchema }),
-    system: rubric,
-    prompt,
+    messages: [
+      { role: 'system', content: buildSystemPrompt(rubric) },
+      { role: 'user', content: buildUserMessage(itemAttributes) },
+    ],
   })
 
   return result.output

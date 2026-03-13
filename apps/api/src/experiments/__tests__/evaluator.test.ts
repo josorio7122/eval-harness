@@ -27,7 +27,7 @@ describe('evaluate', () => {
       output: { verdict: 'pass', reason: 'Looks good' },
     } as unknown as GenerateTextResult<Record<string, never>, never>)
 
-    const result = await evaluate('Grade this response', { input: 'hello', output: 'world' })
+    const result = await evaluate('Grade this response', { input: 'hello', expected_output: 'world' })
 
     expect(result).toEqual({ verdict: 'pass', reason: 'Looks good' })
     expect(mockGenerateText).toHaveBeenCalledOnce()
@@ -38,7 +38,7 @@ describe('evaluate', () => {
       output: { verdict: 'fail', reason: 'Does not match' },
     } as unknown as GenerateTextResult<Record<string, never>, never>)
 
-    const result = await evaluate('Grade this response', { input: 'hello', output: 'bad' })
+    const result = await evaluate('Grade this response', { input: 'hello', expected_output: 'bad' })
 
     expect(result).toEqual({ verdict: 'fail', reason: 'Does not match' })
   })
@@ -51,14 +51,24 @@ describe('evaluate', () => {
     await evaluate('Check quality', { input: 'foo', expected_output: 'bar' })
 
     const call = mockGenerateText.mock.calls[0][0]
-    expect(call.system).toBe('Check quality')
-    expect(call.prompt).toContain('input: foo')
-    expect(call.prompt).toContain('expected_output: bar')
+    expect(call.messages[0].content).toContain('Check quality')
+    expect(call.messages[1].content).toContain('## Input')
+    expect(call.messages[1].content).toContain('foo')
+    expect(call.messages[1].content).toContain('## Expected Output')
+    expect(call.messages[1].content).toContain('bar')
   })
 
   it('throws when generateText rejects', async () => {
     mockGenerateText.mockRejectedValue(new Error('API error'))
 
-    await expect(evaluate('rubric', { input: 'test' })).rejects.toThrow('API error')
+    await expect(evaluate('rubric', { input: 'test', expected_output: 'result' })).rejects.toThrow('API error')
+  })
+
+  it('throws when input is missing from itemAttributes', async () => {
+    await expect(evaluate('rubric', { expected_output: 'result' })).rejects.toThrow('Missing required field: input')
+  })
+
+  it('throws when expected_output is missing from itemAttributes', async () => {
+    await expect(evaluate('rubric', { input: 'hello' })).rejects.toThrow('Missing required field: expected_output')
   })
 })
