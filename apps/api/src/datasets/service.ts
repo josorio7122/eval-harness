@@ -1,7 +1,7 @@
 import { Readable } from 'stream'
 import csvParser from 'csv-parser'
 import { json2csv } from 'json-2-csv'
-import { ok, fail, type Result } from '@eval-harness/shared'
+import { ok, fail, tryCatch, type Result } from '@eval-harness/shared'
 import { datasetRepository } from './repository.js'
 
 const BUILT_IN_ATTRIBUTES = ['input', 'expected_output']
@@ -108,45 +108,39 @@ async function parseCsvContent(
 
 export function createDatasetService(repo: typeof datasetRepository) {
   return {
-    async listDatasets(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
-      try {
+    listDatasets(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
+      return tryCatch(async () => {
         const datasets = await repo.findAll()
         return ok(datasets)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async getDataset(
+    getDataset(
       id: string,
     ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
         return ok(dataset)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async createDataset(input: {
+    createDataset(input: {
       name: string
     }): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
-      try {
+      return tryCatch(async () => {
         const existing = await repo.findByName(input.name)
         if (existing) return fail('Dataset name already exists')
         const created = await repo.create(input.name)
         return ok(created)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async updateDataset(
+    updateDataset(
       id: string,
       input: { name: string },
     ): Promise<Result<Awaited<ReturnType<typeof repo.update>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
 
@@ -155,42 +149,36 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
         const updated = await repo.update(id, input.name)
         return ok(updated)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async deleteDataset(id: string): Promise<Result<{ deleted: true }>> {
-      try {
+    deleteDataset(id: string): Promise<Result<{ deleted: true }>> {
+      return tryCatch(async () => {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
         await repo.remove(id)
         return ok({ deleted: true as const })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async addAttribute(
+    addAttribute(
       id: string,
       input: { name: string },
     ): Promise<Result<Awaited<ReturnType<typeof repo.addAttribute>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
         if (dataset.attributes.includes(input.name)) return fail('Attribute already exists')
         const updated = await repo.addAttribute(id, input.name)
         return ok(updated)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async removeAttribute(
+    removeAttribute(
       id: string,
       attributeName: string,
     ): Promise<Result<Awaited<ReturnType<typeof repo.removeAttribute>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(id)
         if (!dataset) return fail('Dataset not found')
         if (BUILT_IN_ATTRIBUTES.includes(attributeName))
@@ -198,29 +186,25 @@ export function createDatasetService(repo: typeof datasetRepository) {
         if (!dataset.attributes.includes(attributeName)) return fail('Attribute not found')
         const updated = await repo.removeAttribute(id, attributeName)
         return ok(updated)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async listItems(
+    listItems(
       datasetId: string,
     ): Promise<Result<Awaited<ReturnType<typeof repo.findItemsByDatasetId>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
         const items = await repo.findItemsByDatasetId(datasetId)
         return ok(items)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async createItem(
+    createItem(
       datasetId: string,
       input: { values: Record<string, string> },
     ): Promise<Result<Awaited<ReturnType<typeof repo.createItem>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
@@ -228,17 +212,15 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
         const item = await repo.createItem(datasetId, normalized)
         return ok(item)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async updateItem(
+    updateItem(
       datasetId: string,
       itemId: string,
       input: { values: Record<string, string> },
     ): Promise<Result<Awaited<ReturnType<typeof repo.updateItem>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
@@ -249,13 +231,11 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
         const updated = await repo.updateItem(itemId, normalized)
         return ok(updated)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async deleteItem(datasetId: string, itemId: string): Promise<Result<{ deleted: true }>> {
-      try {
+    deleteItem(datasetId: string, itemId: string): Promise<Result<{ deleted: true }>> {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
@@ -264,24 +244,20 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
         await repo.removeItem(itemId)
         return ok({ deleted: true as const })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async getCsvTemplate(datasetId: string): Promise<Result<{ csv: string; name: string }>> {
-      try {
+    getCsvTemplate(datasetId: string): Promise<Result<{ csv: string; name: string }>> {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
         const csv = (await json2csv([], { keys: dataset.attributes })).trimEnd()
         return ok({ csv, name: dataset.name })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async exportCsv(datasetId: string): Promise<Result<{ csv: string; name: string }>> {
-      try {
+    exportCsv(datasetId: string): Promise<Result<{ csv: string; name: string }>> {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
         const items = await repo.findItemsByDatasetId(datasetId)
@@ -295,12 +271,10 @@ export function createDatasetService(repo: typeof datasetRepository) {
         })
         const csv = (await json2csv(records, { keys: dataset.attributes })).trimEnd()
         return ok({ csv, name: dataset.name })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async previewCsv(
+    previewCsv(
       datasetId: string,
       csvContent: string,
     ): Promise<
@@ -309,7 +283,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
         skippedRows: { row: number; reason: string }[]
       }>
     > {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
@@ -317,16 +291,14 @@ export function createDatasetService(repo: typeof datasetRepository) {
         if (!parsed.success) return parsed
 
         return ok(parsed.data)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async importCsv(
+    importCsv(
       datasetId: string,
       csvContent: string,
     ): Promise<Result<{ imported: number; skipped: number }>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
@@ -338,37 +310,31 @@ export function createDatasetService(repo: typeof datasetRepository) {
         await repo.importItems(datasetId, validRows)
 
         return ok({ imported: validRows.length, skipped: skippedRows.length })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async listRevisions(
+    listRevisions(
       datasetId: string,
     ): Promise<Result<Awaited<ReturnType<typeof repo.findRevisions>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
         const revisions = await repo.findRevisions(datasetId)
         return ok(revisions)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async getRevision(
+    getRevision(
       datasetId: string,
       revisionId: string,
     ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findRevisionById>>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
         const revision = await repo.findRevisionById(datasetId, revisionId)
         if (!revision) return fail('Revision not found')
         return ok(revision)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
   }
 }

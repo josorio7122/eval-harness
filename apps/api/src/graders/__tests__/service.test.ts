@@ -7,7 +7,6 @@ const mockRepo = {
   findByName: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
-  remove: vi.fn(),
   removeWithCascade: vi.fn(),
 }
 
@@ -120,7 +119,6 @@ describe('deleteGrader', () => {
     const result = await service.deleteGrader('1')
     expect(result).toEqual({ success: true, data: { deleted: true } })
     expect(mockRepo.removeWithCascade).toHaveBeenCalledWith('1')
-    expect(mockRepo.remove).not.toHaveBeenCalled()
   })
 
   it('fails when not found', async () => {

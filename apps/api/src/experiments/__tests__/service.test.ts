@@ -279,7 +279,7 @@ describe('runExperiment', () => {
     expect(result).toEqual({ success: true, data: { status: 'queued' } })
     expect(mockRunner.enqueue).toHaveBeenCalledWith(
       VALID_UUID,
-      [{ id: 'item-1', itemId: 'stable-1', values: { input: 'hi' } }],
+      [{ id: 'item-1', values: { input: 'hi' } }],
       [{ id: VALID_UUID_3, rubric: 'judge it' }],
     )
   })

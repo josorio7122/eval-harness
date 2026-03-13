@@ -39,6 +39,19 @@ async function createRevision(
   })
 }
 
+type RevisionWithItems = Awaited<ReturnType<typeof createRevision>>
+
+async function buildDatasetResponse(datasetId: string, revision: RevisionWithItems) {
+  const dataset = await prisma.dataset.findUniqueOrThrow({ where: { id: datasetId } })
+  return {
+    id: dataset.id,
+    name: dataset.name,
+    attributes: revision.attributes,
+    schemaVersion: revision.schemaVersion,
+    items: revision.items,
+  }
+}
+
 export const datasetRepository = {
   async findAll() {
     const datasets = await prisma.dataset.findMany({
@@ -88,13 +101,7 @@ export const datasetRepository = {
       items: [],
     })
 
-    return {
-      id: dataset.id,
-      name: dataset.name,
-      attributes: revision.attributes,
-      schemaVersion: revision.schemaVersion,
-      items: revision.items,
-    }
+    return buildDatasetResponse(dataset.id, revision)
   },
 
   async update(id: string, name: string) {
@@ -123,14 +130,7 @@ export const datasetRepository = {
       currentSchemaVersion: latest.schemaVersion,
     })
 
-    const dataset = await prisma.dataset.findUniqueOrThrow({ where: { id } })
-    return {
-      id: dataset.id,
-      name: dataset.name,
-      attributes: revision.attributes,
-      schemaVersion: revision.schemaVersion,
-      items: revision.items,
-    }
+    return buildDatasetResponse(id, revision)
   },
 
   async removeAttribute(id: string, attributeName: string) {
@@ -151,14 +151,7 @@ export const datasetRepository = {
       currentSchemaVersion: latest.schemaVersion,
     })
 
-    const dataset = await prisma.dataset.findUniqueOrThrow({ where: { id } })
-    return {
-      id: dataset.id,
-      name: dataset.name,
-      attributes: revision.attributes,
-      schemaVersion: revision.schemaVersion,
-      items: revision.items,
-    }
+    return buildDatasetResponse(id, revision)
   },
 
   async findItemsByDatasetId(datasetId: string) {

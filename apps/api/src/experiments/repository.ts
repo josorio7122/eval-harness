@@ -1,5 +1,7 @@
 import { prisma } from '../lib/prisma.js'
 
+export type ExperimentStatus = 'queued' | 'running' | 'complete' | 'failed'
+
 export const experimentRepository = {
   findAll() {
     return prisma.experiment.findMany({
@@ -51,7 +53,7 @@ export const experimentRepository = {
     return prisma.experiment.delete({ where: { id } })
   },
 
-  updateStatus(id: string, status: string) {
+  updateStatus(id: string, status: ExperimentStatus) {
     return prisma.experiment.update({ where: { id }, data: { status } })
   },
 

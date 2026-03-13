@@ -1,6 +1,7 @@
 import PQueue from 'p-queue'
 import { EventEmitter } from 'events'
 import type { experimentRepository } from './repository.js'
+import type { ExperimentStatus } from './repository.js'
 
 export type ExperimentEvents = EventEmitter
 
@@ -69,7 +70,7 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
 
       await Promise.all(tasks)
 
-      const finalStatus = errorCount === totalCells ? 'failed' : 'complete'
+      const finalStatus: ExperimentStatus = errorCount === totalCells ? 'failed' : 'complete'
       await repo.updateStatus(experimentId, finalStatus)
 
       if (finalStatus === 'failed') {

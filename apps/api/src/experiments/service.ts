@@ -1,11 +1,13 @@
 import { json2csv } from 'json-2-csv'
-import { ok, fail, type Result } from '@eval-harness/shared'
+import { ok, fail, tryCatch, type Result } from '@eval-harness/shared'
 import { experimentRepository } from './repository.js'
+import type { ExperimentStatus } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
 import { graderRepository } from '../graders/repository.js'
 import type { createExperimentRunner } from './runner.js'
 
 type Runner = ReturnType<typeof createExperimentRunner>
+type ExperimentWithDetails = NonNullable<Awaited<ReturnType<typeof experimentRepository.findById>>>
 
 export function createExperimentService(
   repo: typeof experimentRepository,
@@ -14,33 +16,29 @@ export function createExperimentService(
   runner?: Runner,
 ) {
   return {
-    async listExperiments(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
-      try {
+    listExperiments(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
+      return tryCatch(async () => {
         const experiments = await repo.findAll()
         return ok(experiments)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async getExperiment(
+    getExperiment(
       id: string,
     ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
-      try {
+      return tryCatch(async () => {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
         return ok(experiment)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async createExperiment(input: {
+    createExperiment(input: {
       name: string
       datasetId: string
       graderIds: string[]
     }): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
-      try {
+      return tryCatch(async () => {
         const dataset = await datasetRepo.findById(input.datasetId)
         if (!dataset) return fail('Dataset not found')
 
@@ -58,24 +56,20 @@ export function createExperimentService(
 
         const created = await repo.create({ ...input, datasetRevisionId })
         return ok(created)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async deleteExperiment(id: string): Promise<Result<{ deleted: true }>> {
-      try {
+    deleteExperiment(id: string): Promise<Result<{ deleted: true }>> {
+      return tryCatch(async () => {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
         await repo.remove(id)
         return ok({ deleted: true as const })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async rerunExperiment(id: string): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
-      try {
+    rerunExperiment(id: string): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
+      return tryCatch(async () => {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
 
@@ -91,13 +85,11 @@ export function createExperimentService(
           graderIds,
         })
         return ok(created)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async runExperiment(id: string): Promise<Result<{ status: string }>> {
-      try {
+    runExperiment(id: string): Promise<Result<{ status: ExperimentStatus }>> {
+      return tryCatch(async () => {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
 
@@ -105,25 +97,27 @@ export function createExperimentService(
           return fail('Experiment is not in a runnable state')
         }
 
-        const datasetItems = (
-          experiment.revision as { items: Array<{ id: string; values: Record<string, string> }> }
-        ).items
-        if (datasetItems.length === 0) return fail('Dataset has no items')
+        const typedExperiment = experiment as ExperimentWithDetails
+        const rawItems = typedExperiment.revision?.items ?? []
+        if (rawItems.length === 0) return fail('Dataset has no items')
+        const datasetItems = rawItems.map((item) => ({
+          id: item.id,
+          values: item.values as Record<string, string>,
+        }))
 
-        const graders = (
-          experiment.graders as Array<{ graderId: string; grader: { id: string; rubric: string } }>
-        ).map((eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }))
+        const graders = typedExperiment.graders.map((eg) => ({
+          id: eg.grader.id,
+          rubric: eg.grader.rubric,
+        }))
 
         if (!runner) return fail('Runner not configured')
         void runner.enqueue(id, datasetItems, graders)
-        return ok({ status: 'queued' })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+        return ok({ status: 'queued' as ExperimentStatus })
+      })
     },
 
-    async exportCsv(id: string): Promise<Result<string>> {
-      try {
+    exportCsv(id: string): Promise<Result<string>> {
+      return tryCatch(async () => {
         const experiment = await repo.findById(id)
         if (!experiment) return fail('Experiment not found')
         if (experiment.status === 'queued' || experiment.status === 'running')
@@ -173,9 +167,7 @@ export function createExperimentService(
         }
 
         // Get dataset attributes for header (input + expected_output + any extras)
-        const expWithRevision = experiment as unknown as {
-          revision: { attributes: string[] }
-        }
+        const expWithRevision = experiment as ExperimentWithDetails
         const datasetAttributes: string[] = expWithRevision.revision?.attributes ?? [
           'input',
           'expected_output',
@@ -202,9 +194,7 @@ export function createExperimentService(
 
         const csv = (await json2csv(records, { keys: columns })).trimEnd()
         return ok(csv)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
   }
 }

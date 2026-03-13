@@ -128,17 +128,7 @@ describe('GraderDelete cascade', () => {
     expect(foundDataset!.id).toBe(dataset.id)
   })
 
-  it('direct remove() fails when grader has results (onDelete: Restrict)', async () => {
-    const { grader } = await seedFullScenario()
 
-    // remove() should fail because ExperimentResult.graderId has onDelete: Restrict
-    await expect(graderRepo.remove(grader.id)).rejects.toThrow()
-
-    // grader is still there
-    const foundGrader = await graderRepo.findById(grader.id)
-    expect(foundGrader).not.toBeNull()
-    expect(foundGrader!.id).toBe(grader.id)
-  })
 })
 
 describe('ExperimentDelete isolation', () => {

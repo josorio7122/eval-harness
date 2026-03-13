@@ -64,15 +64,15 @@ describe('graders repository (integration)', () => {
     expect(found!.description).toBe('Original description')
   })
 
-  // 4. remove deletes
-  it('remove deletes the grader so findById returns null', async () => {
+  // 4. removeWithCascade deletes
+  it('removeWithCascade deletes the grader so findById returns null', async () => {
     const created = await repo.create({
       name: 'delete-me-grader',
       description: 'To be removed',
       rubric: 'Does not matter',
     })
 
-    await repo.remove(created.id)
+    await repo.removeWithCascade(created.id)
     const found = await repo.findById(created.id)
 
     expect(found).toBeNull()

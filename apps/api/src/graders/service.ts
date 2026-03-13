@@ -1,49 +1,43 @@
-import { ok, fail, type Result } from '@eval-harness/shared'
+import { ok, fail, tryCatch, type Result } from '@eval-harness/shared'
 import { graderRepository } from './repository.js'
 
 export function createGraderService(repo: typeof graderRepository) {
   return {
-    async listGraders(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
-      try {
+    listGraders(): Promise<Result<Awaited<ReturnType<typeof repo.findAll>>>> {
+      return tryCatch(async () => {
         const graders = await repo.findAll()
         return ok(graders)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async getGrader(
+    getGrader(
       id: string,
     ): Promise<Result<NonNullable<Awaited<ReturnType<typeof repo.findById>>>>> {
-      try {
+      return tryCatch(async () => {
         const grader = await repo.findById(id)
         if (!grader) return fail('Grader not found')
         return ok(grader)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async createGrader(input: {
+    createGrader(input: {
       name: string
       description: string
       rubric: string
     }): Promise<Result<Awaited<ReturnType<typeof repo.create>>>> {
-      try {
+      return tryCatch(async () => {
         const existing = await repo.findByName(input.name)
         if (existing) return fail('Grader name already exists')
         const created = await repo.create(input)
         return ok(created)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async updateGrader(
+    updateGrader(
       id: string,
       input: { name?: string; description?: string; rubric?: string },
     ): Promise<Result<Awaited<ReturnType<typeof repo.update>>>> {
-      try {
+      return tryCatch(async () => {
         const grader = await repo.findById(id)
         if (!grader) return fail('Grader not found')
 
@@ -54,20 +48,16 @@ export function createGraderService(repo: typeof graderRepository) {
 
         const updated = await repo.update(id, input)
         return ok(updated)
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
 
-    async deleteGrader(id: string): Promise<Result<{ deleted: true }>> {
-      try {
+    deleteGrader(id: string): Promise<Result<{ deleted: true }>> {
+      return tryCatch(async () => {
         const grader = await repo.findById(id)
         if (!grader) return fail('Grader not found')
         await repo.removeWithCascade(id)
         return ok({ deleted: true as const })
-      } catch (e) {
-        return fail(e instanceof Error ? e.message : 'Unknown error')
-      }
+      })
     },
   }
 }
