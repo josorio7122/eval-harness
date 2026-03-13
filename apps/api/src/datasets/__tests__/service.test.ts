@@ -389,7 +389,7 @@ describe('previewCsv', () => {
 describe('listRevisions', () => {
   it('returns ok with revisions when dataset exists', async () => {
     mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
-    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), itemCount: 0 }]
+    const revisions = [{ id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), itemCount: 0, experimentCount: 0 }]
     mockRepo.findRevisions.mockResolvedValue(revisions)
     const result = await service.listRevisions('1')
     expect(result).toEqual({ success: true, data: revisions })
@@ -405,7 +405,7 @@ describe('listRevisions', () => {
 describe('getRevision', () => {
   it('returns ok with revision detail', async () => {
     mockRepo.findById.mockResolvedValue({ id: '1', name: 'ds1', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [] })
-    const revision = { id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), items: [] }
+    const revision = { id: 'rev1', schemaVersion: 1, attributes: ['input', 'expected_output'], createdAt: new Date(), items: [], experiments: [] }
     mockRepo.findRevisionById.mockResolvedValue(revision)
     const result = await service.getRevision('1', 'rev1')
     expect(result).toEqual({ success: true, data: revision })

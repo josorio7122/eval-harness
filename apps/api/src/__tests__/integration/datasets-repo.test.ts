@@ -267,4 +267,93 @@ describe('datasets repository (integration)', () => {
     expect(found!.itemId).toBe(item.itemId)
     expect(found!.values).toEqual({ input: 'hello', expected_output: 'world' })
   })
+
+  // 20. findRevisions includes experimentCount
+  it('findRevisions includes experimentCount', async () => {
+    const ds = await repo.create('rev-exp-count-ds')
+    await repo.createItem(ds.id, { input: 'q', expected_output: 'a' })
+
+    const revisions = await repo.findRevisions(ds.id)
+    // No experiments yet — count should be 0
+    expect(revisions[0]).toHaveProperty('experimentCount')
+    expect(revisions[0].experimentCount).toBe(0)
+  })
+
+  // 21. findRevisionById includes experiments list
+  it('findRevisionById includes experiments list', async () => {
+    const ds = await repo.create('rev-exp-list-ds')
+    await repo.createItem(ds.id, { input: 'q', expected_output: 'a' })
+
+    const revisions = await repo.findRevisions(ds.id)
+    const detail = await repo.findRevisionById(ds.id, revisions[0].id)
+    expect(detail).toHaveProperty('experiments')
+    expect(Array.isArray(detail!.experiments)).toBe(true)
+  })
+
+  // 22. schemaVersion unchanged after updateItem
+  it('schemaVersion unchanged after updateItem', async () => {
+    const ds = await repo.create('sv-update-ds')
+    const item = await repo.createItem(ds.id, { input: 'old', expected_output: 'val' })
+    const beforeSV = (await repo.findById(ds.id))!.schemaVersion
+
+    await repo.updateItem(item.itemId, { input: 'new', expected_output: 'val' })
+    const afterSV = (await repo.findById(ds.id))!.schemaVersion
+
+    expect(afterSV).toBe(beforeSV)
+  })
+
+  // 23. schemaVersion unchanged after removeItem
+  it('schemaVersion unchanged after removeItem', async () => {
+    const ds = await repo.create('sv-remove-ds')
+    const item = await repo.createItem(ds.id, { input: 'x', expected_output: 'y' })
+    const beforeSV = (await repo.findById(ds.id))!.schemaVersion
+
+    await repo.removeItem(item.itemId)
+    const afterSV = (await repo.findById(ds.id))!.schemaVersion
+
+    expect(afterSV).toBe(beforeSV)
+  })
+
+  // 24. schemaVersion unchanged after importItems
+  it('schemaVersion unchanged after importItems', async () => {
+    const ds = await repo.create('sv-import-ds')
+    const beforeSV = (await repo.findById(ds.id))!.schemaVersion
+
+    await repo.importItems(ds.id, [
+      { input: 'a', expected_output: 'b' },
+    ])
+    const afterSV = (await repo.findById(ds.id))!.schemaVersion
+
+    expect(afterSV).toBe(beforeSV)
+  })
+
+  // 25. Previous revision items unchanged after addAttribute (immutability)
+  it('previous revision retains original schema after addAttribute', async () => {
+    const ds = await repo.create('immut-attr-ds')
+    await repo.createItem(ds.id, { input: 'q', expected_output: 'a' })
+
+    const revsBefore = await repo.findRevisions(ds.id)
+    const prevRevId = revsBefore[0].id
+
+    await repo.addAttribute(ds.id, 'extra')
+
+    const prevDetail = await repo.findRevisionById(ds.id, prevRevId)
+    expect(prevDetail!.attributes).not.toContain('extra')
+    expect((prevDetail!.items[0].values as Record<string, string>)).not.toHaveProperty('extra')
+  })
+
+  // 26. Previous revision still has deleted item (immutability)
+  it('previous revision retains deleted item after removeItem', async () => {
+    const ds = await repo.create('immut-del-ds')
+    const item = await repo.createItem(ds.id, { input: 'will-delete', expected_output: 'val' })
+
+    const revsBefore = await repo.findRevisions(ds.id)
+    const prevRevId = revsBefore[0].id
+
+    await repo.removeItem(item.itemId)
+
+    const prevDetail = await repo.findRevisionById(ds.id, prevRevId)
+    expect(prevDetail!.items).toHaveLength(1)
+    expect((prevDetail!.items[0].values as Record<string, string>).input).toBe('will-delete')
+  })
 })

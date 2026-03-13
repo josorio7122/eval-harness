@@ -145,6 +145,54 @@ describe('experiments service (integration)', () => {
     expect(graderFound).not.toBeNull()
   })
 
+  // B17 via service: two experiments on unchanged dataset share revision
+  it('two experiments on unchanged dataset share the same revision', async () => {
+    const ds = await seedDatasetWithItems()
+    const grader = await seedGrader()
+
+    const resultA = await service.createExperiment({
+      name: uid('exp-shared-a'),
+      datasetId: ds.id,
+      graderIds: [grader.id],
+    })
+    const resultB = await service.createExperiment({
+      name: uid('exp-shared-b'),
+      datasetId: ds.id,
+      graderIds: [grader.id],
+    })
+
+    expect(resultA.success).toBe(true)
+    expect(resultB.success).toBe(true)
+    if (!resultA.success || !resultB.success) return
+
+    const expA = await experimentRepository.findById(resultA.data.id)
+    const expB = await experimentRepository.findById(resultB.data.id)
+    expect(expA!.datasetRevisionId).toBe(expB!.datasetRevisionId)
+  })
+
+  // B18 strengthen: verify first experiment's revisionId unchanged after dataset edit
+  it('experiment revisionId unchanged after dataset edit', async () => {
+    const ds = await seedDatasetWithItems()
+    const grader = await seedGrader()
+
+    const resultA = await service.createExperiment({
+      name: uid('exp-pinned'),
+      datasetId: ds.id,
+      graderIds: [grader.id],
+    })
+    expect(resultA.success).toBe(true)
+    if (!resultA.success) return
+
+    const originalRevId = (await experimentRepository.findById(resultA.data.id))!.datasetRevisionId
+
+    // Edit dataset (creates new revision)
+    await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' })
+
+    // Verify experiment still points to original revision
+    const afterEdit = await experimentRepository.findById(resultA.data.id)
+    expect(afterEdit!.datasetRevisionId).toBe(originalRevId)
+  })
+
   // B18 — different revisions after edit
   it('experiments created before and after edit have different revisions', async () => {
     const ds = await seedDatasetWithItems()

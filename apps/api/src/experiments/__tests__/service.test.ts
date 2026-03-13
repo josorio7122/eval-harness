@@ -37,6 +37,7 @@ const mockDatasetRepo = {
   removeItem: vi.fn(),
   countItems: vi.fn(),
   findRevisions: vi.fn(),
+  findRevisionById: vi.fn(),
   importItems: vi.fn(),
 }
 

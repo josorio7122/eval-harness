@@ -269,7 +269,7 @@ export const datasetRepository = {
     const revisions = await prisma.datasetRevision.findMany({
       where: { datasetId },
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { items: true } } },
+      include: { _count: { select: { items: true, experiments: true } } },
     })
 
     return revisions.map((r) => ({
@@ -278,13 +278,17 @@ export const datasetRepository = {
       attributes: r.attributes,
       createdAt: r.createdAt,
       itemCount: r._count.items,
+      experimentCount: r._count.experiments,
     }))
   },
 
   async findRevisionById(datasetId: string, revisionId: string) {
     const revision = await prisma.datasetRevision.findFirst({
       where: { id: revisionId, datasetId },
-      include: { items: { orderBy: { itemId: 'asc' } } },
+      include: {
+        items: { orderBy: { itemId: 'asc' } },
+        experiments: { select: { id: true, name: true, status: true } },
+      },
     })
     if (!revision) return null
 
@@ -294,6 +298,7 @@ export const datasetRepository = {
       attributes: revision.attributes,
       createdAt: revision.createdAt,
       items: revision.items,
+      experiments: revision.experiments,
     }
   },
 }
