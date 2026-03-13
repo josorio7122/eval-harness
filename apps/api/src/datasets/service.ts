@@ -3,24 +3,15 @@ import { datasetRepository } from './repository.js'
 
 const BUILT_IN_ATTRIBUTES = ['input', 'expected_output']
 
-function validateItemValues(
+function normalizeItemValues(
   attributes: string[],
   values: Record<string, string>,
-): Result<void> {
-  const attrSet = new Set(attributes)
-  const valueKeys = Object.keys(values)
-
-  const missing = attributes.filter((a) => !Object.prototype.hasOwnProperty.call(values, a))
-  if (missing.length > 0) {
-    return fail(`Missing required keys: ${missing.join(', ')}`)
+): Record<string, string> {
+  const normalized: Record<string, string> = {}
+  for (const attr of attributes) {
+    normalized[attr] = Object.prototype.hasOwnProperty.call(values, attr) ? values[attr] : ''
   }
-
-  const extra = valueKeys.filter((k) => !attrSet.has(k))
-  if (extra.length > 0) {
-    return fail(`Unknown keys: ${extra.join(', ')}`)
-  }
-
-  return ok(undefined)
+  return normalized
 }
 
 // RFC 4180 compliant CSV value escaping
@@ -85,6 +76,7 @@ function parseCsvContent(
   attributes: string[],
   csv: string,
 ): Result<ParsedCsvRow> {
+  csv = csv.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
   const lines = csv.split('\n').filter((l) => l.trim() !== '')
   if (lines.length < 1) return fail('CSV is empty')
 
@@ -243,10 +235,9 @@ export function createDatasetService(repo: typeof datasetRepository) {
         const dataset = await repo.findById(datasetId)
         if (!dataset) return fail('Dataset not found')
 
-        const validation = validateItemValues(dataset.attributes, input.values)
-        if (!validation.success) return validation
+        const normalized = normalizeItemValues(dataset.attributes, input.values)
 
-        const item = await repo.createItem(datasetId, input.values)
+        const item = await repo.createItem(datasetId, normalized)
         return ok(item)
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')
@@ -265,10 +256,9 @@ export function createDatasetService(repo: typeof datasetRepository) {
         const item = await repo.findItemById(itemId)
         if (!item) return fail('Item not found')
 
-        const validation = validateItemValues(dataset.attributes, input.values)
-        if (!validation.success) return validation
+        const normalized = normalizeItemValues(dataset.attributes, input.values)
 
-        const updated = await repo.updateItem(itemId, input.values)
+        const updated = await repo.updateItem(itemId, normalized)
         return ok(updated)
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')

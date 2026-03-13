@@ -322,20 +322,30 @@ function RevisionDetailPanel({
         </div>
 
         {/* Experiments */}
-        {revision.experiments.length > 0 && (
-          <div>
+        <div>
+          <div
+            style={{
+              fontSize: '10px',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--fg-tertiary)',
+              marginBottom: '8px',
+            }}
+          >
+            Experiments ({revision.experiments.length})
+          </div>
+          {revision.experiments.length === 0 ? (
             <div
               style={{
-                fontSize: '10px',
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: 'var(--fg-tertiary)',
-                marginBottom: '8px',
+                fontSize: '12px',
+                color: 'var(--fg-muted)',
+                fontStyle: 'italic',
               }}
             >
-              Experiments ({revision.experiments.length})
+              No experiments
             </div>
+          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {revision.experiments.map((exp) => (
                 <button
@@ -362,8 +372,8 @@ function RevisionDetailPanel({
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
@@ -494,6 +504,22 @@ export function RevisionHistory({ datasetId }: RevisionHistoryProps) {
                       {relativeTime(rev.createdAt)}
                     </span>
                   </div>
+
+                  {/* Third row: attributes */}
+                  {rev.attributes.length > 0 && (
+                    <div
+                      style={{
+                        fontSize: '11px',
+                        fontFamily: 'var(--font-mono)',
+                        color: 'var(--fg-tertiary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {rev.attributes.join(' · ')}
+                    </div>
+                  )}
                 </div>
               )
             })}

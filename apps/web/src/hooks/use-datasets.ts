@@ -212,7 +212,10 @@ export interface RevisionDetail extends Revision {
 export function useRevisions(datasetId: string | undefined) {
   return useQuery({
     queryKey: ['datasets', datasetId, 'revisions'],
-    queryFn: () => api.get<Revision[]>(`/datasets/${datasetId}/revisions`),
+    queryFn: () =>
+      api
+        .get<{ success: true; data: Revision[] }>(`/datasets/${datasetId}/revisions`)
+        .then((r) => r.data),
     enabled: !!datasetId,
   })
 }
@@ -220,7 +223,12 @@ export function useRevisions(datasetId: string | undefined) {
 export function useRevision(datasetId: string | undefined, revisionId: string | undefined) {
   return useQuery({
     queryKey: ['datasets', datasetId, 'revisions', revisionId],
-    queryFn: () => api.get<RevisionDetail>(`/datasets/${datasetId}/revisions/${revisionId}`),
+    queryFn: () =>
+      api
+        .get<{ success: true; data: RevisionDetail }>(
+          `/datasets/${datasetId}/revisions/${revisionId}`,
+        )
+        .then((r) => r.data),
     enabled: !!datasetId && !!revisionId,
   })
 }

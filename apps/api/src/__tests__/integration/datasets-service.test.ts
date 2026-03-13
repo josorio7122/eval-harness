@@ -82,20 +82,21 @@ describe('datasets service (integration)', () => {
     expect(found!.values).toEqual({ input: 'hello', expected_output: 'world' })
   })
 
-  // 6. createItem with wrong keys → returns fail, no item in DB
-  it('createItem with unknown keys returns fail and creates no item', async () => {
+  // 6. createItem with unknown keys → extra keys are ignored, item is created
+  it('createItem with unknown keys ignores extras and creates item', async () => {
     const ds = await datasetRepository.create(uid('svc-item-bad'))
 
     const result = await service.createItem(ds.id, {
       values: { input: 'hi', expected_output: 'there', bogus: 'extra' },
     })
 
-    expect(result.success).toBe(false)
-    if (result.success) return
-    expect(result.error).toContain('Unknown keys')
+    expect(result.success).toBe(true)
 
     const items = await datasetRepository.findItemsByDatasetId(ds.id)
-    expect(items).toHaveLength(0)
+    expect(items).toHaveLength(1)
+    expect((items[0].values as Record<string, string>).input).toBe('hi')
+    expect((items[0].values as Record<string, string>).expected_output).toBe('there')
+    expect((items[0].values as Record<string, string>).bogus).toBeUndefined()
   })
 
   // 7. importCsv creates items → items exist in DB with correct values, single new revision

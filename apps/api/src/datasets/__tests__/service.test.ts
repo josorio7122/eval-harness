@@ -187,18 +187,28 @@ describe('createItem', () => {
     expect(result).toEqual({ success: true, data: item })
   })
 
-  it('fails when missing required keys', async () => {
-    const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    const result = await service.createItem('1', { values: { input: 'hello' } })
-    expect(result.success).toBe(false)
+  it('defaults missing attributes to empty string', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: '1', name: 'ds', attributes: ['input', 'expected_output', 'context'],
+      schemaVersion: 1, items: [],
+    })
+    mockRepo.createItem.mockResolvedValue({ id: 'item1', itemId: 'itemId1', revisionId: 'rev1', values: {} })
+    const result = await service.createItem('1', { values: { input: 'hello', expected_output: 'world' } })
+    expect(result.success).toBe(true)
+    const createCall = mockRepo.createItem.mock.calls[0]
+    expect(createCall[1]).toEqual({ input: 'hello', expected_output: 'world', context: '' })
   })
 
-  it('fails when extra keys present', async () => {
-    const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
-    mockRepo.findById.mockResolvedValue(dataset)
-    const result = await service.createItem('1', { values: { input: 'hello', expected_output: 'world', extra: 'bad' } })
-    expect(result.success).toBe(false)
+  it('ignores extra keys not in schema', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: '1', name: 'ds', attributes: ['input', 'expected_output'],
+      schemaVersion: 1, items: [],
+    })
+    mockRepo.createItem.mockResolvedValue({ id: 'item1', itemId: 'itemId1', revisionId: 'rev1', values: {} })
+    const result = await service.createItem('1', { values: { input: 'hello', expected_output: 'world', extra: 'ignored' } })
+    expect(result.success).toBe(true)
+    const createCall = mockRepo.createItem.mock.calls[0]
+    expect(createCall[1]).toEqual({ input: 'hello', expected_output: 'world' })
   })
 
   it('fails when dataset not found', async () => {
@@ -217,6 +227,34 @@ describe('updateItem', () => {
     mockRepo.updateItem.mockResolvedValue(updated)
     const result = await service.updateItem('1', 'i1', { values: { input: 'new', expected_output: 'val' } })
     expect(result).toEqual({ success: true, data: updated })
+  })
+
+  it('defaults missing attributes to empty string on update', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: '1', name: 'ds', attributes: ['input', 'expected_output', 'context'],
+      schemaVersion: 1, items: [],
+    })
+    mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
+    const updated = { id: 'i1', datasetId: '1', values: {} }
+    mockRepo.updateItem.mockResolvedValue(updated)
+    const result = await service.updateItem('1', 'i1', { values: { input: 'new', expected_output: 'val' } })
+    expect(result.success).toBe(true)
+    const updateCall = mockRepo.updateItem.mock.calls[0]
+    expect(updateCall[1]).toEqual({ input: 'new', expected_output: 'val', context: '' })
+  })
+
+  it('ignores extra keys not in schema on update', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: '1', name: 'ds', attributes: ['input', 'expected_output'],
+      schemaVersion: 1, items: [],
+    })
+    mockRepo.findItemById.mockResolvedValue({ id: 'i1', datasetId: '1', values: {} })
+    const updated = { id: 'i1', datasetId: '1', values: {} }
+    mockRepo.updateItem.mockResolvedValue(updated)
+    const result = await service.updateItem('1', 'i1', { values: { input: 'new', expected_output: 'val', extra: 'ignored' } })
+    expect(result.success).toBe(true)
+    const updateCall = mockRepo.updateItem.mock.calls[0]
+    expect(updateCall[1]).toEqual({ input: 'new', expected_output: 'val' })
   })
 
   it('fails when item not found', async () => {
@@ -328,6 +366,36 @@ describe('importCsv', () => {
     const result = await service.importCsv('1', csv)
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toContain('Unknown columns')
+  })
+})
+
+describe('importCsv - CRLF handling', () => {
+  it('handles CRLF line endings in CSV import', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [],
+    })
+    mockRepo.importItems.mockResolvedValue(undefined)
+    const result = await service.importCsv('1', 'input,expected_output\r\nhello,world\r\nfoo,bar\r\n')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.imported).toBe(2)
+    }
+    // Verify the values passed to importItems don't contain \r
+    const importCall = mockRepo.importItems.mock.calls[0]
+    expect(importCall[1][0].expected_output).toBe('world') // NOT 'world\r'
+    expect(importCall[1][1].expected_output).toBe('bar')
+  })
+
+  it('handles CR-only line endings in CSV import', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: '1', name: 'ds', attributes: ['input', 'expected_output'], schemaVersion: 1, items: [],
+    })
+    mockRepo.importItems.mockResolvedValue(undefined)
+    const result = await service.importCsv('1', 'input,expected_output\rhello,world\rfoo,bar')
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.imported).toBe(2)
+    }
   })
 })
 

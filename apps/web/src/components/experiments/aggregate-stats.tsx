@@ -32,11 +32,13 @@ export function AggregateStats({ experiment, filteredResults, filteredItemCount 
   const graderStats = graders.map((eg) => {
     const graderResults = results.filter((r) => r.graderId === eg.graderId)
     const rate = passRate(graderResults)
+    const passes = graderResults.filter((r) => r.verdict === 'pass').length
     return {
       id: eg.graderId,
       name: eg.grader.name,
       rate,
       pct: Math.round(rate * 100),
+      passes,
       total: graderResults.length,
     }
   })
@@ -165,7 +167,7 @@ export function AggregateStats({ experiment, filteredResults, filteredItemCount 
                         marginLeft: '4px',
                       }}
                     >
-                      {gs.pct}%
+                      {gs.passes}/{gs.total} — {gs.pct}%
                     </span>
                   </div>
                   {/* Progress bar */}
