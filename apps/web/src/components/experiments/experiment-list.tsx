@@ -32,7 +32,7 @@ function hasFails(exp: Experiment): boolean {
 
 function progressPct(exp: Experiment): number {
   const total = (exp.dataset?.items?.length ?? 0) * (exp.graders?.length ?? 0)
-  const done = exp.results?.length ?? 0
+  const done = exp._count?.results ?? exp.results?.length ?? 0
   if (total === 0) return 0
   return Math.round((done / total) * 100)
 }

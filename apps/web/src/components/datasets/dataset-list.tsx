@@ -72,7 +72,7 @@ export function DatasetList() {
               color: 'var(--fg-tertiary)',
             }}
           >
-            Attributes
+            Items / Attrs
           </span>
         </div>
       )}
@@ -178,7 +178,7 @@ export function DatasetList() {
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  {dataset.attributes.length} attr
+                  {dataset._count?.items ?? '—'} items · {dataset.attributes.length} attr
                 </span>
               </button>
             ))}

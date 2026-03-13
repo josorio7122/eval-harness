@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { ArrowLeft, Play, RotateCcw, Trash2, Loader2 } from 'lucide-react'
+import { ArrowLeft, Play, RotateCcw, Trash2, Loader2, Download } from 'lucide-react'
 import {
   useExperiment,
   useRunExperiment,
@@ -10,6 +10,20 @@ import {
 } from '@/hooks/use-experiments'
 import { AggregateStats } from './aggregate-stats'
 import { ResultsTable } from './results-table'
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+
+async function downloadExperimentCsv(id: string, name: string) {
+  const res = await fetch(`${API_URL}/experiments/${id}/csv/export`)
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${name}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 interface ExperimentDetailProps {
   id: string
@@ -36,6 +50,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   const rerunExp = useRerunExperiment()
   const deleteExp = useDeleteExperiment()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   // SSE: live cell updates while running
   const progress = useExperimentSSE(id, experiment?.status)
@@ -217,6 +232,37 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
                 <RotateCcw size={12} />
               )}
               Re-run
+            </button>
+          )}
+
+          {/* Export CSV — only when complete */}
+          {isComplete && (
+            <button
+              onClick={async () => {
+                setExportingCsv(true)
+                try {
+                  await downloadExperimentCsv(id, experiment.name)
+                } finally {
+                  setExportingCsv(false)
+                }
+              }}
+              disabled={exportingCsv}
+              className="flex items-center gap-1.5 h-[28px] px-3 text-[12px] font-medium transition-colors disabled:opacity-50"
+              style={{
+                background: 'var(--bg-surface-2)',
+                color: 'var(--fg-secondary)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius-md)',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+            >
+              {exportingCsv ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Download size={12} />
+              )}
+              Export CSV
             </button>
           )}
 

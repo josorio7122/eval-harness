@@ -30,6 +30,7 @@ export interface Experiment {
   }
   graders?: ExperimentGrader[]
   results?: ExperimentResult[]
+  _count?: { results: number }
 }
 
 export function useExperiments() {

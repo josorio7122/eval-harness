@@ -22,9 +22,13 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    await addAttr.mutateAsync({ datasetId, name: name.trim() })
-    setName('')
-    setOpen(false)
+    try {
+      await addAttr.mutateAsync({ datasetId, name: name.trim() })
+      setName('')
+      setOpen(false)
+    } catch {
+      // error shown via addAttr.error below
+    }
   }
 
   return (
@@ -76,6 +80,17 @@ export function AddAttributeDialog({ datasetId, trigger }: AddAttributeDialogPro
                 }}
               />
             </div>
+            {addAttr.isError && (
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--error-fg)',
+                  margin: 0,
+                }}
+              >
+                {addAttr.error instanceof Error ? addAttr.error.message : 'Failed to add attribute'}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

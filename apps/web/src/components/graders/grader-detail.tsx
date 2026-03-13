@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router'
 import { Loader2, Trash2 } from 'lucide-react'
 import { useGrader, useUpdateGrader, useDeleteGrader } from '@/hooks/use-graders'
+import { useExperiments } from '@/hooks/use-experiments'
 
 interface GraderDetailProps {
   id: string
@@ -12,12 +13,18 @@ export function GraderDetail({ id }: GraderDetailProps) {
   const { data: grader, isLoading } = useGrader(id)
   const updateGrader = useUpdateGrader()
   const deleteGrader = useDeleteGrader()
+  const { data: allExperiments } = useExperiments()
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [rubric, setRubric] = useState('')
   const [isDirty, setIsDirty] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const rubricRef = useRef<HTMLTextAreaElement>(null)
+
+  const affectedExperiments = (allExperiments ?? []).filter(
+    (exp) => exp.graders?.some((eg) => eg.graderId === id),
+  )
 
   // Sync server data → local state (only when not dirty)
   useEffect(() => {
@@ -68,7 +75,6 @@ export function GraderDetail({ id }: GraderDetailProps) {
 
   async function handleDelete() {
     if (!grader) return
-    if (!confirm(`Delete grader "${grader.name}"? This cannot be undone.`)) return
     await deleteGrader.mutateAsync(grader.id)
     navigate('/graders')
   }
@@ -220,7 +226,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
         <div className="flex items-center justify-between pt-1">
           {/* Delete */}
           <button
-            onClick={handleDelete}
+            onClick={() => setDeleteDialogOpen(true)}
             disabled={deleteGrader.isPending}
             className="flex items-center gap-1.5 h-[32px] px-3 text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
@@ -266,6 +272,117 @@ export function GraderDetail({ id }: GraderDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* Delete Grader Confirmation Dialog */}
+      {deleteDialogOpen && grader && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDeleteDialogOpen(false)
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface-1)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              width: '400px',
+              maxWidth: '90vw',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+              Delete grader "{grader.name}"?
+            </h3>
+
+            {affectedExperiments.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--error-fg)', margin: 0 }}>
+                  The following experiments use this grader and will be affected:
+                </p>
+                <ul
+                  style={{
+                    margin: 0,
+                    padding: '8px 12px',
+                    background: 'var(--fail-subtle)',
+                    border: '1px solid var(--fail)',
+                    borderRadius: 'var(--radius-md)',
+                    listStyleType: 'disc',
+                    paddingLeft: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}
+                >
+                  {affectedExperiments.map((exp) => (
+                    <li key={exp.id} style={{ fontSize: '12px', color: 'var(--fail-fg)', fontFamily: 'var(--font-mono)' }}>
+                      {exp.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'var(--fg-secondary)', margin: 0 }}>
+                This action cannot be undone.
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setDeleteDialogOpen(false)}
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  background: 'transparent',
+                  color: 'var(--fg-secondary)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setDeleteDialogOpen(false)
+                  await handleDelete()
+                }}
+                disabled={deleteGrader.isPending}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  background: 'var(--fail-subtle)',
+                  color: 'var(--fail-fg)',
+                  border: '1px solid var(--fail)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  opacity: deleteGrader.isPending ? 0.6 : 1,
+                }}
+              >
+                <Trash2 size={12} />
+                {deleteGrader.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

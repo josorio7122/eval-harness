@@ -1,10 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+
+async function downloadBlob(path: string, filename: string) {
+  const res = await fetch(`${API_URL}${path}`)
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export interface Dataset {
   id: string
   name: string
   attributes: string[]
+  _count?: { items: number }
 }
 
 export interface DatasetItem {
@@ -123,6 +138,83 @@ export function useDeleteItem() {
       datasetId: string
       itemId: string
     }) => api.del(`/datasets/${datasetId}/items/${itemId}`),
+    onSuccess: (_, vars) =>
+      qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
+  })
+}
+
+export function useDownloadCsvTemplate() {
+  return useMutation({
+    mutationFn: ({ datasetId, name }: { datasetId: string; name: string }) =>
+      downloadBlob(`/datasets/${datasetId}/csv/template`, `${name}-template.csv`),
+  })
+}
+
+export function useExportCsv() {
+  return useMutation({
+    mutationFn: ({ datasetId, name }: { datasetId: string; name: string }) =>
+      downloadBlob(`/datasets/${datasetId}/csv/export`, `${name}.csv`),
+  })
+}
+
+export interface CsvPreviewRow {
+  [key: string]: string
+}
+
+export interface CsvPreview {
+  headers: string[]
+  rows: CsvPreviewRow[]
+  totalRows: number
+  warnings?: string[]
+}
+
+export function usePreviewCsv() {
+  return useMutation({
+    mutationFn: async ({
+      datasetId,
+      file,
+    }: {
+      datasetId: string
+      file: File
+    }): Promise<CsvPreview> => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API_URL}/datasets/${datasetId}/csv/preview`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Preview failed: ${res.status}` }))
+        throw new Error(err.error ?? `Preview failed: ${res.status}`)
+      }
+      const json = await res.json()
+      return json.data ?? json
+    },
+  })
+}
+
+export function useImportCsv() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      datasetId,
+      file,
+    }: {
+      datasetId: string
+      file: File
+    }) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`${API_URL}/datasets/${datasetId}/csv/import`, {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Import failed: ${res.status}` }))
+        throw new Error(err.error ?? `Import failed: ${res.status}`)
+      }
+      return res.json()
+    },
     onSuccess: (_, vars) =>
       qc.invalidateQueries({ queryKey: ['datasets', vars.datasetId] }),
   })

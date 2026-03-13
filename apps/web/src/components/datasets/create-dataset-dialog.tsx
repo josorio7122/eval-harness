@@ -22,13 +22,17 @@ export function CreateDatasetDialog({ trigger, onCreated }: CreateDatasetDialogP
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    const result = (await create.mutateAsync({ name: name.trim() })) as {
-      data?: { id: string }
-    }
-    setName('')
-    setOpen(false)
-    if (onCreated && result?.data?.id) {
-      onCreated(result.data.id)
+    try {
+      const result = (await create.mutateAsync({ name: name.trim() })) as {
+        data?: { id: string }
+      }
+      setName('')
+      setOpen(false)
+      if (onCreated && result?.data?.id) {
+        onCreated(result.data.id)
+      }
+    } catch {
+      // error shown via create.error below
     }
   }
 
@@ -81,6 +85,17 @@ export function CreateDatasetDialog({ trigger, onCreated }: CreateDatasetDialogP
                 }}
               />
             </div>
+            {create.isError && (
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: 'var(--error-fg)',
+                  margin: 0,
+                }}
+              >
+                {create.error instanceof Error ? create.error.message : 'Failed to create dataset'}
+              </p>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

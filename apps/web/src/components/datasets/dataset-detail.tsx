@@ -1,11 +1,21 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { ArrowLeft, Plus, Trash2, Pencil } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Pencil, Download, Upload, FileDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AddAttributeDialog } from './add-attribute-dialog'
 import { AddItemDialog, EditItemDialog } from './add-item-dialog'
-import { useDataset, useRemoveAttribute, useDeleteItem } from '@/hooks/use-datasets'
-import type { DatasetItem } from '@/hooks/use-datasets'
+import {
+  useDataset,
+  useRemoveAttribute,
+  useDeleteItem,
+  useDeleteDataset,
+  useDownloadCsvTemplate,
+  useExportCsv,
+  usePreviewCsv,
+  useImportCsv,
+} from '@/hooks/use-datasets'
+import type { DatasetItem, CsvPreview } from '@/hooks/use-datasets'
+import { useExperiments } from '@/hooks/use-experiments'
 
 interface DatasetDetailProps {
   id: string
@@ -16,8 +26,23 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
   const { data: dataset, isLoading } = useDataset(id)
   const removeAttr = useRemoveAttribute()
   const deleteItem = useDeleteItem()
+  const deleteDataset = useDeleteDataset()
+  const downloadTemplate = useDownloadCsvTemplate()
+  const exportCsv = useExportCsv()
+  const previewCsv = usePreviewCsv()
+  const importCsv = useImportCsv()
+  const { data: allExperiments } = useExperiments()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [editItem, setEditItem] = useState<DatasetItem | undefined>(undefined)
   const [editOpen, setEditOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+
+  const affectedExperiments = (allExperiments ?? []).filter(
+    (exp) => exp.datasetId === id,
+  )
 
   if (isLoading) {
     return (
@@ -97,11 +122,495 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
           /
         </span>
         <h2
-          style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)' }}
+          style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)', flex: 1 }}
         >
           {dataset.name}
         </h2>
+
+        {/* CSV actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {/* Download Template */}
+          <button
+            onClick={() => downloadTemplate.mutate({ datasetId: id, name: dataset.name })}
+            disabled={downloadTemplate.isPending}
+            title="Download CSV template"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '28px',
+              padding: '0 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              background: 'var(--bg-surface-2)',
+              color: 'var(--fg-secondary)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+              opacity: downloadTemplate.isPending ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+          >
+            <FileDown size={12} />
+            Template
+          </button>
+
+          {/* Import CSV */}
+          <button
+            onClick={() => {
+              setCsvPreview(null)
+              setImportFile(null)
+              setImportDialogOpen(true)
+            }}
+            title="Import from CSV"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '28px',
+              padding: '0 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              background: 'var(--bg-surface-2)',
+              color: 'var(--fg-secondary)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+          >
+            <Upload size={12} />
+            Import CSV
+          </button>
+
+          {/* Export CSV */}
+          <button
+            onClick={() => exportCsv.mutate({ datasetId: id, name: dataset.name })}
+            disabled={exportCsv.isPending}
+            title="Export to CSV"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '28px',
+              padding: '0 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              background: 'var(--bg-surface-2)',
+              color: 'var(--fg-secondary)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+              opacity: exportCsv.isPending ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+          >
+            <Download size={12} />
+            Export CSV
+          </button>
+
+          {/* Delete Dataset */}
+          <button
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={deleteDataset.isPending}
+            title="Delete dataset"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              height: '28px',
+              padding: '0 10px',
+              fontSize: '11px',
+              fontWeight: 500,
+              background: 'var(--bg-surface-2)',
+              color: 'var(--fg-muted)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-md)',
+              cursor: 'pointer',
+              opacity: deleteDataset.isPending ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--fail-fg)'
+              e.currentTarget.style.background = 'var(--fail-subtle)'
+              e.currentTarget.style.borderColor = 'var(--fail)'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--fg-muted)'
+              e.currentTarget.style.background = 'var(--bg-surface-2)'
+              e.currentTarget.style.borderColor = 'var(--border-strong)'
+            }}
+          >
+            <Trash2 size={12} />
+            Delete
+          </button>
+        </div>
       </div>
+
+      {/* Delete Dataset Confirmation Dialog */}
+      {deleteDialogOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDeleteDialogOpen(false)
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface-1)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              width: '400px',
+              maxWidth: '90vw',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+              Delete dataset "{dataset.name}"?
+            </h3>
+
+            {affectedExperiments.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--error-fg)', margin: 0 }}>
+                  The following experiments reference this dataset and will also be deleted:
+                </p>
+                <ul
+                  style={{
+                    margin: 0,
+                    padding: '8px 12px',
+                    background: 'var(--fail-subtle)',
+                    border: '1px solid var(--fail)',
+                    borderRadius: 'var(--radius-md)',
+                    listStyleType: 'disc',
+                    paddingLeft: '24px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                  }}
+                >
+                  {affectedExperiments.map((exp) => (
+                    <li key={exp.id} style={{ fontSize: '12px', color: 'var(--fail-fg)', fontFamily: 'var(--font-mono)' }}>
+                      {exp.name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'var(--fg-secondary)', margin: 0 }}>
+                This action cannot be undone.
+              </p>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setDeleteDialogOpen(false)}
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  background: 'transparent',
+                  color: 'var(--fg-secondary)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteDataset.mutateAsync(id)
+                  setDeleteDialogOpen(false)
+                  navigate('/datasets')
+                }}
+                disabled={deleteDataset.isPending}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  background: 'var(--fail-subtle)',
+                  color: 'var(--fail-fg)',
+                  border: '1px solid var(--fail)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                  opacity: deleteDataset.isPending ? 0.6 : 1,
+                }}
+              >
+                <Trash2 size={12} />
+                {deleteDataset.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Import Dialog */}
+      {importDialogOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setImportDialogOpen(false)
+              setCsvPreview(null)
+              setImportFile(null)
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-surface-1)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '20px',
+              width: '480px',
+              maxWidth: '90vw',
+              maxHeight: '70vh',
+              overflow: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--fg-primary)', margin: 0 }}>
+                Import CSV
+              </h3>
+              <button
+                onClick={() => {
+                  setImportDialogOpen(false)
+                  setCsvPreview(null)
+                  setImportFile(null)
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--fg-muted)',
+                  fontSize: '18px',
+                  lineHeight: 1,
+                  padding: '2px 4px',
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* File picker */}
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setImportFile(file)
+                  setCsvPreview(null)
+                  try {
+                    const preview = await previewCsv.mutateAsync({ datasetId: id, file })
+                    setCsvPreview(preview)
+                  } catch {
+                    // error shown via previewCsv.error
+                  }
+                }}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  background: 'var(--bg-surface-2)',
+                  color: 'var(--fg-primary)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-surface-3)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-surface-2)')}
+              >
+                <Upload size={12} />
+                {importFile ? importFile.name : 'Choose CSV file'}
+              </button>
+            </div>
+
+            {/* Preview loading */}
+            {previewCsv.isPending && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--fg-tertiary)', fontSize: '12px' }}>
+                <Loader2 size={12} className="animate-spin" />
+                Loading preview…
+              </div>
+            )}
+
+            {/* Preview error */}
+            {previewCsv.isError && (
+              <p style={{ color: 'var(--error-fg)', fontSize: '12px', margin: 0 }}>
+                {previewCsv.error instanceof Error ? previewCsv.error.message : 'Preview failed'}
+              </p>
+            )}
+
+            {/* Preview table */}
+            {csvPreview && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--fg-tertiary)' }}>
+                    Preview — {csvPreview.totalRows} rows
+                  </span>
+                  {csvPreview.warnings && csvPreview.warnings.length > 0 && (
+                    <span style={{ fontSize: '11px', color: 'var(--error-fg)' }}>
+                      {csvPreview.warnings.join(', ')}
+                    </span>
+                  )}
+                </div>
+                <div style={{ overflow: 'auto', maxHeight: '200px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '11px' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--bg-surface-2)' }}>
+                        {csvPreview.headers.map((h) => (
+                          <th
+                            key={h}
+                            style={{
+                              padding: '4px 8px',
+                              textAlign: 'left',
+                              color: 'var(--fg-tertiary)',
+                              fontWeight: 600,
+                              borderBottom: '1px solid var(--border-subtle)',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {csvPreview.rows.slice(0, 5).map((row, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                          {csvPreview.headers.map((h) => (
+                            <td
+                              key={h}
+                              style={{
+                                padding: '4px 8px',
+                                color: 'var(--fg-secondary)',
+                                fontFamily: 'var(--font-mono)',
+                                maxWidth: '180px',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {row[h] ?? ''}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {csvPreview.totalRows > 5 && (
+                  <span style={{ fontSize: '11px', color: 'var(--fg-muted)' }}>
+                    …and {csvPreview.totalRows - 5} more rows
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Import error */}
+            {importCsv.isError && (
+              <p style={{ color: 'var(--error-fg)', fontSize: '12px', margin: 0 }}>
+                {importCsv.error instanceof Error ? importCsv.error.message : 'Import failed'}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => {
+                  setImportDialogOpen(false)
+                  setCsvPreview(null)
+                  setImportFile(null)
+                }}
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  background: 'transparent',
+                  color: 'var(--fg-secondary)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!importFile) return
+                  await importCsv.mutateAsync({ datasetId: id, file: importFile })
+                  setImportDialogOpen(false)
+                  setCsvPreview(null)
+                  setImportFile(null)
+                }}
+                disabled={!csvPreview || importCsv.isPending}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  height: '32px',
+                  padding: '0 12px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  background: csvPreview ? 'var(--fg-primary)' : 'var(--bg-surface-2)',
+                  color: csvPreview ? 'var(--fg-inverted)' : 'var(--fg-muted)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-md)',
+                  cursor: csvPreview ? 'pointer' : 'not-allowed',
+                  opacity: importCsv.isPending ? 0.6 : 1,
+                }}
+              >
+                {importCsv.isPending ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    Importing…
+                  </>
+                ) : (
+                  'Confirm Import'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Two-panel split */}
       <div className="flex flex-1 overflow-hidden">
