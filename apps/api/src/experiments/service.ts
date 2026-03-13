@@ -120,7 +120,7 @@ export function createExperimentService(
           (eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }),
         )
 
-        await runner!.enqueue(id, datasetItems, graders)
+        void runner!.enqueue(id, datasetItems, graders)
         return ok({ status: 'queued' })
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')

@@ -63,7 +63,7 @@ export function createDatasetRouter(service: DatasetService) {
   })
 
   app.delete('/datasets/:id/attributes/:name', async (c) => {
-    const result = await service.removeAttribute(c.req.param('id'), c.req.param('name'))
+    const result = await service.removeAttribute(c.req.param('id'), c.req.param('name').toLowerCase())
     if (!result.success) return c.json(result, 400)
     return c.json(result)
   })
