@@ -121,7 +121,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
     getDataset: repo.findById.bind(repo),
 
-    createDataset(input: { name: string }): Promise<Result<unknown>> {
+    createDataset(input: { name: string }) {
       return tryCatch(async () => {
         const existing = await repo.findByName(input.name)
         if (existing) return fail('Dataset name already exists')
@@ -129,7 +129,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    updateDataset(id: string, input: { name: string }): Promise<Result<unknown>> {
+    updateDataset(id: string, input: { name: string }) {
       return tryCatch(async () => {
         const existing = await repo.findByName(input.name)
         if (existing && existing.id !== id) return fail('Dataset name already exists')
@@ -139,7 +139,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
 
     deleteDataset: repo.remove.bind(repo),
 
-    addAttribute(id: string, input: { name: string }): Promise<Result<unknown>> {
+    addAttribute(id: string, input: { name: string }) {
       return tryCatch(async () => {
         const result = await repo.findById(id)
         if (!result.success) return result
@@ -149,7 +149,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    removeAttribute(id: string, attributeName: string): Promise<Result<unknown>> {
+    removeAttribute(id: string, attributeName: string) {
       return tryCatch(async () => {
         const result = await repo.findById(id)
         if (!result.success) return result
@@ -161,7 +161,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    listItems(datasetId: string): Promise<Result<unknown>> {
+    listItems(datasetId: string) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -172,7 +172,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
     createItem(
       datasetId: string,
       input: { values: Record<string, string> },
-    ): Promise<Result<unknown>> {
+    ) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -186,7 +186,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       datasetId: string,
       itemId: string,
       input: { values: Record<string, string> },
-    ): Promise<Result<unknown>> {
+    ) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -196,7 +196,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    deleteItem(datasetId: string, itemId: string): Promise<Result<{ deleted: true }>> {
+    deleteItem(datasetId: string, itemId: string) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -204,7 +204,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    getCsvTemplate(datasetId: string): Promise<Result<{ csv: string; name: string }>> {
+    getCsvTemplate(datasetId: string) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -214,7 +214,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    exportCsv(datasetId: string): Promise<Result<{ csv: string; name: string }>> {
+    exportCsv(datasetId: string) {
       return tryCatch(async () => {
         const datasetResult = await repo.findById(datasetId)
         if (!datasetResult.success) return datasetResult
@@ -237,12 +237,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
     previewCsv(
       datasetId: string,
       csvContent: string,
-    ): Promise<
-      Result<{
-        validRows: Record<string, string>[]
-        skippedRows: { row: number; reason: string }[]
-      }>
-    > {
+    ) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -258,7 +253,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
     importCsv(
       datasetId: string,
       csvContent: string,
-    ): Promise<Result<{ imported: number; skipped: number }>> {
+    ) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -275,7 +270,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    listRevisions(datasetId: string): Promise<Result<unknown>> {
+    listRevisions(datasetId: string) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -283,7 +278,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    getRevision(datasetId: string, revisionId: string): Promise<Result<unknown>> {
+    getRevision(datasetId: string, revisionId: string) {
       return tryCatch(async () => {
         const datasetResult = await repo.findById(datasetId)
         if (!datasetResult.success) return datasetResult

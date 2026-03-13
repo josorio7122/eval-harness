@@ -1,5 +1,5 @@
 import { json2csv } from 'json-2-csv'
-import { ok, fail, tryCatch, type Result } from '@eval-harness/shared'
+import { ok, fail, tryCatch } from '@eval-harness/shared'
 import { experimentRepository } from './repository.js'
 import type { ExperimentStatus } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
@@ -23,7 +23,7 @@ export function createExperimentService(
       name: string
       datasetId: string
       graderIds: string[]
-    }): Promise<Result<unknown>> {
+    }) {
       return tryCatch(async () => {
         const datasetResult = await datasetRepo.findById(input.datasetId)
         if (!datasetResult.success) return fail('Dataset not found')
@@ -48,7 +48,7 @@ export function createExperimentService(
 
     deleteExperiment: repo.remove.bind(repo),
 
-    rerunExperiment(id: string): Promise<Result<unknown>> {
+    rerunExperiment(id: string) {
       return tryCatch(async () => {
         const expResult = await repo.findById(id)
         if (!expResult.success) return expResult
@@ -73,7 +73,7 @@ export function createExperimentService(
       })
     },
 
-    runExperiment(id: string): Promise<Result<{ status: ExperimentStatus }>> {
+    runExperiment(id: string) {
       return tryCatch(async () => {
         const result = await repo.findById(id)
         if (!result.success) return result
@@ -106,7 +106,7 @@ export function createExperimentService(
       })
     },
 
-    exportCsv(id: string): Promise<Result<string>> {
+    exportCsv(id: string) {
       return tryCatch(async () => {
         const expResult = await repo.findById(id)
         if (!expResult.success) return expResult

@@ -1,4 +1,4 @@
-import { ok, fail, tryCatch, type Result } from '@eval-harness/shared'
+import { fail, tryCatch } from '@eval-harness/shared'
 import { graderRepository } from './repository.js'
 
 export function createGraderService(repo: typeof graderRepository) {
@@ -11,7 +11,7 @@ export function createGraderService(repo: typeof graderRepository) {
       name: string
       description: string
       rubric: string
-    }): Promise<Result<unknown>> {
+    }) {
       return tryCatch(async () => {
         const existing = await repo.findByName(input.name)
         if (existing) return fail('Grader name already exists')
@@ -22,7 +22,7 @@ export function createGraderService(repo: typeof graderRepository) {
     updateGrader(
       id: string,
       input: { name?: string; description?: string; rubric?: string },
-    ): Promise<Result<unknown>> {
+    ) {
       return tryCatch(async () => {
         const graderResult = await repo.findById(id)
         if (!graderResult.success) return graderResult
