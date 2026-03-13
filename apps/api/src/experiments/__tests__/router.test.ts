@@ -43,6 +43,26 @@ describe('GET /experiments', () => {
     const body = await res.json()
     expect(body).toEqual({ success: true, data: experiments })
   })
+
+  it('returns revision in experiment list', async () => {
+    const experiments = [
+      {
+        id: VALID_UUID,
+        name: 'exp1',
+        status: 'queued',
+        revision: { schemaVersion: 1, createdAt: '2024-01-01T00:00:00.000Z' },
+      },
+    ]
+    mockService.listExperiments.mockResolvedValue({ success: true, data: experiments })
+
+    const res = await app.request('/experiments')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data[0].revision).toEqual({
+      schemaVersion: 1,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    })
+  })
 })
 
 describe('POST /experiments', () => {

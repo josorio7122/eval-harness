@@ -61,7 +61,7 @@ export function createGraderService(repo: typeof graderRepository) {
       try {
         const grader = await repo.findById(id)
         if (!grader) return fail('Grader not found')
-        await repo.remove(id)
+        await repo.removeWithCascade(id)
         return ok({ deleted: true as const })
       } catch (e) {
         return fail(e instanceof Error ? e.message : 'Unknown error')

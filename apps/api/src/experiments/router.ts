@@ -57,22 +57,24 @@ export function createExperimentRouter(service: ExperimentService) {
       }
 
       experimentEvents.on(id, handler)
-      stream.onAbort(() => {
-        experimentEvents.off(id, handler)
-      })
 
       await stream.writeSSE({ data: JSON.stringify({ experimentId: id }), event: 'connected' })
 
       await new Promise<void>((resolve) => {
         const completeHandler = (event: unknown) => {
           const e = event as { type: string }
-          if (e.type === 'completed') {
+          if (e.type === 'completed' || e.type === 'error') {
             experimentEvents.off(id, completeHandler)
             resolve()
           }
         }
         experimentEvents.on(id, completeHandler)
-        stream.onAbort(() => resolve())
+
+        stream.onAbort(() => {
+          experimentEvents.off(id, handler)
+          experimentEvents.off(id, completeHandler)
+          resolve()
+        })
       })
     })
   })

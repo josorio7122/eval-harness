@@ -1,4 +1,11 @@
 import { graderRepository as repo } from '../../graders/repository.js'
+import { datasetRepository } from '../../datasets/repository.js'
+import { experimentRepository } from '../../experiments/repository.js'
+import { prisma } from '../../lib/prisma.js'
+
+beforeEach(async () => {
+  await prisma.$executeRawUnsafe('TRUNCATE "Grader" CASCADE')
+})
 
 describe('graders repository (integration)', () => {
   // 1. create → findById round-trip
@@ -70,5 +77,34 @@ describe('graders repository (integration)', () => {
     const found = await repo.findById(created.id)
 
     expect(found).toBeNull()
+  })
+
+  // 5. removeWithCascade deletes grader + its experiments
+  it('removeWithCascade deletes associated experiments', async () => {
+    const dataset = await datasetRepository.create('cascade-test-dataset')
+    await datasetRepository.createItem(dataset.id, { input: 'q1', expected_output: 'a1' })
+    const revisions = await datasetRepository.findRevisions(dataset.id)
+    const revision = revisions[0]
+
+    const grader = await repo.create({
+      name: 'cascade-grader',
+      description: 'Will cascade',
+      rubric: 'Does not matter',
+    })
+
+    const experiment = await experimentRepository.create({
+      name: 'cascade-experiment',
+      datasetId: dataset.id,
+      datasetRevisionId: revision.id,
+      graderIds: [grader.id],
+    })
+
+    await repo.removeWithCascade(grader.id)
+
+    const foundGrader = await repo.findById(grader.id)
+    expect(foundGrader).toBeNull()
+
+    const foundExperiment = await experimentRepository.findById(experiment.id)
+    expect(foundExperiment).toBeNull()
   })
 })

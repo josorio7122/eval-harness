@@ -33,7 +33,10 @@ export function createGraderRouter(service: GraderService) {
     const parsed = updateGraderSchema.safeParse(body)
     if (!parsed.success) return c.json({ success: false, error: parsed.error.flatten() }, 400)
     const result = await service.updateGrader(c.req.param('id'), parsed.data)
-    if (!result.success) return c.json(result, 404)
+    if (!result.success) {
+      const status = result.error === 'Grader not found' ? 404 : 400
+      return c.json(result, status)
+    }
     return c.json(result)
   })
 

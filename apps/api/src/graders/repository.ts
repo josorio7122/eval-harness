@@ -24,4 +24,20 @@ export const graderRepository = {
   remove(id: string) {
     return prisma.grader.delete({ where: { id } })
   },
+
+  async removeWithCascade(id: string) {
+    const experimentGraders = await prisma.experimentGrader.findMany({
+      where: { graderId: id },
+      select: { experimentId: true },
+    })
+    const experimentIds = experimentGraders.map((eg) => eg.experimentId)
+
+    if (experimentIds.length > 0) {
+      await prisma.experiment.deleteMany({
+        where: { id: { in: experimentIds } },
+      })
+    }
+
+    return prisma.grader.delete({ where: { id } })
+  },
 }

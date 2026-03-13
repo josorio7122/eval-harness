@@ -74,19 +74,14 @@ describe('updateGraderSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('accepts partial update with only rubric', () => {
-    const result = updateGraderSchema.safeParse({ rubric: 'new rubric' })
-    expect(result.success).toBe(true)
-  })
-
   it('accepts partial update with only description', () => {
     const result = updateGraderSchema.safeParse({ description: 'new desc' })
     expect(result.success).toBe(true)
   })
 
-  it('accepts empty object (no-op update)', () => {
+  it('rejects empty body for update', () => {
     const result = updateGraderSchema.safeParse({})
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
   })
 
   it('rejects empty name', () => {
@@ -94,8 +89,18 @@ describe('updateGraderSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects empty rubric when provided', () => {
+  it('rejects update with empty rubric', () => {
     const result = updateGraderSchema.safeParse({ rubric: '' })
     expect(result.success).toBe(false)
+  })
+
+  it('rejects update with empty name', () => {
+    const result = updateGraderSchema.safeParse({ name: '' })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts update with only rubric', () => {
+    const result = updateGraderSchema.safeParse({ rubric: 'new rubric' })
+    expect(result.success).toBe(true)
   })
 })

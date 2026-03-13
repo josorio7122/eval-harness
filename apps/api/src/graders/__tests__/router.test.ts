@@ -122,6 +122,19 @@ describe('PATCH /graders/:id', () => {
     const res = await jsonPatch('/graders/999', { name: 'new' })
     expect(res.status).toBe(404)
   })
+
+  it('returns 400 when update fails with duplicate name', async () => {
+    mockService.updateGrader.mockResolvedValue({
+      success: false,
+      error: 'Grader name already exists',
+    })
+    const res = await app.request('/graders/1', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'duplicate' }),
+    })
+    expect(res.status).toBe(400)
+  })
 })
 
 describe('DELETE /graders/:id', () => {

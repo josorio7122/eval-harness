@@ -6,6 +6,7 @@ export const experimentRepository = {
       orderBy: { name: 'asc' },
       include: {
         dataset: { select: { name: true } },
+        revision: { select: { schemaVersion: true, createdAt: true } },
         graders: true,
         _count: { select: { results: true } },
       },

@@ -59,11 +59,21 @@ beforeEach(() => {
 describe('listExperiments', () => {
   it('returns ok with experiments array', async () => {
     const experiments = [
-      { id: VALID_UUID, name: 'exp1', status: 'queued', datasetId: VALID_UUID_2, graders: [] },
+      {
+        id: VALID_UUID,
+        name: 'exp1',
+        status: 'queued',
+        datasetId: VALID_UUID_2,
+        graders: [],
+        revision: { schemaVersion: 1 },
+      },
     ]
     mockRepo.findAll.mockResolvedValue(experiments)
     const result = await service.listExperiments()
     expect(result).toEqual({ success: true, data: experiments })
+    if (result.success) {
+      expect(result.data[0].revision).toEqual({ schemaVersion: 1 })
+    }
   })
 })
 

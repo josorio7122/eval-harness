@@ -8,6 +8,7 @@ const mockRepo = {
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
+  removeWithCascade: vi.fn(),
 }
 
 const service = createGraderService(mockRepo)
@@ -92,11 +93,13 @@ describe('updateGrader', () => {
 })
 
 describe('deleteGrader', () => {
-  it('deletes successfully', async () => {
+  it('deletes successfully using removeWithCascade', async () => {
     mockRepo.findById.mockResolvedValue({ id: '1', name: 'g1', description: '', rubric: 'rubric' })
-    mockRepo.remove.mockResolvedValue({ id: '1' })
+    mockRepo.removeWithCascade.mockResolvedValue({ id: '1' })
     const result = await service.deleteGrader('1')
     expect(result).toEqual({ success: true, data: { deleted: true } })
+    expect(mockRepo.removeWithCascade).toHaveBeenCalledWith('1')
+    expect(mockRepo.remove).not.toHaveBeenCalled()
   })
 
   it('fails when not found', async () => {
