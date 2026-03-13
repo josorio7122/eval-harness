@@ -81,29 +81,23 @@ echo "🚀 Running experiment..."
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/experiments/$EXP_ID/run")
 check "Run experiment (202 Accepted)" "202" "$STATUS"
 
-# --- Step 6: Wait for completion via SSE ---
+# --- Step 6: Wait for completion via polling ---
 echo "⏳ Waiting for experiment to complete (timeout: 120s)..."
-TMPFILE=$(mktemp)
-curl -s -N "$API_URL/experiments/$EXP_ID/events" > "$TMPFILE" 2>/dev/null &
-CURL_PID=$!
-
 TIMEOUT=120
 ELAPSED=0
 COMPLETED=false
 while [ $ELAPSED -lt $TIMEOUT ]; do
-  if grep -q 'event: completed\|event: error' "$TMPFILE" 2>/dev/null; then
+  sleep 2
+  ELAPSED=$((ELAPSED+2))
+  POLL_STATUS=$(curl -s "$API_URL/experiments/$EXP_ID" | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['status'])" 2>/dev/null)
+  if [ "$POLL_STATUS" = "complete" ] || [ "$POLL_STATUS" = "failed" ]; then
     COMPLETED=true
     break
   fi
-  sleep 2
-  ELAPSED=$((ELAPSED+2))
 done
 
-kill $CURL_PID 2>/dev/null || true
-rm -f "$TMPFILE"
-
 if [ "$COMPLETED" = true ]; then
-  echo "  ✅ Experiment finished within ${ELAPSED}s"
+  echo "  ✅ Experiment finished in ${ELAPSED}s (status: $POLL_STATUS)"
   PASS=$((PASS+1))
 else
   echo "  ❌ Experiment timed out after ${TIMEOUT}s"
