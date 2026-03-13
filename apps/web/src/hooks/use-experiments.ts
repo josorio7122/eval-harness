@@ -11,7 +11,7 @@ export interface ExperimentGrader {
 export interface ExperimentResult {
   id: string
   experimentId: string
-  datasetItemId: string
+  datasetRevisionItemId: string
   graderId: string
   verdict: 'pass' | 'fail' | 'error'
   reason: string

@@ -21,13 +21,13 @@ function getInputLabel(values: Record<string, string>): string {
 
 function failCount(itemId: string, results: ExperimentResult[]): number {
   return results.filter(
-    (r) => r.datasetItemId === itemId && (r.verdict === 'fail' || r.verdict === 'error'),
+    (r) => r.datasetRevisionItemId === itemId && (r.verdict === 'fail' || r.verdict === 'error'),
   ).length
 }
 
 function passCount(itemId: string, results: ExperimentResult[]): number {
   return results.filter(
-    (r) => r.datasetItemId === itemId && r.verdict === 'pass',
+    (r) => r.datasetRevisionItemId === itemId && r.verdict === 'pass',
   ).length
 }
 
@@ -46,7 +46,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   // Apply filter
   const filteredItems = sortedItems.filter((item) => {
     if (filter === 'all') return true
-    const itemResults = results.filter((r) => r.datasetItemId === item.id)
+    const itemResults = results.filter((r) => r.datasetRevisionItemId === item.id)
     const graderCount = graders.length
     if (filter === 'passed-all') {
       // All graders must have a pass verdict (and result must exist)
@@ -80,7 +80,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   const filteredItemIds = new Set(filteredItems.map((i) => i.id))
   const graderPassRates = graders.map((eg) => {
     const graderResults = results.filter(
-      (r) => r.graderId === eg.graderId && filteredItemIds.has(r.datasetItemId),
+      (r) => r.graderId === eg.graderId && filteredItemIds.has(r.datasetRevisionItemId),
     )
     const passes = graderResults.filter((r) => r.verdict === 'pass').length
     const total = graderResults.length
@@ -94,7 +94,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   })
 
   // Filtered results for AggregateStats
-  const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetItemId))
+  const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetRevisionItemId))
 
   return (
     <div style={{ flex: 1, overflow: 'auto', position: 'relative', display: 'flex', flexDirection: 'column' }}>
@@ -295,7 +295,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               filteredItems.map((item) => {
                 const inputLabel = getInputLabel(item.values)
                 const itemPassCount = passCount(item.id, results)
-                const itemResultCount = results.filter((r) => r.datasetItemId === item.id).length
+                const itemResultCount = results.filter((r) => r.datasetRevisionItemId === item.id).length
                 const allPass = itemPassCount === graders.length && graders.length > 0
                 const anyFail = failCount(item.id, results) > 0
 
@@ -339,7 +339,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
                     {/* Verdict cells */}
                     {graders.map((eg) => {
                       const result = results.find(
-                        (r) => r.datasetItemId === item.id && r.graderId === eg.graderId,
+                        (r) => r.datasetRevisionItemId === item.id && r.graderId === eg.graderId,
                       )
                       return (
                         <td
