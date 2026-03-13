@@ -309,7 +309,7 @@ export function GraderDetail({ id }: GraderDetailProps) {
             {affectedExperiments.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <p style={{ fontSize: '12px', color: 'var(--error-fg)', margin: 0 }}>
-                  The following experiments use this grader and will be affected:
+                  The following experiments use this grader and will also be permanently deleted:
                 </p>
                 <ul
                   style={{

@@ -276,6 +276,22 @@ describe('runExperiment', () => {
     const result = await service.runExperiment(VALID_UUID)
     expect(result).toEqual({ success: false, error: 'Experiment is not in a runnable state' })
   })
+
+  it('fails when dataset has no items at run time', async () => {
+    mockRepo.findById.mockResolvedValue({
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'queued',
+      datasetId: VALID_UUID_2,
+      dataset: { items: [] },
+      graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
+      results: [],
+    })
+    mockDatasetRepo.countItems.mockResolvedValue(0)
+    const result = await service.runExperiment(VALID_UUID)
+    expect(result).toEqual({ success: false, error: 'Dataset has no items' })
+    expect(mockRunner.enqueue).not.toHaveBeenCalled()
+  })
 })
 
 describe('exportCsv', () => {

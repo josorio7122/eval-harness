@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { ArrowLeft, Plus, Trash2, Pencil, Download, Upload, FileDown, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { AddAttributeDialog } from './add-attribute-dialog'
 import { AddItemDialog, EditItemDialog } from './add-item-dialog'
 import {
   useDataset,
+  useUpdateDataset,
   useRemoveAttribute,
   useDeleteItem,
   useDeleteDataset,
@@ -24,6 +25,7 @@ interface DatasetDetailProps {
 export function DatasetDetail({ id }: DatasetDetailProps) {
   const navigate = useNavigate()
   const { data: dataset, isLoading } = useDataset(id)
+  const updateDataset = useUpdateDataset()
   const removeAttr = useRemoveAttribute()
   const deleteItem = useDeleteItem()
   const deleteDataset = useDeleteDataset()
@@ -33,12 +35,40 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
   const importCsv = useImportCsv()
   const { data: allExperiments } = useExperiments()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [editItem, setEditItem] = useState<DatasetItem | undefined>(undefined)
   const [editOpen, setEditOpen] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null)
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+
+  useEffect(() => {
+    if (dataset) setNameValue(dataset.name)
+  }, [dataset?.name])
+
+  function startEditName() {
+    setNameValue(dataset?.name ?? '')
+    setEditingName(true)
+    setTimeout(() => {
+      nameInputRef.current?.select()
+    }, 0)
+  }
+
+  async function commitNameEdit() {
+    if (!dataset) return
+    setEditingName(false)
+    const trimmed = nameValue.trim()
+    if (!trimmed || trimmed === dataset.name) return
+    await updateDataset.mutateAsync({ id, name: trimmed })
+  }
+
+  function cancelNameEdit() {
+    setNameValue(dataset?.name ?? '')
+    setEditingName(false)
+  }
 
   const affectedExperiments = (allExperiments ?? []).filter(
     (exp) => exp.datasetId === id,
@@ -121,11 +151,45 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
         >
           /
         </span>
-        <h2
-          style={{ fontSize: '16px', fontWeight: 600, color: 'var(--fg-primary)', flex: 1 }}
-        >
-          {dataset.name}
-        </h2>
+        {editingName ? (
+          <input
+            ref={nameInputRef}
+            value={nameValue}
+            onChange={(e) => setNameValue(e.target.value)}
+            onBlur={commitNameEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitNameEdit()
+              if (e.key === 'Escape') cancelNameEdit()
+            }}
+            style={{
+              flex: 1,
+              fontSize: '16px',
+              fontWeight: 600,
+              color: 'var(--fg-primary)',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: '1px solid var(--border-focus)',
+              outline: 'none',
+              padding: '0 2px',
+              lineHeight: 1.4,
+            }}
+          />
+        ) : (
+          <h2
+            onClick={startEditName}
+            title="Click to rename"
+            style={{
+              fontSize: '16px',
+              fontWeight: 600,
+              color: 'var(--fg-primary)',
+              flex: 1,
+              cursor: 'text',
+              margin: 0,
+            }}
+          >
+            {dataset.name}
+          </h2>
+        )}
 
         {/* CSV actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -486,12 +550,30 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
                   <span style={{ fontSize: '11px', color: 'var(--fg-tertiary)' }}>
                     Preview — {csvPreview.totalRows} rows
                   </span>
-                  {csvPreview.warnings && csvPreview.warnings.length > 0 && (
-                    <span style={{ fontSize: '11px', color: 'var(--error-fg)' }}>
-                      {csvPreview.warnings.join(', ')}
-                    </span>
-                  )}
                 </div>
+                {csvPreview.skippedRows && csvPreview.skippedRows.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--error-fg)' }}>
+                      {csvPreview.skippedRows.length} row{csvPreview.skippedRows.length > 1 ? 's' : ''} skipped:
+                    </span>
+                    {csvPreview.skippedRows.map(({ row, reason }) => (
+                      <div
+                        key={row}
+                        style={{
+                          fontSize: '11px',
+                          color: 'var(--error-fg)',
+                          fontFamily: 'var(--font-mono)',
+                          padding: '2px 8px',
+                          background: 'var(--fail-subtle)',
+                          border: '1px solid var(--fail)',
+                          borderRadius: 'var(--radius-sm)',
+                        }}
+                      >
+                        Row {row}: {reason}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{ overflow: 'auto', maxHeight: '200px', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)' }}>
                   <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '11px' }}>
                     <thead>

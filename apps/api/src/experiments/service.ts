@@ -107,6 +107,9 @@ export function createExperimentService(
           return fail('Experiment is not in a runnable state')
         }
 
+        const itemCount = await datasetRepo.countItems(experiment.datasetId)
+        if (itemCount === 0) return fail('Dataset has no items')
+
         const datasetItems = (experiment.dataset as { items: Array<{ id: string; values: Record<string, string> }> }).items
         const graders = (experiment.graders as Array<{ graderId: string; grader: { id: string; rubric: string } }>).map(
           (eg) => ({ id: eg.grader.id, rubric: eg.grader.rubric }),

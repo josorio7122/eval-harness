@@ -320,6 +320,27 @@ describe('importCsv', () => {
   })
 })
 
+describe('importCsv - case-insensitive headers', () => {
+  it('accepts CSV with mixed-case headers', async () => {
+    const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
+    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.createItem.mockResolvedValue({ id: 'new', datasetId: '1', values: {} })
+    const csv = 'Input,Expected_Output\nhello,world\nfoo,bar'
+    const result = await service.importCsv('1', csv)
+    expect(result).toEqual({ success: true, data: { imported: 2, skipped: 0 } })
+    expect(mockRepo.createItem).toHaveBeenCalledTimes(2)
+  })
+
+  it('accepts CSV with ALL-CAPS headers', async () => {
+    const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
+    mockRepo.findById.mockResolvedValue(dataset)
+    mockRepo.createItem.mockResolvedValue({ id: 'new', datasetId: '1', values: {} })
+    const csv = 'INPUT,EXPECTED_OUTPUT\nhello,world'
+    const result = await service.importCsv('1', csv)
+    expect(result).toEqual({ success: true, data: { imported: 1, skipped: 0 } })
+  })
+})
+
 describe('previewCsv', () => {
   it('returns valid and skipped rows without creating items', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }

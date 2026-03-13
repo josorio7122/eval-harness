@@ -88,7 +88,7 @@ function parseCsvContent(
   const lines = csv.split('\n').filter((l) => l.trim() !== '')
   if (lines.length < 1) return fail('CSV is empty')
 
-  const headerCols = parseCsvRow(lines[0])
+  const headerCols = parseCsvRow(lines[0]).map(h => h.trim().toLowerCase())
 
   // Distinct error messages for missing vs unknown columns
   const missingCols = attributes.filter((a) => !headerCols.includes(a))
