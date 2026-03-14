@@ -17,10 +17,10 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 
 ```mermaid
 flowchart LR
-    A["📁 Create Dataset\nDefine attributes\nAdd items / import CSV"]
-    B["📝 Define Graders\nWrite natural-language\npass/fail rubrics"]
-    C["🚀 Run Experiment\nPick dataset + graders\n+ model"]
-    D["📊 Review Results\nDense table · charts\nCSV export"]
+    A["📁 Create Dataset<br/>Define attributes<br/>Add items / import CSV"]
+    B["📝 Define Graders<br/>Write natural-language<br/>pass/fail rubrics"]
+    C["🚀 Run Experiment<br/>Pick dataset + graders<br/>+ model"]
+    D["📊 Review Results<br/>Dense table · charts<br/>CSV export"]
 
     A --> B --> C --> D
 ```
@@ -29,11 +29,11 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    UI["Frontend\n(React + TanStack Query)"]
-    API["API\n(Hono · SSE endpoint)"]
-    Runner["Runner\n(p-queue: 2 experiments\n4 LLM calls each)"]
-    LLM["LLM Judge\n(OpenRouter)"]
-    DB["PostgreSQL\n(pinned revision)"]
+    UI["Frontend<br/>(React + TanStack Query)"]
+    API["API<br/>(Hono · SSE endpoint)"]
+    Runner["Runner<br/>(p-queue: 2 experiments<br/>4 LLM calls each)"]
+    LLM["LLM Judge<br/>(OpenRouter)"]
+    DB["PostgreSQL<br/>(pinned revision)"]
 
     UI -->|"POST /experiments\n(creates + enqueues runner)"| API
     API --> Runner
