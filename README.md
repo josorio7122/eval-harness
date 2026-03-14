@@ -161,6 +161,7 @@ You can use these rubrics as-is or adapt them for your own datasets. The seed sc
 - **Revision storage** — Switch from full-copy revisions to a log-based approach (append-only deltas). Current model duplicates all items per revision.
 - **Results storage** — Move experiment results to a columnar store (ClickHouse) for faster analytical queries at scale.
 - **Prompt management & playground** — Add prompt versioning and an interactive playground so users can iterate on prompts, run them, and evaluate results in one workflow.
+- **Re-run with a different model** — Allow re-running an existing experiment with a different LLM model to compare outputs across models without recreating the experiment.
 
 
 ## License
