@@ -9,7 +9,8 @@ datasource db {
 
 model Dataset {
   id          String            @id @default(uuid()) @db.Uuid
-  name        String            @unique
+  name        String
+  deletedAt   DateTime?
   revisions   DatasetRevision[]
   experiments Experiment[]
 }
@@ -42,7 +43,8 @@ model DatasetRevisionItem {
 
 model Grader {
   id          String             @id @default(uuid()) @db.Uuid
-  name        String             @unique
+  name        String
+  deletedAt   DateTime?
   description String             @default("")
   rubric      String
   experiments ExperimentGrader[]
@@ -56,7 +58,8 @@ model Experiment {
   datasetRevisionId String             @db.Uuid
   status            String             @default("queued")
   modelId           String
-  dataset           Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  deletedAt         DateTime?
+  dataset           Dataset            @relation(fields: [datasetId], references: [id], onDelete: Restrict)
   revision          DatasetRevision    @relation(fields: [datasetRevisionId], references: [id])
   graders           ExperimentGrader[]
   results           ExperimentResult[]
