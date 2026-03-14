@@ -157,11 +157,12 @@ experimentQueue  (concurrency: 2)   — limits parallel experiments
 
 Flow:
 
-1. `runner.enqueue(experimentId, items, graders)` adds to `experimentQueue`.
-2. When the experiment slot opens: status → `running`, a new `evalQueue` is created for this run, emit `progress` events per cell.
-3. All item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls).
-4. On completion: status → `complete` (or `failed` if all cells errored), emit `completed`/`error` event.
-5. Progress events are emitted on `experimentEvents` (a Node.js `EventEmitter`) keyed by experiment ID.
+1. `POST /experiments` creates the experiment and immediately calls `runner.enqueue(experimentId, items, graders)`.
+2. `runner.enqueue` adds to `experimentQueue`; status starts as `queued`.
+3. When the experiment slot opens: status → `running`, a new `evalQueue` is created for this run, emit `progress` events per cell.
+4. All item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls).
+5. On completion: status → `complete` (or `failed` if all cells errored), emit `completed`/`error` event.
+6. Progress events are emitted on `experimentEvents` (a Node.js `EventEmitter`) keyed by experiment ID.
 
 ### Evaluator
 
@@ -288,11 +289,11 @@ App
 
 Query hooks per domain (`hooks/use-*.ts`):
 
-| Hook file            | Key hooks                                                                                                                                     |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `use-datasets.ts`    | `useDatasets`, `useDataset`, `useCreateDataset`, `useAddAttribute`, `useAddItem`, `useDeleteDataset`, `useImportCsv`                          |
-| `use-graders.ts`     | `useGraders`, `useGrader`, `useCreateGrader`, `useUpdateGrader`, `useDeleteGrader`                                                            |
-| `use-experiments.ts` | `useExperiments`, `useExperiment`, `useCreateExperiment`, `useRunExperiment`, `useRerunExperiment`, `useDeleteExperiment`, `useExperimentSSE` |
+| Hook file            | Key hooks                                                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `use-datasets.ts`    | `useDatasets`, `useDataset`, `useCreateDataset`, `useAddAttribute`, `useAddItem`, `useDeleteDataset`, `useImportCsv`      |
+| `use-graders.ts`     | `useGraders`, `useGrader`, `useCreateGrader`, `useUpdateGrader`, `useDeleteGrader`                                        |
+| `use-experiments.ts` | `useExperiments`, `useExperiment`, `useCreateExperiment`, `useRerunExperiment`, `useDeleteExperiment`, `useExperimentSSE` |
 
 ### Results Table
 

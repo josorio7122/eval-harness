@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import {
   useExperiment,
-  useRunExperiment,
   useRerunExperiment,
   useDeleteExperiment,
   useExperimentSSE,
@@ -35,7 +34,6 @@ interface ExperimentDetailProps {
 export function ExperimentDetail({ id }: ExperimentDetailProps) {
   const navigate = useNavigate()
   const { data: experiment, isLoading } = useExperiment(id)
-  const runExp = useRunExperiment()
   const rerunExp = useRerunExperiment()
   const deleteExp = useDeleteExperiment()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -123,11 +121,9 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
         experiment={experiment}
         completedCount={completedItems}
         totalCount={totalItems}
-        onRun={() => runExp.mutate(id)}
         onRerun={async () => {
           const result = await rerunExp.mutateAsync(id)
           if (result?.id) {
-            runExp.mutate(result.id)
             navigate(`/experiments/${result.id}`)
           }
         }}
@@ -141,7 +137,6 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
           }
         }}
         onDeleteClick={() => setShowDeleteDialog(true)}
-        isRunning={runExp.isPending}
         isRerunning={rerunExp.isPending}
         isExporting={exportingCsv}
       />
@@ -189,8 +184,8 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
               </>
             ) : (
               <>
-                <p className="text-[13px] text-muted-foreground">Ready to run</p>
-                <p className="text-xs text-muted-foreground/70">Press Run to start evaluating.</p>
+                <p className="text-[13px] text-muted-foreground">Starting…</p>
+                <p className="text-xs text-muted-foreground/70">Evaluation will begin shortly.</p>
               </>
             )}
           </div>

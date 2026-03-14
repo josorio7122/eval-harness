@@ -121,6 +121,16 @@ describe('createExperiment', () => {
     mockGraderRepo.findById.mockResolvedValue(ok({ id: VALID_UUID_3, name: 'g1' }))
     const created = { id: VALID_UUID, name: 'exp1', status: 'queued', datasetId: VALID_UUID_2 }
     mockRepo.create.mockResolvedValue(ok(created))
+    // enqueueExperiment fetches the created experiment to build the runner payload
+    mockRepo.findById.mockResolvedValue(
+      ok({
+        ...created,
+        modelId: MODEL_ID,
+        revision: { items: [{ id: 'item1', values: { input: 'q', expected_output: 'a' } }] },
+        graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'rubric' } }],
+      }),
+    )
+    mockRunner.enqueue.mockResolvedValue(undefined)
 
     const result = await service.createExperiment({
       name: 'exp1',
@@ -134,6 +144,14 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       datasetRevisionId: 'rev-1',
       graderIds: [VALID_UUID_3],
+      modelId: MODEL_ID,
+    })
+    // flush the void enqueueExperiment promise
+    await Promise.resolve()
+    expect(mockRunner.enqueue).toHaveBeenCalledWith({
+      experimentId: VALID_UUID,
+      datasetItems: [{ id: 'item1', values: { input: 'q', expected_output: 'a' } }],
+      graders: [{ id: VALID_UUID_3, rubric: 'rubric' }],
       modelId: MODEL_ID,
     })
   })
@@ -151,6 +169,9 @@ describe('createExperiment', () => {
     mockGraderRepo.findById.mockResolvedValue(ok({ id: VALID_UUID_3, name: 'g1' }))
     const created = { id: VALID_UUID, name: 'exp1', status: 'queued', datasetId: VALID_UUID_2 }
     mockRepo.create.mockResolvedValue(ok(created))
+    // enqueueExperiment fires-and-forgets; return fail so it exits cleanly without calling enqueue
+    mockRepo.findById.mockResolvedValue(fail('not found'))
+    mockRunner.enqueue.mockResolvedValue(undefined)
 
     await service.createExperiment({
       name: 'exp1',
@@ -257,7 +278,8 @@ describe('rerunExperiment', () => {
       modelId: 'google/gemini-2.5-flash',
       graders: [{ graderId: VALID_UUID_3 }],
     }
-    mockRepo.findById.mockResolvedValue(ok(original))
+    // First call: rerunExperiment fetches the original; second call: enqueueExperiment, return fail so it exits cleanly
+    mockRepo.findById.mockResolvedValueOnce(ok(original)).mockResolvedValueOnce(fail('not found'))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-latest' }]))
     const rerun = {
       id: VALID_UUID_2,
@@ -266,6 +288,7 @@ describe('rerunExperiment', () => {
       datasetId: VALID_UUID_2,
     }
     mockRepo.create.mockResolvedValue(ok(rerun))
+    mockRunner.enqueue.mockResolvedValue(undefined)
 
     const result = await service.rerunExperiment(VALID_UUID)
     expect(result.success).toBe(true)
@@ -288,11 +311,12 @@ describe('rerunExperiment', () => {
       modelId: 'anthropic/claude-3-5-sonnet',
       graders: [{ graderId: VALID_UUID_3 }],
     }
-    mockRepo.findById.mockResolvedValue(ok(original))
+    mockRepo.findById.mockResolvedValueOnce(ok(original)).mockResolvedValueOnce(fail('not found'))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-latest' }]))
     mockRepo.create.mockResolvedValue(
       ok({ id: VALID_UUID_2, name: 'exp1 (re-run)', status: 'queued', datasetId: VALID_UUID_2 }),
     )
+    mockRunner.enqueue.mockResolvedValue(undefined)
 
     await service.rerunExperiment(VALID_UUID)
     expect(mockRepo.create).toHaveBeenCalledWith(
@@ -319,89 +343,6 @@ describe('rerunExperiment', () => {
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([]))
     const result = await service.rerunExperiment(VALID_UUID)
     expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
-  })
-})
-
-describe('runExperiment', () => {
-  it('returns ok with status queued when experiment is found and status is queued', async () => {
-    const experiment = {
-      id: VALID_UUID,
-      name: 'exp1',
-      status: 'queued',
-      modelId: 'google/gemini-2.5-flash',
-      datasetId: VALID_UUID_2,
-      revision: { items: [{ id: 'item-1', itemId: 'stable-1', values: { input: 'hi' } }] },
-      graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
-      results: [],
-    }
-    mockRepo.findById.mockResolvedValue(ok(experiment))
-    mockRunner.enqueue.mockResolvedValue(undefined)
-
-    const result = await service.runExperiment(VALID_UUID)
-    expect(result).toEqual({ success: true, data: { status: 'queued' } })
-    expect(mockRunner.enqueue).toHaveBeenCalledWith({
-      experimentId: VALID_UUID,
-      datasetItems: [{ id: 'item-1', values: { input: 'hi' } }],
-      graders: [{ id: VALID_UUID_3, rubric: 'judge it' }],
-      modelId: 'google/gemini-2.5-flash',
-    })
-  })
-
-  it('returns fail when experiment not found', async () => {
-    mockRepo.findById.mockResolvedValue(fail('Experiment not found'))
-    const result = await service.runExperiment(VALID_UUID)
-    expect(result).toEqual({ success: false, error: 'Experiment not found' })
-    expect(mockRunner.enqueue).not.toHaveBeenCalled()
-  })
-
-  it('returns fail when experiment is already running', async () => {
-    const experiment = {
-      id: VALID_UUID,
-      name: 'exp1',
-      status: 'running',
-      datasetId: VALID_UUID_2,
-      revision: { items: [] },
-      graders: [],
-      results: [],
-    }
-    mockRepo.findById.mockResolvedValue(ok(experiment))
-
-    const result = await service.runExperiment(VALID_UUID)
-    expect(result).toEqual({ success: false, error: 'Experiment is not in a runnable state' })
-    expect(mockRunner.enqueue).not.toHaveBeenCalled()
-  })
-
-  it('returns fail when experiment is complete', async () => {
-    const experiment = {
-      id: VALID_UUID,
-      name: 'exp1',
-      status: 'complete',
-      datasetId: VALID_UUID_2,
-      revision: { items: [] },
-      graders: [],
-      results: [],
-    }
-    mockRepo.findById.mockResolvedValue(ok(experiment))
-
-    const result = await service.runExperiment(VALID_UUID)
-    expect(result).toEqual({ success: false, error: 'Experiment is not in a runnable state' })
-  })
-
-  it('fails when dataset has no items at run time', async () => {
-    mockRepo.findById.mockResolvedValue(
-      ok({
-        id: VALID_UUID,
-        name: 'exp1',
-        status: 'queued',
-        datasetId: VALID_UUID_2,
-        revision: { items: [] },
-        graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
-        results: [],
-      }),
-    )
-    const result = await service.runExperiment(VALID_UUID)
-    expect(result).toEqual({ success: false, error: 'Dataset has no items' })
-    expect(mockRunner.enqueue).not.toHaveBeenCalled()
   })
 })
 

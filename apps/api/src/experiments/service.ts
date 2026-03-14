@@ -1,7 +1,6 @@
 import { json2csv } from 'json-2-csv'
 import { ok, fail, tryCatch } from '@eval-harness/shared'
 import { experimentRepository } from './repository.js'
-import type { ExperimentStatus } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
 import { graderRepository } from '../graders/repository.js'
 import type { createExperimentRunner } from './runner.js'
@@ -16,6 +15,33 @@ export function createExperimentService(deps: {
   runner?: Runner
 }) {
   const { repo, datasetRepo, graderRepo, runner } = deps
+
+  /** Fire-and-forget: enqueue a created experiment on the runner. */
+  async function enqueueExperiment(experimentId: string) {
+    if (!runner) return
+    const result = await repo.findById(experimentId)
+    if (!result.success) return
+
+    const exp = result.data
+    const items = (exp.revision?.items ?? []).map((item) => ({
+      id: item.id,
+      values: item.values as Record<string, string>,
+    }))
+    const graderList = exp.graders.map((eg) => ({
+      id: eg.grader.id,
+      rubric: eg.grader.rubric,
+    }))
+
+    if (items.length > 0) {
+      void runner.enqueue({
+        experimentId,
+        datasetItems: items,
+        graders: graderList,
+        modelId: exp.modelId,
+      })
+    }
+  }
+
   return {
     listExperiments: repo.findAll.bind(repo),
 
@@ -45,10 +71,14 @@ export function createExperimentService(deps: {
         if (revisionsResult.data.length === 0) return fail('Dataset has no revisions')
         const datasetRevisionId = revisionsResult.data[0].id
 
-        return repo.create({
+        const createResult = await repo.create({
           ...input,
           datasetRevisionId,
         })
+        if (createResult.success) {
+          void enqueueExperiment(createResult.data.id)
+        }
+        return createResult
       })
     },
 
@@ -66,48 +96,17 @@ export function createExperimentService(deps: {
         const datasetRevisionId = revisionsResult.data[0].id
 
         const graderIds = experiment.graders.map((eg) => eg.graderId)
-        return repo.create({
+        const createResult = await repo.create({
           name: `${experiment.name} (re-run)`,
           datasetId: experiment.datasetId,
           datasetRevisionId,
           graderIds,
           modelId: experiment.modelId,
         })
-      })
-    },
-
-    runExperiment(id: string) {
-      return tryCatch(async () => {
-        const result = await repo.findById(id)
-        if (!result.success) return result
-
-        const experiment = result.data
-
-        if (experiment.status !== 'queued') {
-          return fail('Experiment is not in a runnable state')
+        if (createResult.success) {
+          void enqueueExperiment(createResult.data.id)
         }
-
-        const rawItems = experiment.revision?.items ?? []
-        if (rawItems.length === 0) return fail('Dataset has no items')
-        const datasetItems = rawItems.map((item) => ({
-          id: item.id,
-          values: item.values as Record<string, string>,
-        }))
-
-        const graders = experiment.graders.map((eg) => ({
-          id: eg.grader.id,
-          rubric: eg.grader.rubric,
-        }))
-
-        if (!runner) return fail('Runner not configured')
-        void runner.enqueue({
-          experimentId: id,
-          datasetItems,
-          graders,
-          modelId: experiment.modelId,
-        })
-        const status: ExperimentStatus = 'queued'
-        return ok({ status })
+        return createResult
       })
     },
 

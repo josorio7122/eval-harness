@@ -42,12 +42,6 @@ export function createExperimentRouter(service: ExperimentService) {
     return c.json(result.data, 201)
   })
 
-  app.post('/experiments/:id/run', async (c) => {
-    const result = await service.runExperiment(c.req.param('id'))
-    if (!result.success) return c.json({ error: result.error }, 400)
-    return c.json(result.data, 202)
-  })
-
   app.get('/experiments/:id/events', async (c) => {
     const id = c.req.param('id')
     return streamSSE(c, async (stream) => {

@@ -299,7 +299,7 @@ graders:
 experiments:
 
   create:
-    description: "Create an experiment"
+    description: "Create an experiment (automatically enqueued for evaluation)"
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
@@ -307,7 +307,7 @@ experiments:
     expected_status: 201
     expected_body: |
       { "id": "...", "name": "eval-run-1", "datasetId": ":datasetId", "datasetRevisionId": "...", "status": "queued" }
-    notes: "The experiment is pinned to the dataset's latest revision at creation time."
+    notes: "The experiment is pinned to the dataset's latest revision at creation time. The runner is enqueued automatically — no separate run step is needed."
 
   create_no_graders:
     description: "Reject experiment with empty graderIds array"
@@ -337,13 +337,6 @@ experiments:
       curl http://localhost:3001/experiments/:id
     expected_status: 200
     notes: "Response includes revision with items and attributes for the pinned dataset revision."
-
-  run:
-    description: "Trigger experiment run (async — returns 202)"
-    command: |
-      curl -X POST http://localhost:3001/experiments/:id/run
-    expected_status: 202
-    notes: "Processing happens asynchronously. Listen to /events for progress."
 
   events:
     description: "SSE stream for real-time experiment progress"

@@ -5,14 +5,13 @@
 # End-to-end test that exercises the complete experiment flow:
 #   1. Create a dataset with 3 math items (e.g., "What is 1+1?" → "2")
 #   2. Create 2 graders (accuracy + clarity) with distinct rubrics
-#   3. Create an experiment linking dataset + graders
+#   3. Create an experiment — automatically enqueued for evaluation
 #   4. Start SSE listener (background curl) to capture progress events
-#   5. Run the experiment (POST /run → 202 Accepted)
-#   6. Poll status every 2s until complete/failed (timeout: 120s)
-#   7. Verify SSE: exactly 6 progress events (3 items × 2 graders)
-#   8. Verify results: status=complete, 6 results, valid pass rate
-#   9. Export CSV: verify headers (input, expected_output, _verdict, _reason)
-#  10. Cleanup via EXIT trap
+#   5. Poll status every 2s until complete/failed (timeout: 120s)
+#   6. Verify SSE: exactly 6 progress events (3 items × 2 graders)
+#   7. Verify results: status=complete, 6 results, valid pass rate
+#   8. Export CSV: verify headers (input, expected_output, _verdict, _reason)
+#   9. Cleanup via EXIT trap
 #
 # REQUIRES:
 #   - OPENROUTER_API_KEY environment variable (exits 0 if not set)
@@ -179,29 +178,21 @@ echo "    → GRADER2_ID: $GRADER2_ID"
 # ─── EXPERIMENT ──────────────────────────────────────────────────────────
 # Create an experiment linking the dataset to both graders.
 # This produces 3 items × 2 graders = 6 evaluation cells.
-section "EXPERIMENT"
+# Creation automatically enqueues the runner — no separate /run step needed.
+section "EXPERIMENT + SSE"
+
+SSE_FILE=$(mktemp)
 
 R=$(curl_json POST /experiments \
   "{\"name\":\"e2e-run-$$\",\"datasetId\":\"${DATASET_ID}\",\"graderIds\":[\"${GRADER1_ID}\",\"${GRADER2_ID}\"]}")
 B=$(body_of "$R"); S=$(status_of "$R")
-assert_status "Create experiment" 201 "$S"
+assert_status "Create experiment (auto-enqueues)" 201 "$S"
 EXP_ID=$(echo "$B" | jq -r '.id')
 echo "    → EXP_ID: $EXP_ID"
 
-# ─── SSE LISTENER ────────────────────────────────────────────────────────
-# Start an SSE listener BEFORE running the experiment so we capture all events.
-# The listener writes to a temp file in the background. After running, we poll
-# the experiment status until it reaches a terminal state.
-section "SSE + RUN"
-
-SSE_FILE=$(mktemp)
+# Start SSE listener immediately after creation so we capture all progress events.
 curl -s -N "${BASE}/experiments/${EXP_ID}/events" > "$SSE_FILE" 2>/dev/null &
 SSE_PID=$!
-sleep 1
-
-R=$(curl_json POST "/experiments/${EXP_ID}/run")
-S=$(status_of "$R")
-assert_status "Run experiment" 202 "$S"
 
 # ─── POLL ────────────────────────────────────────────────────────────────
 # Poll GET /experiments/:id every 2s. The experiment runner evaluates items

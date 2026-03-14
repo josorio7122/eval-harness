@@ -67,14 +67,6 @@ export function useCreateExperiment() {
   })
 }
 
-export function useRunExperiment() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => api.post(`/experiments/${id}/run`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
-  })
-}
-
 export function useDeleteExperiment() {
   const qc = useQueryClient()
   return useMutation({

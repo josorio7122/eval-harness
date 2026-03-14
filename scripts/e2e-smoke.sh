@@ -6,7 +6,7 @@
 # Tests every REST endpoint across all 3 domains (datasets, graders, experiments)
 # plus CSV operations, dataset revisions, SSE streaming, and cascade deletion.
 #
-# Does NOT require OPENROUTER_API_KEY — experiment run tests accept any terminal
+# Does NOT require OPENROUTER_API_KEY — experiment tests accept any terminal
 # status (complete, failed, running) since the LLM may not be configured.
 #
 # Prerequisites:
@@ -409,11 +409,10 @@ S=$(status_of "$R")
 assert_status "Get non-existent grader → 404" 404 "$S"
 
 # ─── EXPERIMENTS ───────────────────────────────────────────────────────────────
-# Tests: POST /experiments (create, verify datasetRevisionId is set),
+# Tests: POST /experiments (create + auto-enqueues, verify datasetRevisionId is set),
 #        POST with no graders (400), POST with invalid datasetId (400),
-#        GET /experiments (list), GET /experiments/:id (verify status='queued'),
-#        POST /experiments/:id/run (202), poll status until terminal,
-#        GET /experiments/:id/csv/export (if complete)
+#        GET /experiments (list), GET /experiments/:id (verify auto-enqueued status),
+#        poll status until terminal, GET /experiments/:id/csv/export (if complete)
 section "EXPERIMENTS"
 
 R=$(curl_json POST /experiments \
@@ -446,13 +445,9 @@ R=$(curl_get "/experiments/${EXPERIMENT_ID}")
 B=$(body_of "$R"); S=$(status_of "$R")
 assert_status "Get experiment → 200" 200 "$S"
 EXP_STATUS=$(echo "$B" | jq -r '.status')
-[[ "$EXP_STATUS" == "queued" ]] \
-  && pass "Experiment status='queued'" \
-  || fail "Experiment status expected 'queued', got '$EXP_STATUS'"
-
-R=$(curl_json POST "/experiments/${EXPERIMENT_ID}/run")
-S=$(status_of "$R")
-assert_status "Run experiment → 202" 202 "$S"
+[[ "$EXP_STATUS" == "queued" || "$EXP_STATUS" == "running" ]] \
+  && pass "Experiment auto-enqueued (status='$EXP_STATUS')" \
+  || fail "Experiment not enqueued, unexpected status '$EXP_STATUS'"
 
 # Poll for experiment completion (max 30s)
 echo "    → Polling experiment status..."

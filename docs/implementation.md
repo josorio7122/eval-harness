@@ -320,7 +320,7 @@ graders/
 
 ```
 experiments/
-  router.ts       # CRUD + POST /:id/run + GET /:id/events (SSE)
+  router.ts       # CRUD + GET /:id/events (SSE); creation auto-enqueues runner
   service.ts      # Owns experiment queue, evaluation queue, LLM orchestration, SSE event emission
   repository.ts   # Experiment + ExperimentResult persistence
   validator.ts    # Zod schemas for create, run, etc.
@@ -485,7 +485,8 @@ Experiments are executed asynchronously using a **two-level queue** pattern. The
 ```
 ┌──────────────────────────────────────────┐
 │ HTTP API (Hono)                          │
-│ POST /experiments/:id/run → 202 Accepted │
+│ POST /experiments → 201 Created          │
+│ (auto-enqueues runner on creation)       │
 └────────────┬─────────────────────────────┘
              │
              ▼
@@ -532,7 +533,7 @@ Experiments are executed asynchronously using a **two-level queue** pattern. The
 ### Status Lifecycle
 
 ```
-POST /run
+POST /experiments (creation auto-enqueues)
     │
     ▼
  "queued"  ──(queue picks up)──▶  "running"  ──(all cells done)──▶  "complete"
@@ -924,7 +925,7 @@ graders:
 
 experiments:
   create:
-    description: 'Create an experiment'
+    description: 'Create an experiment (automatically enqueued for evaluation)'
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
@@ -950,12 +951,6 @@ experiments:
     command: |
       curl http://localhost:3001/experiments/:id
     expected_status: 200
-
-  run:
-    description: 'Trigger experiment run (returns 202, processes async)'
-    command: |
-      curl -X POST http://localhost:3001/experiments/:id/run
-    expected_status: 202
 
   events:
     description: 'SSE stream for experiment progress'

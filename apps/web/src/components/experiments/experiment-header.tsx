@@ -1,4 +1,4 @@
-import { Play, RotateCcw, Trash2, Loader2, Download } from 'lucide-react'
+import { RotateCcw, Trash2, Loader2, Download } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,11 +11,9 @@ interface ExperimentHeaderProps {
   experiment: Experiment
   completedCount: number
   totalCount: number
-  onRun: () => void
   onRerun: () => void
   onExport: () => void
   onDeleteClick: () => void
-  isRunning: boolean
   isRerunning: boolean
   isExporting: boolean
 }
@@ -24,17 +22,14 @@ export function ExperimentHeader({
   experiment,
   completedCount,
   totalCount,
-  onRun,
   onRerun,
   onExport,
   onDeleteClick,
-  isRunning,
   isRerunning,
   isExporting,
 }: ExperimentHeaderProps) {
   const navigate = useNavigate()
 
-  const isRunningOrQueued = experiment.status === 'running' || experiment.status === 'queued'
   const isComplete = experiment.status === 'complete'
 
   return (
@@ -60,16 +55,8 @@ export function ExperimentHeader({
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
-        {/* Run button — only when queued */}
-        {experiment.status === 'queued' && (
-          <Button size="sm" onClick={onRun} disabled={isRunning}>
-            {isRunning ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
-            Run
-          </Button>
-        )}
-
         {/* Running: live progress indicator */}
-        {isRunningOrQueued && experiment.status === 'running' && (
+        {experiment.status === 'running' && (
           <span className="flex items-center gap-1.5 text-xs font-mono tabular-nums text-primary">
             <Loader2 size={12} className="animate-spin" />
             {completedCount}/{totalCount}

@@ -56,16 +56,15 @@ Same pattern for `graders/` and `experiments/`.
 
 ### Experiments
 
-| Method | Path                        | Description                     |
-| ------ | --------------------------- | ------------------------------- |
-| GET    | /experiments                | List all experiments            |
-| POST   | /experiments                | Create experiment               |
-| GET    | /experiments/:id            | Get experiment with results     |
-| DELETE | /experiments/:id            | Delete experiment               |
-| POST   | /experiments/:id/run        | Trigger run (202 Accepted)      |
-| POST   | /experiments/:id/rerun      | Re-run (creates new experiment) |
-| GET    | /experiments/:id/events     | SSE stream for progress         |
-| GET    | /experiments/:id/csv/export | Export results as CSV           |
+| Method | Path                        | Description                      |
+| ------ | --------------------------- | -------------------------------- |
+| GET    | /experiments                | List all experiments             |
+| POST   | /experiments                | Create experiment (auto-runs)    |
+| GET    | /experiments/:id            | Get experiment with results      |
+| DELETE | /experiments/:id            | Delete experiment                |
+| POST   | /experiments/:id/rerun      | Re-run (creates new + auto-runs) |
+| GET    | /experiments/:id/events     | SSE stream for progress          |
+| GET    | /experiments/:id/csv/export | Export results as CSV            |
 
 ## Environment Variables
 

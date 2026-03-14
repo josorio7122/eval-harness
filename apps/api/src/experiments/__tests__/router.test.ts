@@ -11,7 +11,6 @@ const mockService = {
   createExperiment: vi.fn(),
   deleteExperiment: vi.fn(),
   rerunExperiment: vi.fn(),
-  runExperiment: vi.fn(),
   exportCsv: vi.fn(),
 }
 
@@ -185,29 +184,6 @@ describe('POST /experiments/:id/rerun', () => {
 
     const res = await jsonPost(`/experiments/${VALID_UUID}/rerun`, {})
     expect(res.status).toBe(404)
-  })
-})
-
-describe('POST /experiments/:id/run', () => {
-  it('returns 202 on success', async () => {
-    mockService.runExperiment.mockResolvedValue({ success: true, data: { status: 'queued' } })
-
-    const res = await jsonPost(`/experiments/${VALID_UUID}/run`, {})
-    expect(res.status).toBe(202)
-    const body = await res.json()
-    expect(body).toEqual({ status: 'queued' })
-  })
-
-  it('returns 400 when service fails', async () => {
-    mockService.runExperiment.mockResolvedValue({
-      success: false,
-      error: 'Experiment is not in a runnable state',
-    })
-
-    const res = await jsonPost(`/experiments/${VALID_UUID}/run`, {})
-    expect(res.status).toBe(400)
-    const body = await res.json()
-    expect(body).toEqual({ error: 'Experiment is not in a runnable state' })
   })
 })
 

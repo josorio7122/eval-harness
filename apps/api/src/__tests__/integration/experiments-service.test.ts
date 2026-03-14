@@ -14,6 +14,12 @@ function unwrap<T>(result: Result<T>): T {
   return result.data
 }
 
+/** Extract id from an unknown data shape; fails test if missing */
+function idOf(data: unknown): string {
+  expect(data).toHaveProperty('id')
+  return (data as { id: string }).id
+}
+
 const mockRunner = { enqueue: vi.fn().mockResolvedValue(undefined) }
 const service = createExperimentService({
   repo: experimentRepository,
@@ -102,7 +108,7 @@ describe('experiments service (integration)', () => {
     if (!result.success) return
 
     // Verify datasetRevisionId is set
-    const found = unwrap(await experimentRepository.findById((result.data as { id: string }).id))
+    const found = unwrap(await experimentRepository.findById(idOf(result.data)))
     expect(found.datasetRevisionId).toBeDefined()
     expect(found.datasetId).toBe(ds.id)
     expect(found.graders).toHaveLength(2)
@@ -133,8 +139,8 @@ describe('experiments service (integration)', () => {
     expect(result.success).toBe(true)
     if (!result.success) return
 
-    expect((result.data as { id: string; name: string }).id).not.toBe(original.id)
-    expect((result.data as { id: string; name: string }).name).toContain('re-run')
+    expect(idOf(result.data)).not.toBe(original.id)
+    expect(result.data).toHaveProperty('name', expect.stringContaining('re-run'))
 
     const stillExists = unwrap(await experimentRepository.findById(original.id))
     expect(stillExists).not.toBeNull()
@@ -191,8 +197,8 @@ describe('experiments service (integration)', () => {
     expect(resultB.success).toBe(true)
     if (!resultA.success || !resultB.success) return
 
-    const expA = unwrap(await experimentRepository.findById((resultA.data as { id: string }).id))
-    const expB = unwrap(await experimentRepository.findById((resultB.data as { id: string }).id))
+    const expA = unwrap(await experimentRepository.findById(idOf(resultA.data)))
+    const expB = unwrap(await experimentRepository.findById(idOf(resultB.data)))
     expect(expA.datasetRevisionId).toBe(expB.datasetRevisionId)
   })
 
@@ -211,16 +217,14 @@ describe('experiments service (integration)', () => {
     if (!resultA.success) return
 
     const originalRevId = unwrap(
-      await experimentRepository.findById((resultA.data as { id: string }).id),
+      await experimentRepository.findById(idOf(resultA.data)),
     ).datasetRevisionId
 
     // Edit dataset (creates new revision)
     unwrap(await datasetRepository.createItem(ds.id, { input: 'new-q', expected_output: 'new-a' }))
 
     // Verify experiment still points to original revision
-    const afterEdit = unwrap(
-      await experimentRepository.findById((resultA.data as { id: string }).id),
-    )
+    const afterEdit = unwrap(await experimentRepository.findById(idOf(resultA.data)))
     expect(afterEdit.datasetRevisionId).toBe(originalRevId)
   })
 
@@ -250,8 +254,8 @@ describe('experiments service (integration)', () => {
     expect(resultB.success).toBe(true)
     if (!resultB.success) return
 
-    const expA = unwrap(await experimentRepository.findById((resultA.data as { id: string }).id))
-    const expB = unwrap(await experimentRepository.findById((resultB.data as { id: string }).id))
+    const expA = unwrap(await experimentRepository.findById(idOf(resultA.data)))
+    const expB = unwrap(await experimentRepository.findById(idOf(resultB.data)))
     expect(expA.datasetRevisionId).not.toBe(expB.datasetRevisionId)
   })
 })
