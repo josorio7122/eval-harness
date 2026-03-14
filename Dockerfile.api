@@ -55,6 +55,14 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/packages/db/dist ./packages/db/dist
 COPY --from=builder /app/packages/db/generated ./packages/db/generated
 
+# Copy Prisma schema (needed for db push at startup)
+COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
+COPY --from=builder /app/packages/db/prisma.config.ts ./packages/db/prisma.config.ts
+
+# Copy and enable start script
+COPY apps/api/start.sh ./apps/api/start.sh
+RUN chmod +x apps/api/start.sh
+
 EXPOSE 3001
 
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["sh", "apps/api/start.sh"]
