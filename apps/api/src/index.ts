@@ -2,6 +2,8 @@ import 'dotenv/config'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { logger } from './lib/logger.js'
+import { requestLogger } from './middleware/request-logger.js'
 import { datasetRepository } from './datasets/repository.js'
 import { createDatasetService } from './datasets/service.js'
 import { createDatasetRouter } from './datasets/router.js'
@@ -17,6 +19,7 @@ import { evaluate } from './experiments/evaluator.js'
 const app = new Hono()
 
 app.use('*', cors())
+app.use('*', requestLogger)
 
 app.get('/', (c) => {
   return c.text('Hello Hono!')
@@ -48,6 +51,6 @@ serve(
     port: Number(process.env['PORT'] ?? process.env['API_PORT'] ?? 3001),
   },
   (info) => {
-    console.log(`Server is running on http://localhost:${info.port}`)
+    logger.info({ port: info.port }, 'server started')
   },
 )

@@ -1,5 +1,6 @@
 import { json2csv } from 'json-2-csv'
 import { ok, fail, tryCatch } from '@eval-harness/shared'
+import { logger } from '../lib/logger.js'
 import { experimentRepository } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
 import { graderRepository } from '../graders/repository.js'
@@ -19,8 +20,12 @@ export function createExperimentService(deps: {
   /** Fire-and-forget: enqueue a created experiment on the runner. */
   async function enqueueExperiment(experimentId: string) {
     if (!runner) return
+    logger.info({ experimentId }, 'enqueuing experiment')
     const result = await repo.findById(experimentId)
-    if (!result.success) return
+    if (!result.success) {
+      logger.warn({ experimentId, error: result.error }, 'enqueue skipped: experiment not found')
+      return
+    }
 
     const exp = result.data
     const items = (exp.revision?.items ?? []).map((item) => ({

@@ -2,6 +2,7 @@ import PQueue from 'p-queue'
 import { EventEmitter } from 'events'
 import type { experimentRepository } from './repository.js'
 import type { ExperimentStatus } from './repository.js'
+import { logger } from '../lib/logger.js'
 
 export const experimentEvents = new EventEmitter()
 
@@ -37,6 +38,10 @@ async function evaluateCell(params: {
     verdict = 'error'
     reason = err instanceof Error ? err.message : 'Unknown error'
     isError = true
+    logger.error(
+      { experimentId, itemId: item.id, graderId: grader.id, error: reason },
+      'evaluation cell failed',
+    )
   }
 
   const saveResult = await repo.createResult({
@@ -59,8 +64,13 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
   }): Promise<void> {
     const { experimentId, datasetItems, graders, modelId } = params
     await experimentQueue.add(async () => {
+      logger.info(
+        { experimentId, itemCount: datasetItems.length, graderCount: graders.length, modelId },
+        'experiment started',
+      )
       const statusResult = await repo.updateStatus(experimentId, 'running')
       if (!statusResult.success) {
+        logger.error({ experimentId, error: statusResult.error }, 'experiment status update failed')
         experimentEvents.emit(experimentId, {
           type: 'error',
           experimentId,
@@ -105,6 +115,7 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
       const errorCount = results.filter((r) => r?.isError).length
 
       const finalStatus: ExperimentStatus = errorCount === totalCells ? 'failed' : 'complete'
+      logger.info({ experimentId, totalCells, errorCount, finalStatus }, 'experiment finished')
       await repo.updateStatus(experimentId, finalStatus)
 
       if (finalStatus === 'failed') {

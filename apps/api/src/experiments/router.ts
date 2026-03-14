@@ -3,6 +3,7 @@ import { streamSSE } from 'hono/streaming'
 import { createExperimentSchema } from './validator.js'
 import type { createExperimentService } from './service.js'
 import { experimentEvents } from './runner.js'
+import { logger } from '../lib/logger.js'
 
 type ExperimentService = ReturnType<typeof createExperimentService>
 
@@ -44,6 +45,7 @@ export function createExperimentRouter(service: ExperimentService) {
 
   app.get('/experiments/:id/events', async (c) => {
     const id = c.req.param('id')
+    logger.info({ experimentId: id }, 'SSE client connected')
     return streamSSE(c, async (stream) => {
       await stream.writeSSE({ data: JSON.stringify({ experimentId: id }), event: 'connected' })
 
@@ -57,6 +59,7 @@ export function createExperimentRouter(service: ExperimentService) {
         }
         experimentEvents.on(id, handler)
         stream.onAbort(() => {
+          logger.info({ experimentId: id }, 'SSE client disconnected')
           experimentEvents.off(id, handler)
           resolve()
         })
