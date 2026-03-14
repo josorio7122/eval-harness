@@ -2,12 +2,25 @@ import { prisma } from '../lib/prisma.js'
 import { ok, tryCatch } from '@eval-harness/shared'
 import { randomUUID } from 'crypto'
 
+/** Prisma stores values as Json. This narrows to our known shape at the query boundary. */
+const toRecord = (values: unknown): Record<string, string> => values as Record<string, string>
+
 /** Returns the most recent revision for a dataset. Throws if no revisions exist. */
 async function getLatestRevisionOrThrow(datasetId: string) {
   return prisma.datasetRevision.findFirstOrThrow({
     where: { datasetId },
     orderBy: { createdAt: 'desc' },
-    include: { items: { orderBy: { createdAt: 'asc' } } },
+    select: {
+      id: true,
+      datasetId: true,
+      schemaVersion: true,
+      attributes: true,
+      createdAt: true,
+      items: {
+        select: { id: true, itemId: true, values: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
   })
 }
 
@@ -44,7 +57,17 @@ async function createRevision(
         })),
       },
     },
-    include: { items: { orderBy: { createdAt: 'asc' } } },
+    select: {
+      id: true,
+      datasetId: true,
+      schemaVersion: true,
+      attributes: true,
+      createdAt: true,
+      items: {
+        select: { id: true, itemId: true, values: true, createdAt: true },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
   })
 }
 
@@ -69,11 +92,16 @@ export const datasetRepository = {
       const datasets = await prisma.dataset.findMany({
         where: { deletedAt: null },
         orderBy: { name: 'asc' },
-        include: {
+        select: {
+          id: true,
+          name: true,
           revisions: {
+            select: {
+              attributes: true,
+              _count: { select: { items: true } },
+            },
             orderBy: { createdAt: 'desc' },
             take: 1,
-            include: { _count: { select: { items: true } } },
           },
         },
       })
@@ -136,7 +164,7 @@ export const datasetRepository = {
       const newAttributes = [...latest.attributes, attributeName]
       const newItems = latest.items.map((item) => ({
         itemId: item.itemId,
-        values: { ...(item.values as Record<string, string>), [attributeName]: '' },
+        values: { ...toRecord(item.values), [attributeName]: '' },
         createdAt: item.createdAt,
       }))
 
@@ -157,7 +185,7 @@ export const datasetRepository = {
 
       const newAttributes = latest.attributes.filter((a) => a !== attributeName)
       const newItems = latest.items.map((item) => {
-        const values = { ...(item.values as Record<string, string>) }
+        const values = { ...toRecord(item.values) }
         delete values[attributeName]
         return { itemId: item.itemId, values, createdAt: item.createdAt }
       })
@@ -197,7 +225,7 @@ export const datasetRepository = {
       const newItemId = randomUUID()
       const existingItems = latest.items.map((item) => ({
         itemId: item.itemId,
-        values: item.values as Record<string, string>,
+        values: toRecord(item.values),
         createdAt: item.createdAt,
       }))
 
@@ -216,7 +244,13 @@ export const datasetRepository = {
       const existingItem = await prisma.datasetRevisionItem.findFirstOrThrow({
         where: { itemId },
         orderBy: { revision: { createdAt: 'desc' } },
-        include: { revision: true },
+        select: {
+          id: true,
+          itemId: true,
+          values: true,
+          createdAt: true,
+          revision: { select: { datasetId: true } },
+        },
       })
 
       const datasetId = existingItem.revision.datasetId
@@ -224,7 +258,7 @@ export const datasetRepository = {
 
       const newItems = latest.items.map((item) => ({
         itemId: item.itemId,
-        values: item.itemId === itemId ? values : (item.values as Record<string, string>),
+        values: item.itemId === itemId ? values : toRecord(item.values),
         createdAt: item.createdAt,
       }))
 
@@ -243,7 +277,13 @@ export const datasetRepository = {
       const existingItem = await prisma.datasetRevisionItem.findFirstOrThrow({
         where: { itemId },
         orderBy: { revision: { createdAt: 'desc' } },
-        include: { revision: true },
+        select: {
+          id: true,
+          itemId: true,
+          values: true,
+          createdAt: true,
+          revision: { select: { datasetId: true } },
+        },
       })
 
       const datasetId = existingItem.revision.datasetId
@@ -253,7 +293,7 @@ export const datasetRepository = {
         .filter((item) => item.itemId !== itemId)
         .map((item) => ({
           itemId: item.itemId,
-          values: item.values as Record<string, string>,
+          values: toRecord(item.values),
           createdAt: item.createdAt,
         }))
 
@@ -298,7 +338,13 @@ export const datasetRepository = {
       const revisions = await prisma.datasetRevision.findMany({
         where: { datasetId },
         orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { items: true, experiments: true } } },
+        select: {
+          id: true,
+          schemaVersion: true,
+          attributes: true,
+          createdAt: true,
+          _count: { select: { items: true, experiments: true } },
+        },
       })
 
       return ok(
@@ -319,8 +365,15 @@ export const datasetRepository = {
     return tryCatch(async () => {
       const revision = await prisma.datasetRevision.findFirstOrThrow({
         where: { id: revisionId, datasetId },
-        include: {
-          items: { orderBy: { createdAt: 'asc' } },
+        select: {
+          id: true,
+          schemaVersion: true,
+          attributes: true,
+          createdAt: true,
+          items: {
+            select: { id: true, itemId: true, values: true, createdAt: true },
+            orderBy: { createdAt: 'asc' },
+          },
           experiments: { select: { id: true, name: true, status: true } },
         },
       })

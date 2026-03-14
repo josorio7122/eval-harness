@@ -15,12 +15,14 @@ function unwrap<T>(result: Result<T>): T {
 }
 
 const mockRunner = { enqueue: vi.fn().mockResolvedValue(undefined) }
-const service = createExperimentService(
-  experimentRepository,
-  datasetRepository,
-  graderRepository,
-  mockRunner as ReturnType<typeof import('../../experiments/runner.js').createExperimentRunner>,
-)
+const service = createExperimentService({
+  repo: experimentRepository,
+  datasetRepo: datasetRepository,
+  graderRepo: graderRepository,
+  runner: mockRunner as ReturnType<
+    typeof import('../../experiments/runner.js').createExperimentRunner
+  >,
+})
 
 let counter = 0
 function uid(prefix: string) {

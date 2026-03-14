@@ -27,40 +27,47 @@ afterEach(() => {
 
 describe('evaluate', () => {
   it('returns pass verdict when LLM returns pass', async () => {
+    // CAST: partial mock — only output field is consumed by evaluate()
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'pass', reason: 'Looks good' },
-    } as unknown as Awaited<ReturnType<typeof generateText>>)
+    } as Awaited<ReturnType<typeof generateText>>)
 
-    const result = await evaluate(
-      'Grade this response',
-      { input: 'hello', expected_output: 'world' },
-      'openai/gpt-4o',
-    )
+    const result = await evaluate({
+      rubric: 'Grade this response',
+      itemAttributes: { input: 'hello', expected_output: 'world' },
+      modelId: 'openai/gpt-4o',
+    })
 
     expect(result).toEqual({ verdict: 'pass', reason: 'Looks good' })
     expect(mockGenerateText).toHaveBeenCalledOnce()
   })
 
   it('returns fail verdict when LLM returns fail', async () => {
+    // CAST: partial mock — only output field is consumed by evaluate()
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'fail', reason: 'Does not match' },
-    } as unknown as Awaited<ReturnType<typeof generateText>>)
+    } as Awaited<ReturnType<typeof generateText>>)
 
-    const result = await evaluate(
-      'Grade this response',
-      { input: 'hello', expected_output: 'bad' },
-      'openai/gpt-4o',
-    )
+    const result = await evaluate({
+      rubric: 'Grade this response',
+      itemAttributes: { input: 'hello', expected_output: 'bad' },
+      modelId: 'openai/gpt-4o',
+    })
 
     expect(result).toEqual({ verdict: 'fail', reason: 'Does not match' })
   })
 
   it('passes rubric as system prompt and item attributes as prompt', async () => {
+    // CAST: partial mock — only output field is consumed by evaluate()
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'pass', reason: 'ok' },
-    } as unknown as Awaited<ReturnType<typeof generateText>>)
+    } as Awaited<ReturnType<typeof generateText>>)
 
-    await evaluate('Check quality', { input: 'foo', expected_output: 'bar' }, 'openai/gpt-4o')
+    await evaluate({
+      rubric: 'Check quality',
+      itemAttributes: { input: 'foo', expected_output: 'bar' },
+      modelId: 'openai/gpt-4o',
+    })
 
     const call = mockGenerateText.mock.calls[0][0]
     const messages = call.messages!
@@ -75,35 +82,45 @@ describe('evaluate', () => {
     mockGenerateText.mockRejectedValue(new Error('API error'))
 
     await expect(
-      evaluate('rubric', { input: 'test', expected_output: 'result' }, 'openai/gpt-4o'),
+      evaluate({
+        rubric: 'rubric',
+        itemAttributes: { input: 'test', expected_output: 'result' },
+        modelId: 'openai/gpt-4o',
+      }),
     ).rejects.toThrow('API error')
   })
 
   it('throws when input is missing from itemAttributes', async () => {
     await expect(
-      evaluate('rubric', { expected_output: 'result' }, 'openai/gpt-4o'),
+      evaluate({
+        rubric: 'rubric',
+        itemAttributes: { expected_output: 'result' },
+        modelId: 'openai/gpt-4o',
+      }),
     ).rejects.toThrow('Missing required field: input')
   })
 
   it('throws when expected_output is missing from itemAttributes', async () => {
-    await expect(evaluate('rubric', { input: 'hello' }, 'openai/gpt-4o')).rejects.toThrow(
-      'Missing required field: expected_output',
-    )
+    await expect(
+      evaluate({ rubric: 'rubric', itemAttributes: { input: 'hello' }, modelId: 'openai/gpt-4o' }),
+    ).rejects.toThrow('Missing required field: expected_output')
   })
 
   it('passes modelId directly to openrouter with no fallback', async () => {
+    // CAST: partial mock — only output field is consumed by evaluate()
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'pass', reason: 'ok' },
-    } as unknown as Awaited<ReturnType<typeof generateText>>)
+    } as Awaited<ReturnType<typeof generateText>>)
 
-    await evaluate(
-      'rubric',
-      { input: 'hello', expected_output: 'world' },
-      'anthropic/claude-3-5-sonnet',
-    )
+    await evaluate({
+      rubric: 'rubric',
+      itemAttributes: { input: 'hello', expected_output: 'world' },
+      modelId: 'anthropic/claude-3-5-sonnet',
+    })
 
     // The openrouter mock returns { model: modelId } — verify the model passed to generateText
     const call = mockGenerateText.mock.calls[0][0]
+    // CAST: openrouter mock returns { model: string }, not a real LanguageModel
     expect((call.model as unknown as { model: string }).model).toBe('anthropic/claude-3-5-sonnet')
   })
 })

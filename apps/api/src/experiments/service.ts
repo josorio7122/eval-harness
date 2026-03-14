@@ -5,15 +5,17 @@ import type { ExperimentStatus } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
 import { graderRepository } from '../graders/repository.js'
 import type { createExperimentRunner } from './runner.js'
+import type { DetailedResult } from './utils.js'
 
 type Runner = ReturnType<typeof createExperimentRunner>
 
-export function createExperimentService(
-  repo: typeof experimentRepository,
-  datasetRepo: typeof datasetRepository,
-  graderRepo: typeof graderRepository,
-  runner?: Runner,
-) {
+export function createExperimentService(deps: {
+  repo: typeof experimentRepository
+  datasetRepo: typeof datasetRepository
+  graderRepo: typeof graderRepository
+  runner?: Runner
+}) {
+  const { repo, datasetRepo, graderRepo, runner } = deps
   return {
     listExperiments: repo.findAll.bind(repo),
 
@@ -56,12 +58,7 @@ export function createExperimentService(
       return tryCatch(async () => {
         const expResult = await repo.findById(id)
         if (!expResult.success) return expResult
-        const experiment = expResult.data as unknown as {
-          name: string
-          datasetId: string
-          modelId: string
-          graders: Array<{ graderId: string }>
-        }
+        const experiment = expResult.data
 
         const revisionsResult = await datasetRepo.findRevisions(experiment.datasetId)
         if (!revisionsResult.success) return revisionsResult
@@ -103,8 +100,14 @@ export function createExperimentService(
         }))
 
         if (!runner) return fail('Runner not configured')
-        void runner.enqueue(id, datasetItems, graders, experiment.modelId)
-        return ok({ status: 'queued' as ExperimentStatus })
+        void runner.enqueue({
+          experimentId: id,
+          datasetItems,
+          graders,
+          modelId: experiment.modelId,
+        })
+        const status: ExperimentStatus = 'queued'
+        return ok({ status })
       })
     },
 
@@ -113,10 +116,7 @@ export function createExperimentService(
         const expResult = await repo.findById(id)
         if (!expResult.success) return expResult
 
-        const experiment = expResult.data as {
-          status: ExperimentStatus
-          revision?: { attributes?: string[] }
-        }
+        const experiment = expResult.data
 
         if (experiment.status === 'queued' || experiment.status === 'running')
           return fail('Experiment has not finished running')
@@ -125,14 +125,12 @@ export function createExperimentService(
         if (!resultsResult.success) return resultsResult
         if (resultsResult.data.length === 0) return fail('No results to export')
 
-        type DetailedResult = {
-          datasetRevisionItemId: string
-          datasetRevisionItem: { values: Record<string, string> }
-          grader: { name: string }
-          verdict: string
-          reason: string
-        }
-        const typedResults = resultsResult.data as DetailedResult[]
+        const typedResults: DetailedResult[] = resultsResult.data.map((r) => ({
+          ...r,
+          datasetRevisionItem: {
+            values: r.datasetRevisionItem.values as Record<string, string>,
+          },
+        }))
 
         // Collect unique grader names (preserving order of first appearance)
         const graderNames: string[] = []

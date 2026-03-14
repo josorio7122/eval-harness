@@ -103,15 +103,6 @@ async function parseCsvContent(
   })
 }
 
-// Dataset shape returned by findById
-type Dataset = {
-  id: string
-  name: string
-  attributes: string[]
-  schemaVersion?: number
-  items?: unknown[]
-}
-
 export function createDatasetService(repo: typeof datasetRepository) {
   return {
     listDatasets: repo.findAll.bind(repo),
@@ -140,7 +131,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       return tryCatch(async () => {
         const result = await repo.findById(id)
         if (!result.success) return result
-        const dataset = result.data as Dataset
+        const dataset = result.data
         if (dataset.attributes.includes(input.name)) return fail('Attribute already exists')
         return repo.addAttribute(id, input.name)
       })
@@ -150,7 +141,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       return tryCatch(async () => {
         const result = await repo.findById(id)
         if (!result.success) return result
-        const dataset = result.data as Dataset
+        const dataset = result.data
         if (BUILT_IN_ATTRIBUTES.includes(attributeName))
           return fail('Cannot remove built-in attribute')
         if (!dataset.attributes.includes(attributeName)) return fail('Attribute not found')
@@ -170,7 +161,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
-        const dataset = result.data as Dataset
+        const dataset = result.data
         const normalized = normalizeItemValues(dataset.attributes, input.values)
         return repo.createItem(datasetId, normalized)
       })
@@ -180,7 +171,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
-        const dataset = result.data as Dataset
+        const dataset = result.data
         const normalized = normalizeItemValues(dataset.attributes, input.values)
         return repo.updateItem(itemId, normalized)
       })
@@ -198,7 +189,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
-        const dataset = result.data as Dataset
+        const dataset = result.data
         const csv = (await json2csv([], { keys: dataset.attributes })).trimEnd()
         return ok({ csv, name: dataset.name })
       })
@@ -208,11 +199,11 @@ export function createDatasetService(repo: typeof datasetRepository) {
       return tryCatch(async () => {
         const datasetResult = await repo.findById(datasetId)
         if (!datasetResult.success) return datasetResult
-        const dataset = datasetResult.data as Dataset
+        const dataset = datasetResult.data
         const itemsResult = await repo.findItemsByDatasetId(datasetId)
         if (!itemsResult.success) return itemsResult
         const records = itemsResult.data.map((item) => {
-          const values = (item as { values: Record<string, string> }).values
+          const values = item.values as Record<string, string>
           const row: Record<string, string> = {}
           for (const attr of dataset.attributes) {
             row[attr] = values[attr] ?? ''
@@ -229,7 +220,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
 
-        const dataset = result.data as Dataset
+        const dataset = result.data
         const parsed = await parseCsvContent(dataset.attributes, csvContent)
         if (!parsed.success) return parsed
 
@@ -242,7 +233,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
 
-        const dataset = result.data as Dataset
+        const dataset = result.data
         const parsed = await parseCsvContent(dataset.attributes, csvContent)
         if (!parsed.success) return parsed
 

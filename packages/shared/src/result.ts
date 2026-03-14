@@ -16,7 +16,7 @@ export async function tryCatch<T>(fn: () => Promise<Result<T>>) {
     return await fn()
   } catch (e) {
     if (e instanceof Error) {
-      if (e.name === 'NotFoundError' || (e as { code?: string }).code === 'P2025') {
+      if (e.name === 'NotFoundError' || ('code' in e && e.code === 'P2025')) {
         return fail('Record not found')
       }
       return fail(e.message)

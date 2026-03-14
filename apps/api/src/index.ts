@@ -30,12 +30,12 @@ const graderRouter = createGraderRouter(graderService)
 
 const experimentRunner = createExperimentRunner(experimentRepository, evaluate)
 
-const experimentService = createExperimentService(
-  experimentRepository,
-  datasetRepository,
-  graderRepository,
-  experimentRunner,
-)
+const experimentService = createExperimentService({
+  repo: experimentRepository,
+  datasetRepo: datasetRepository,
+  graderRepo: graderRepository,
+  runner: experimentRunner,
+})
 const experimentRouter = createExperimentRouter(experimentService)
 
 app.route('/', datasetRouter)

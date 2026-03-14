@@ -70,21 +70,24 @@ async function seedExperiment(itemCount: number, graderCount: number) {
 }
 
 describe('experiment runner (integration)', () => {
-  let mockEvaluateFn: ReturnType<typeof vi.fn>
   let mockEvaluate: EvaluateFn
   let runner: ReturnType<typeof createExperimentRunner>
 
   beforeEach(() => {
-    mockEvaluateFn = vi.fn()
-    mockEvaluateFn.mockResolvedValue({ verdict: 'pass', reason: 'correct' })
-    mockEvaluate = mockEvaluateFn as unknown as EvaluateFn
+    mockEvaluate = vi.fn<EvaluateFn>()
+    vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'pass', reason: 'correct' })
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
   })
 
   it('full run: 3 items × 2 graders → 6 results in DB, status = complete', async () => {
     const { experiment, items, graders } = await seedExperiment(3, 2)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     const count = unwrap(await experimentRepository.countResultsByExperimentId(experiment.id))
     expect(count).toBe(6)
@@ -97,12 +100,17 @@ describe('experiment runner (integration)', () => {
   })
 
   it('each result has correct verdict from mock (fail)', async () => {
-    mockEvaluateFn.mockResolvedValue({ verdict: 'fail', reason: 'wrong answer' })
+    vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'fail', reason: 'wrong answer' })
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
     expect(results).toHaveLength(4)
@@ -113,19 +121,29 @@ describe('experiment runner (integration)', () => {
   it('final status = complete when all evaluations succeed', async () => {
     const { experiment, items, graders } = await seedExperiment(2, 1)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     const found = unwrap(await experimentRepository.findById(experiment.id))
     expect(found.status).toBe('complete')
   })
 
   it('all-fail run → status = failed, all results have verdict = error', async () => {
-    mockEvaluateFn.mockRejectedValue(new Error('API error'))
+    vi.mocked(mockEvaluate).mockRejectedValue(new Error('API error'))
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
     expect(results).toHaveLength(4)
@@ -136,7 +154,7 @@ describe('experiment runner (integration)', () => {
   })
 
   it('all-fail run → emits error event but NOT completed event', async () => {
-    mockEvaluateFn.mockRejectedValue(new Error('API error'))
+    vi.mocked(mockEvaluate).mockRejectedValue(new Error('API error'))
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 1)
@@ -146,7 +164,12 @@ describe('experiment runner (integration)', () => {
     const listener = (event: { type: string }) => emittedTypes.push(event.type)
     experimentEvents.on(experiment.id, listener)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     experimentEvents.off(experiment.id, listener)
 
@@ -155,7 +178,7 @@ describe('experiment runner (integration)', () => {
   })
 
   it('successful run → emits completed event but NOT error event', async () => {
-    mockEvaluateFn.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     runner = createExperimentRunner(experimentRepository, mockEvaluate)
 
     const { experiment, items, graders } = await seedExperiment(2, 1)
@@ -165,7 +188,12 @@ describe('experiment runner (integration)', () => {
     const listener = (event: { type: string }) => emittedTypes.push(event.type)
     experimentEvents.on(experiment.id, listener)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     experimentEvents.off(experiment.id, listener)
 
@@ -175,7 +203,7 @@ describe('experiment runner (integration)', () => {
 
   it('partial failure → status = complete with mixed verdicts', async () => {
     let callCount = 0
-    mockEvaluateFn.mockImplementation(() => {
+    vi.mocked(mockEvaluate).mockImplementation(() => {
       callCount++
       if (callCount === 1) {
         return Promise.reject(new Error('first call fails'))
@@ -186,7 +214,12 @@ describe('experiment runner (integration)', () => {
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
     expect(results).toHaveLength(4)
@@ -203,7 +236,12 @@ describe('experiment runner (integration)', () => {
   it('unique constraint respected: result count equals exactly items × graders', async () => {
     const { experiment, items, graders } = await seedExperiment(3, 3)
 
-    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+    })
 
     const count = unwrap(await experimentRepository.countResultsByExperimentId(experiment.id))
     expect(count).toBe(items.length * graders.length)

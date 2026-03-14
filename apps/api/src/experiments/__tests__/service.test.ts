@@ -53,7 +53,12 @@ const mockGraderRepo = {
   remove: vi.fn(),
 }
 
-const service = createExperimentService(mockRepo, mockDatasetRepo, mockGraderRepo, mockRunner)
+const service = createExperimentService({
+  repo: mockRepo,
+  datasetRepo: mockDatasetRepo,
+  graderRepo: mockGraderRepo,
+  runner: mockRunner,
+})
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -264,7 +269,7 @@ describe('rerunExperiment', () => {
 
     const result = await service.rerunExperiment(VALID_UUID)
     expect(result.success).toBe(true)
-    if (result.success) expect((result.data as { name: string }).name).toBe('exp1 (re-run)')
+    if (result.success) expect(result.data).toHaveProperty('name', 'exp1 (re-run)')
     expect(mockRepo.create).toHaveBeenCalledWith({
       name: 'exp1 (re-run)',
       datasetId: VALID_UUID_2,
@@ -334,12 +339,12 @@ describe('runExperiment', () => {
 
     const result = await service.runExperiment(VALID_UUID)
     expect(result).toEqual({ success: true, data: { status: 'queued' } })
-    expect(mockRunner.enqueue).toHaveBeenCalledWith(
-      VALID_UUID,
-      [{ id: 'item-1', values: { input: 'hi' } }],
-      [{ id: VALID_UUID_3, rubric: 'judge it' }],
-      'google/gemini-2.5-flash',
-    )
+    expect(mockRunner.enqueue).toHaveBeenCalledWith({
+      experimentId: VALID_UUID,
+      datasetItems: [{ id: 'item-1', values: { input: 'hi' } }],
+      graders: [{ id: VALID_UUID_3, rubric: 'judge it' }],
+      modelId: 'google/gemini-2.5-flash',
+    })
   })
 
   it('returns fail when experiment not found', async () => {

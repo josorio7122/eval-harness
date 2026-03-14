@@ -4,32 +4,32 @@ import type { DetailedResult } from '../utils.js'
 
 const attrs = ['input', 'expected_output']
 
-function makeResult(
-  itemId: string,
-  itemValues: Record<string, string>,
-  graderName: string,
-  verdict: string,
-  reason: string,
-): DetailedResult {
+function makeResult(params: {
+  itemId: string
+  itemValues: Record<string, string>
+  graderName: string
+  verdict: string
+  reason: string
+}): DetailedResult {
   return {
-    datasetRevisionItemId: itemId,
-    datasetRevisionItem: { values: itemValues },
-    grader: { name: graderName },
-    verdict,
-    reason,
+    datasetRevisionItemId: params.itemId,
+    datasetRevisionItem: { values: params.itemValues },
+    grader: { name: params.graderName },
+    verdict: params.verdict,
+    reason: params.reason,
   }
 }
 
 describe('buildCsvExport', () => {
   it('single item, single grader → correct columns and record', () => {
     const results = [
-      makeResult(
-        'item-1',
-        { input: 'q1', expected_output: 'a1' },
-        'grader-a',
-        'pass',
-        'looks good',
-      ),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'looks good',
+      }),
     ]
     const { columns, records } = buildCsvExport(results, attrs)
 
@@ -45,8 +45,20 @@ describe('buildCsvExport', () => {
 
   it('single item, multiple graders → columns interleaved correctly', () => {
     const results = [
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-a', 'pass', 'great'),
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-b', 'fail', 'wrong'),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'great',
+      }),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-b',
+        verdict: 'fail',
+        reason: 'wrong',
+      }),
     ]
     const { columns, records } = buildCsvExport(results, attrs)
 
@@ -70,8 +82,20 @@ describe('buildCsvExport', () => {
 
   it('multiple items → one record per item', () => {
     const results = [
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-a', 'pass', 'ok'),
-      makeResult('item-2', { input: 'q2', expected_output: 'a2' }, 'grader-a', 'fail', 'bad'),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+      makeResult({
+        itemId: 'item-2',
+        itemValues: { input: 'q2', expected_output: 'a2' },
+        graderName: 'grader-a',
+        verdict: 'fail',
+        reason: 'bad',
+      }),
     ]
     const { records } = buildCsvExport(results, attrs)
 
@@ -83,9 +107,27 @@ describe('buildCsvExport', () => {
   it('missing result for a cell → empty verdict and reason', () => {
     // item-2 has no result for grader-b
     const results = [
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-a', 'pass', 'ok'),
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-b', 'pass', 'ok'),
-      makeResult('item-2', { input: 'q2', expected_output: 'a2' }, 'grader-a', 'fail', 'bad'),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-b',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+      makeResult({
+        itemId: 'item-2',
+        itemValues: { input: 'q2', expected_output: 'a2' },
+        graderName: 'grader-a',
+        verdict: 'fail',
+        reason: 'bad',
+      }),
     ]
     const { records } = buildCsvExport(results, attrs)
 
@@ -96,9 +138,27 @@ describe('buildCsvExport', () => {
 
   it('preserves grader name order of first appearance', () => {
     const results = [
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-z', 'pass', 'ok'),
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-a', 'pass', 'ok'),
-      makeResult('item-1', { input: 'q1', expected_output: 'a1' }, 'grader-m', 'pass', 'ok'),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-z',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+      makeResult({
+        itemId: 'item-1',
+        itemValues: { input: 'q1', expected_output: 'a1' },
+        graderName: 'grader-m',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
     ]
     const { columns } = buildCsvExport(results, attrs)
 
@@ -110,9 +170,27 @@ describe('buildCsvExport', () => {
 
   it('preserves item order of first appearance', () => {
     const results = [
-      makeResult('item-c', { input: 'qc', expected_output: 'ac' }, 'grader-a', 'pass', 'ok'),
-      makeResult('item-a', { input: 'qa', expected_output: 'aa' }, 'grader-a', 'fail', 'bad'),
-      makeResult('item-b', { input: 'qb', expected_output: 'ab' }, 'grader-a', 'pass', 'ok'),
+      makeResult({
+        itemId: 'item-c',
+        itemValues: { input: 'qc', expected_output: 'ac' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
+      makeResult({
+        itemId: 'item-a',
+        itemValues: { input: 'qa', expected_output: 'aa' },
+        graderName: 'grader-a',
+        verdict: 'fail',
+        reason: 'bad',
+      }),
+      makeResult({
+        itemId: 'item-b',
+        itemValues: { input: 'qb', expected_output: 'ab' },
+        graderName: 'grader-a',
+        verdict: 'pass',
+        reason: 'ok',
+      }),
     ]
     const { records } = buildCsvExport(results, attrs)
 

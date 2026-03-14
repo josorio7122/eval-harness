@@ -9,10 +9,15 @@ export const experimentRepository = {
       const experiments = await prisma.experiment.findMany({
         where: { deletedAt: null },
         orderBy: { name: 'asc' },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          modelId: true,
+          datasetId: true,
           dataset: { select: { name: true } },
           revision: { select: { schemaVersion: true, createdAt: true } },
-          graders: true,
+          graders: { select: { graderId: true } },
           _count: { select: { results: true } },
         },
       })
@@ -24,15 +29,41 @@ export const experimentRepository = {
     return tryCatch(async () => {
       const experiment = await prisma.experiment.findFirstOrThrow({
         where: { id, deletedAt: null },
-        include: {
-          dataset: true,
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          modelId: true,
+          datasetId: true,
+          datasetRevisionId: true,
+          dataset: { select: { id: true, name: true } },
           revision: {
-            include: {
-              items: { orderBy: { itemId: 'asc' } },
+            select: {
+              id: true,
+              schemaVersion: true,
+              attributes: true,
+              createdAt: true,
+              items: {
+                select: { id: true, itemId: true, values: true, createdAt: true },
+                orderBy: { itemId: 'asc' },
+              },
             },
           },
-          graders: { include: { grader: true } },
-          results: true,
+          graders: {
+            select: {
+              graderId: true,
+              grader: { select: { id: true, name: true, rubric: true } },
+            },
+          },
+          results: {
+            select: {
+              id: true,
+              verdict: true,
+              reason: true,
+              graderId: true,
+              datasetRevisionItemId: true,
+            },
+          },
         },
       })
       return ok(experiment)
@@ -107,9 +138,15 @@ export const experimentRepository = {
     return tryCatch(async () => {
       const results = await prisma.experimentResult.findMany({
         where: { experimentId },
-        include: {
-          datasetRevisionItem: true,
-          grader: true,
+        select: {
+          id: true,
+          experimentId: true,
+          datasetRevisionItemId: true,
+          graderId: true,
+          verdict: true,
+          reason: true,
+          datasetRevisionItem: { select: { id: true, itemId: true, values: true } },
+          grader: { select: { id: true, name: true } },
         },
       })
       return ok(results)

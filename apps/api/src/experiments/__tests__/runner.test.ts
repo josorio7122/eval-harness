@@ -32,7 +32,7 @@ describe('createExperimentRunner', () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
-    await runner.enqueue('exp-1', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-1', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     const statusCalls = mockRepo.updateStatus.mock.calls.map((c) => c[1])
     expect(statusCalls[0]).toBe('running')
@@ -43,7 +43,7 @@ describe('createExperimentRunner', () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
-    await runner.enqueue('exp-1', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-1', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     // 2 items × 2 graders = 4 results
     expect(mockRepo.createResult).toHaveBeenCalledTimes(4)
@@ -53,7 +53,7 @@ describe('createExperimentRunner', () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'great' })
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
-    await runner.enqueue('exp-1', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-1', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     const calls = mockRepo.createResult.mock.calls.map((c) => c[0])
     const firstCall = calls.find(
@@ -84,7 +84,7 @@ describe('createExperimentRunner', () => {
     const events: ExperimentEvent[] = []
     experimentEvents.on('exp-2', (e) => events.push(e))
 
-    await runner.enqueue('exp-2', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-2', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     experimentEvents.off('exp-2', (e) => events.push(e))
 
@@ -113,7 +113,7 @@ describe('createExperimentRunner', () => {
     const events: ExperimentEvent[] = []
     experimentEvents.on('exp-3', (e) => events.push(e))
 
-    await runner.enqueue('exp-3', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-3', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     experimentEvents.off('exp-3', (e) => events.push(e))
 
@@ -127,7 +127,7 @@ describe('createExperimentRunner', () => {
     mockEvaluate.mockRejectedValue(new Error('LLM down'))
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
-    await runner.enqueue('exp-4', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-4', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     const statusCalls = mockRepo.updateStatus.mock.calls.map((c) => c[1])
     expect(statusCalls[statusCalls.length - 1]).toBe('failed')
@@ -148,7 +148,7 @@ describe('createExperimentRunner', () => {
     })
 
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
-    await runner.enqueue('exp-5', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-5', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     const statusCalls = mockRepo.updateStatus.mock.calls.map((c) => c[1])
     expect(statusCalls[statusCalls.length - 1]).toBe('complete')
@@ -161,7 +161,7 @@ describe('createExperimentRunner', () => {
     const events: ExperimentEvent[] = []
     experimentEvents.on('exp-6', (e) => events.push(e))
 
-    await runner.enqueue('exp-6', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-6', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     experimentEvents.off('exp-6', (e) => events.push(e))
 
@@ -182,7 +182,7 @@ describe('createExperimentRunner', () => {
     const events: ExperimentEvent[] = []
     experimentEvents.on('exp-7', (e) => events.push(e))
 
-    await runner.enqueue('exp-7', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-7', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     experimentEvents.off('exp-7', (e) => events.push(e))
 
@@ -197,7 +197,7 @@ describe('createExperimentRunner', () => {
     const events: ExperimentEvent[] = []
     experimentEvents.on('exp-8', (e) => events.push(e))
 
-    await runner.enqueue('exp-8', datasetItems, graders, 'openai/gpt-4o')
+    await runner.enqueue({ experimentId: 'exp-8', datasetItems, graders, modelId: 'openai/gpt-4o' })
 
     experimentEvents.off('exp-8', (e) => events.push(e))
 
@@ -209,13 +209,18 @@ describe('createExperimentRunner', () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     const runner = createExperimentRunner(mockRepo, mockEvaluate)
 
-    await runner.enqueue('exp-9', datasetItems, graders, 'anthropic/claude-opus-4')
+    await runner.enqueue({
+      experimentId: 'exp-9',
+      datasetItems,
+      graders,
+      modelId: 'anthropic/claude-opus-4',
+    })
 
-    // evaluate should be called with (rubric, values, modelId)
+    // evaluate should be called with an object containing modelId
     const calls = mockEvaluate.mock.calls
     expect(calls.length).toBeGreaterThan(0)
     calls.forEach((call) => {
-      expect(call[2]).toBe('anthropic/claude-opus-4')
+      expect(call[0].modelId).toBe('anthropic/claude-opus-4')
     })
   })
 })
