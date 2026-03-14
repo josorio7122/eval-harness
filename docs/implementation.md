@@ -652,7 +652,7 @@ Cell completes → EventEmitter fires → SSE stream writes progress event
 
 - **Vercel AI SDK** (`ai` package) — for structured LLM calls
 - **OpenRouter** (`@openrouter/ai-sdk-provider`) — model gateway, access to 400+ models
-- **Default judge model**: configurable via environment variable (e.g. `google/gemini-2.5-flash-preview` for speed, `anthropic/claude-sonnet-4-6` for quality)
+- **Default judge model**: configurable via environment variable (e.g. `google/gemini-3.1-flash-lite-preview` for speed, `anthropic/claude-sonnet-4-6` for quality)
 
 ### Structured Output
 
@@ -669,7 +669,7 @@ const verdictSchema = z.object({
 })
 
 const result = await generateText({
-  model: openrouter(process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-2.5-flash-preview'),
+  model: openrouter(process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-3.1-flash-lite-preview'),
   output: Output.object({ schema: verdictSchema }),
   messages: [
     { role: 'system', content: buildSystemPrompt(rubric) },
@@ -691,7 +691,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/eval_harness"
 
 # LLM
 OPENROUTER_API_KEY="sk-or-v1-..."    # OpenRouter API key
-LLM_JUDGE_MODEL="google/gemini-2.5-flash-preview"  # Default judge model (overridable)
+LLM_JUDGE_MODEL="google/gemini-3.1-flash-lite-preview"  # Default judge model (overridable)
 
 # API
 API_PORT=3001

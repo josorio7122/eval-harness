@@ -16,7 +16,7 @@ export const evaluate = async (
   rubric: string,
   itemAttributes: Record<string, string>,
 ): Promise<{ verdict: 'pass' | 'fail'; reason: string }> => {
-  const model = process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-2.5-flash-preview'
+  const model = process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-3.1-flash-lite-preview'
 
   const result = await generateText({
     model: openrouter(model),
