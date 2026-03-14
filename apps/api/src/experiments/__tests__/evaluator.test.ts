@@ -12,7 +12,6 @@ vi.mock('@openrouter/ai-sdk-provider', () => ({
 }))
 
 import { generateText } from 'ai'
-import type { GenerateTextResult } from 'ai'
 import { evaluate } from '../evaluator.js'
 
 const mockGenerateText = vi.mocked(generateText)
@@ -25,7 +24,7 @@ describe('evaluate', () => {
   it('returns pass verdict when LLM returns pass', async () => {
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'pass', reason: 'Looks good' },
-    } as unknown as GenerateTextResult<Record<string, never>, never>)
+    } as unknown as Awaited<ReturnType<typeof generateText>>)
 
     const result = await evaluate('Grade this response', { input: 'hello', expected_output: 'world' })
 
@@ -36,7 +35,7 @@ describe('evaluate', () => {
   it('returns fail verdict when LLM returns fail', async () => {
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'fail', reason: 'Does not match' },
-    } as unknown as GenerateTextResult<Record<string, never>, never>)
+    } as unknown as Awaited<ReturnType<typeof generateText>>)
 
     const result = await evaluate('Grade this response', { input: 'hello', expected_output: 'bad' })
 
@@ -46,16 +45,17 @@ describe('evaluate', () => {
   it('passes rubric as system prompt and item attributes as prompt', async () => {
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'pass', reason: 'ok' },
-    } as unknown as GenerateTextResult<Record<string, never>, never>)
+    } as unknown as Awaited<ReturnType<typeof generateText>>)
 
     await evaluate('Check quality', { input: 'foo', expected_output: 'bar' })
 
     const call = mockGenerateText.mock.calls[0][0]
-    expect(call.messages[0].content).toContain('Check quality')
-    expect(call.messages[1].content).toContain('## Input')
-    expect(call.messages[1].content).toContain('foo')
-    expect(call.messages[1].content).toContain('## Expected Output')
-    expect(call.messages[1].content).toContain('bar')
+    const messages = call.messages!
+    expect(messages[0].content).toContain('Check quality')
+    expect(messages[1].content).toContain('## Input')
+    expect(messages[1].content).toContain('foo')
+    expect(messages[1].content).toContain('## Expected Output')
+    expect(messages[1].content).toContain('bar')
   })
 
   it('throws when generateText rejects', async () => {
