@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 
-interface Grader {
+export interface Grader {
   id: string
   name: string
   description: string
@@ -58,5 +58,3 @@ export function useDeleteGrader() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['graders'] }),
   })
 }
-
-export type { Grader }
