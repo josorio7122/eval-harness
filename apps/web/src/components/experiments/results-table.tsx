@@ -18,6 +18,9 @@ interface ResultsTableProps {
   experiment: Experiment
 }
 
+// Long-text attributes get wider max-width
+const longAttrs = new Set(['input', 'prompt', 'expected_output', 'output', 'text', 'content'])
+
 function formatAttributeName(attr: string): string {
   return attr.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
@@ -71,9 +74,6 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
     'passed-all': 'Passed All',
     'any-failed': 'Any Failed',
   }
-
-  // Long-text attributes get wider max-width
-  const longAttrs = new Set(['input', 'prompt', 'expected_output', 'output', 'text', 'content'])
 
   return (
     <div className="flex-1 overflow-auto relative flex flex-col">

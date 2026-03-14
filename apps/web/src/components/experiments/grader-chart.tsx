@@ -38,6 +38,8 @@ export function GraderChart({ experiment }: GraderChartProps) {
   const graders = experiment.graders ?? []
   const results = experiment.results ?? []
 
+  if (graders.length === 0) return null
+
   const chartData: ChartEntry[] = graders.map((eg) => {
     const graderResults = results.filter((r) => r.graderId === eg.graderId)
     const passes = graderResults.filter((r) => r.verdict === 'pass').length
