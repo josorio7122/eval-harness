@@ -115,7 +115,7 @@ async function tryCatch<T>(fn: () => Promise<Result<T>>): Promise<Result<T>> {
   } catch (e) {
     if (e instanceof Error) {
       // Prisma not-found errors (findUniqueOrThrow / findFirstOrThrow)
-      if (e.name === 'NotFoundError' || (e as { code?: string }).code === 'P2025') {
+      if (e.name === 'NotFoundError' || ('code' in e && e.code === 'P2025')) {
         return fail('Record not found')
       }
       return fail(e.message)
@@ -135,12 +135,12 @@ Services are constructed as factory functions in `index.ts`:
 
 ```typescript
 const experimentRunner = createExperimentRunner(experimentRepository, evaluate)
-const experimentService = createExperimentService(
-  experimentRepository,
-  datasetRepository, // cross-domain repo dependency
-  graderRepository, // cross-domain repo dependency
-  experimentRunner,
-)
+const experimentService = createExperimentService({
+  repo: experimentRepository,
+  datasetRepo: datasetRepository,
+  graderRepo: graderRepository,
+  runner: experimentRunner,
+})
 const experimentRouter = createExperimentRouter(experimentService)
 ```
 
@@ -157,7 +157,7 @@ experimentQueue  (concurrency: 2)   — limits parallel experiments
 
 Flow:
 
-1. `POST /experiments` creates the experiment and immediately calls `runner.enqueue(experimentId, items, graders)`.
+1. `POST /experiments` creates the experiment and immediately calls `runner.enqueue({ experimentId, datasetItems, graders, modelId })`.
 2. `runner.enqueue` adds to `experimentQueue`; status starts as `queued`.
 3. When the experiment slot opens: status → `running`, a new `evalQueue` is created for this run, emit `progress` events per cell.
 4. All item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls).

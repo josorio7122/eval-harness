@@ -162,7 +162,7 @@ You can use these rubrics as-is or adapt them for your own datasets. The seed sc
 - **Results storage** — Move experiment results to a columnar store (ClickHouse) for faster analytical queries at scale.
 - **Prompt management & playground** — Add prompt versioning and an interactive playground so users can iterate on prompts, run them, and evaluate results in one workflow.
 - **Judge comparison** — Run the same experiment with different LLM judges to measure inter-grader agreement.
-- **Structured logging** — Add structured request and error logging to the API.
+
 
 ## License
 
