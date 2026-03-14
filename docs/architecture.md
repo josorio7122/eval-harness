@@ -28,7 +28,7 @@ Dataset (unique name)
 | `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                         | No updates — every mutation creates a new revision                   |
 | `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                            | `itemId` is preserved across revisions to track the same logical row |
 | `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`                                                     | `name` UNIQUE                                                        |
-| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId` | Status transitions: queued → running → complete/failed               |
+| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId` | Status transitions: queued → running → complete/failed               |
 | `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                             | —                                                                    |
 | `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String)                                               | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
 
@@ -158,8 +158,17 @@ Flow:
 
 - Provider: OpenRouter via `@openrouter/ai-sdk-provider`
 - SDK: Vercel AI SDK `generateText` with `Output.object` (structured output)
-- Model: `LLM_JUDGE_MODEL` env var (default: `google/gemini-2.5-flash-preview`)
+- Model: accepts `modelId` as a parameter sourced from `experiment.modelId`. Falls back to the `LLM_JUDGE_MODEL` env var, then to `DEFAULT_MODEL_ID` (`google/gemini-2.5-flash`) from `packages/shared/src/constants.ts`.
 - Output schema: `{ reason: string, verdict: enum('pass', 'fail') }` (Zod)
+
+**Model flow:**
+
+```
+Experiment.modelId
+  → runner passes modelId to evaluate()
+    → evaluator calls openrouter(modelId)
+      → OpenRouter API
+```
 
 ### Judge Template System
 

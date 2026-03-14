@@ -125,7 +125,7 @@ type Grader = {
 **Relationships:**
 
 - Referenced by many `Experiment`s (many-to-many via `graderIds`)
-- On deletion, all referencing experiments and their results are cascade-deleted. User must confirm if experiments exist
+- Cannot be deleted while any `ExperimentResult` references it (`onDelete: Restrict`). All referencing experiments (and their results) must be deleted first
 
 ---
 
@@ -143,6 +143,7 @@ type Experiment = {
   datasetRevisionId: uuid // System-set. Reference to the DatasetRevision pinned at creation time
   graderIds: uuid[] // User-selected. List of Grader IDs; at least one required
   status: ExperimentStatus // System-managed. Starts as "queued" on creation
+  modelId: string // User-selected. OpenRouter model ID used by the evaluator. Defaults to DEFAULT_MODEL_ID ("google/gemini-2.5-flash")
 }
 ```
 
@@ -159,9 +160,10 @@ type Experiment = {
 - `datasetId` must reference an existing `Dataset` whose latest revision has at least one item
 - `graderIds` must contain at least one entry; no upper bound
 - `status` starts as `"queued"` on creation
-- At most one experiment may be `"running"` at a time; others queue
+- At most two experiments may be `"running"` at a time; others queue
 - `datasetRevisionId` references the dataset's latest revision at the time of experiment creation. This reference never changes after creation
 - Re-running creates a new `Experiment` with a new `id` and derived `name`; original is preserved
+- `modelId` must be a non-empty string; defaults to `DEFAULT_MODEL_ID` from `packages/shared/src/constants.ts` if not provided
 
 **Relationships:**
 
@@ -170,7 +172,7 @@ type Experiment = {
 - References one or more `Grader`s (many-to-many via `graderIds[]`)
 - Has many `ExperimentResult`s (one-to-many, cascade delete)
 - Cascade-deleted when its referenced `Dataset` is deleted
-- Cascade-deleted when any of its referenced `Grader`s is deleted
+- Cannot be deleted if any of its referenced `Grader`s is deleted while `ExperimentResult`s still reference it (blocked by `onDelete: Restrict`)
 
 ---
 
@@ -221,7 +223,7 @@ DatasetRevision ──< DatasetRevisionItem      (one-to-many, cascade delete)
 Dataset ──< Experiment                       (one-to-many via datasetId, cascade delete)
 DatasetRevision ──< Experiment               (one-to-many via datasetRevisionId, pinned at creation)
 
-Grader  ──< Experiment                       (many-to-many via graderIds[], cascade delete on grader deletion)
+Grader  ──< Experiment                       (many-to-many via graderIds[], Restrict on ExperimentResult — experiments must be deleted first)
 
 Experiment ──< ExperimentResult              (one-to-many, cascade delete)
 ExperimentResult >── DatasetRevisionItem     (many-to-one, reference only)
@@ -236,7 +238,7 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Dataset`            | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments |
 | `DatasetRevision`    | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually)                                         |
-| `Grader`             | All `Experiment`s referencing it in `graderIds`, all `ExperimentResult`s of those experiments                                               |
+| `Grader`             | **Cannot be deleted** while any `ExperimentResult` references it (`onDelete: Restrict`). Delete all referencing experiments first, then delete the grader |
 | `Experiment`         | All its `ExperimentResult`s                                                                                                                 |
 | Attribute change     | Creates a new revision; previous revisions are unchanged                                                                                    |
 | Item add/edit/delete | Creates a new revision; previous revisions are unchanged                                                                                    |
@@ -251,7 +253,7 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 | `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`  | _(none — system-produced from mutations)_ |
 | `DatasetRevisionItem` | `id`, `itemId`                      | `values`                                  |
 | `Grader`              | `id`                                | `name`, `description`, `rubric`           |
-| `Experiment`          | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds`          |
+| `Experiment`          | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds`, `modelId` |
 | `ExperimentResult`    | `id`, `verdict`, `reason`           | _(none — fully system-produced)_          |
 
 ---
@@ -652,7 +654,7 @@ Cell completes → EventEmitter fires → SSE stream writes progress event
 
 - **Vercel AI SDK** (`ai` package) — for structured LLM calls
 - **OpenRouter** (`@openrouter/ai-sdk-provider`) — model gateway, access to 400+ models
-- **Default judge model**: configurable via environment variable (e.g. `google/gemini-3.1-flash-lite-preview` for speed, `anthropic/claude-sonnet-4-6` for quality)
+- **Default judge model**: stored per experiment at creation time. The `DEFAULT_MODEL_ID` constant in `packages/shared/src/constants.ts` is `"google/gemini-2.5-flash"`. The `LLM_JUDGE_MODEL` env var is a fallback for backward compatibility only — the experiment's `modelId` field takes precedence.
 
 ### Structured Output
 
@@ -669,7 +671,7 @@ const verdictSchema = z.object({
 })
 
 const result = await generateText({
-  model: openrouter(process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-3.1-flash-lite-preview'),
+  model: openrouter(modelId), // modelId comes from the experiment; falls back to LLM_JUDGE_MODEL, then DEFAULT_MODEL_ID
   output: Output.object({ schema: verdictSchema }),
   messages: [
     { role: 'system', content: buildSystemPrompt(rubric) },
@@ -691,7 +693,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/eval_harness"
 
 # LLM
 OPENROUTER_API_KEY="sk-or-v1-..."    # OpenRouter API key
-LLM_JUDGE_MODEL="google/gemini-3.1-flash-lite-preview"  # Default judge model (overridable)
+LLM_JUDGE_MODEL="google/gemini-2.5-flash"  # Fallback judge model (used only if experiment has no modelId)
 
 # API
 API_PORT=3001
@@ -706,7 +708,7 @@ VITE_API_URL="http://localhost:3001"
 - `.env.example` committed to repo with placeholder values (no real keys)
 - `.env` added to `.gitignore` — never committed
 - `OPENROUTER_API_KEY` is the only secret — everything else is configuration
-- `LLM_JUDGE_MODEL` is configurable so the model can be changed without code changes
+- `LLM_JUDGE_MODEL` is a fallback only — the experiment's `modelId` field takes precedence; set this for backward compatibility or to override experiments that somehow lack a `modelId`
 - Vite requires `VITE_` prefix for frontend-accessible variables
 
 ---
@@ -914,7 +916,7 @@ graders:
     expected_status: 200
 
   delete:
-    description: 'Delete grader (cascades to experiments)'
+    description: 'Delete grader (blocked if ExperimentResults reference it — delete experiments first)'
     command: |
       curl -X DELETE http://localhost:3001/graders/:id
     expected_status: 200

@@ -257,7 +257,9 @@ These describe what the user provides and what the system surfaces — not inter
 
 ### Behaviors
 
-- **ExperimentCreate:** When the user provides a name, selects a dataset, and selects one or more graders, the system creates an experiment that references the dataset's latest revision at the time of creation. The experiment is immediately visible in the experiment list. No new revision is created — the experiment uses the existing latest revision.
+- **ExperimentCreate:** When the user provides a name, selects a dataset, selects one or more graders, and selects a model, the system creates an experiment that references the dataset's latest revision at the time of creation. The experiment is immediately visible in the experiment list. No new revision is created — the experiment uses the existing latest revision.
+- **ExperimentModelSelection:** When creating an experiment, the user selects a model from a dropdown (default: `google/gemini-2.5-flash`). Available models are grouped into three tiers: Top-Tier Reasoning, Fast / Cost-Effective, and Open Source. The selected model is stored on the experiment and used by the evaluator when the experiment runs. The model ID is displayed in the experiment header and in the experiment list.
+- **ExperimentModelStored:** The model is stored per experiment. Changing the default or environment configuration does not alter models already stored on existing experiments.
 - **ExperimentRun:** When the user runs an experiment, the system evaluates every grader against every item in the experiment's referenced revision — not the dataset's current state. For each evaluation, the system sends the rubric as judging instructions and the revision item's attributes as the data to judge. Each evaluation produces a verdict (pass or fail) and a reason. Dataset edits made after experiment creation do not affect the experiment's items or results.
 - **ExperimentRerun:** When the user re-runs an experiment, the system creates a new experiment that references the dataset's latest revision at the time of the rerun. The new experiment runs independently with its own revision reference. The original experiment and its results are preserved with their original revision.
 - **ExperimentList:** The user can see a list of all experiments, each showing at minimum its name and the dataset it is associated with.
@@ -285,6 +287,7 @@ These describe what the user provides and what the system surfaces — not inter
 - `name` — string, required, non-empty
 - `dataset` — one selected dataset, must contain at least one item
 - `graders` — one or more selected graders
+- `modelId` — string, required, non-empty; the OpenRouter model ID to use as the LLM judge (defaults to `google/gemini-2.5-flash`)
 
 **Experiment (as shown in the list)**
 
@@ -292,6 +295,7 @@ These describe what the user provides and what the system surfaces — not inter
 - `dataset_name` — name of the associated dataset
 - `status` — one of: "queued", "running", "complete", "failed"
 - `revision_schema_version` — the schemaVersion of the revision this experiment is pinned to
+- `modelId` — the OpenRouter model ID used as the LLM judge for this experiment
 
 **Experiment Results table**
 
