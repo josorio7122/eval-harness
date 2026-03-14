@@ -24,43 +24,43 @@ Dataset (unique name)
   │     └── ExperimentResult ──────────────────────── Grader ─┘
 ```
 
+_Dataset, Grader, and Experiment include a `deletedAt` field for soft delete. Soft-deleted records are excluded from all list and lookup queries._
+
 ### Entities
 
-| Entity                | Purpose                                                    | Key fields                                                                                     | Constraints                                                          |
-| --------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`                                                                            | `name` UNIQUE                                                        |
-| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                    | No updates — every mutation creates a new revision                   |
-| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                       | `itemId` is preserved across revisions to track the same logical row |
-| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`                                                                | `name` UNIQUE                                                        |
-| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId` | Status transitions: queued → running → complete/failed               |
-| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                        | —                                                                    |
-| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                           | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
+| Entity                | Purpose                                                    | Key fields                                                                                                              | Constraints                                                                  |
+| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                            | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                                             | No updates — every mutation creates a new revision                           |
+| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                                                | `itemId` is preserved across revisions to track the same logical row         |
+| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`, `deletedAt` (DateTime?)                                                                | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId`, `deletedAt` (DateTime?) | Status transitions: queued → running → complete/failed                       |
+| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                                                 | —                                                                            |
+| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                                                    | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`                     |
 
-### Cascade Delete Chains
+### Soft Delete
 
-```
-DELETE Dataset
-  → Experiment (Cascade)
-    → ExperimentGrader (Cascade)
-    → ExperimentResult (Cascade)
-  → DatasetRevision (Cascade)
-    → DatasetRevisionItem (Cascade)
-      → ExperimentResult (Cascade)
+Dataset, Grader, and Experiment use **soft delete** — setting `deletedAt` to the current timestamp instead of removing the record. Child records (revisions, items, results) are never deleted.
 
-DELETE Grader
-  → ExperimentResult (Restrict) ← blocks if results exist
-  → ExperimentGrader (Cascade)  ← only reached if no results
+**Soft-delete a Dataset:**
 
-DELETE Experiment
-  → ExperimentGrader (Cascade)
-  → ExperimentResult (Cascade)
+- Dataset hidden from lists and dropdowns
+- All DatasetRevisions and items preserved
+- All Experiments referencing this dataset preserved with their results
+- Dataset name becomes available for reuse
 
-DELETE DatasetRevision
-  → DatasetRevisionItem (Cascade)
-    → ExperimentResult (Cascade)
-```
+**Soft-delete a Grader:**
 
-> **Note:** `ExperimentResult.grader` uses `onDelete: Restrict`. A grader with existing results cannot be deleted — the results must be removed first (by deleting the experiment).
+- Grader hidden from lists and dropdowns
+- All Experiments that used this grader preserved with their results
+- Grader name becomes available for reuse
+
+**Soft-delete an Experiment:**
+
+- Experiment hidden from the list
+- All ExperimentResults preserved in the database
+
+> **Foreign key safety:** `Experiment.datasetId` uses `onDelete: Restrict` — a hard delete of a Dataset (bypassing the app layer) is blocked if experiments reference it. `ExperimentResult.graderId` uses `onDelete: Restrict` — a hard delete of a Grader is blocked if results reference it.
 
 ### Key Invariants
 

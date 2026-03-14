@@ -18,6 +18,7 @@ A named collection of structured test cases. The current state (attributes and i
 type Dataset = {
   id: uuid // System-generated
   name: string // User-provided. Non-empty, unique across all datasets
+  deletedAt: timestamp | null // Soft-delete timestamp; null when active
 }
 ```
 
@@ -32,7 +33,7 @@ type Dataset = {
 **Relationships:**
 
 - Has many `DatasetRevision`s (one-to-many, cascade delete)
-- Referenced by many `Experiment`s. On deletion, all referencing experiments and their results are cascade-deleted
+- Referenced by many `Experiment`s (`onDelete: Restrict` — prevents hard deletion while experiments exist). Soft-deleted datasets hide from lists but preserve all experiment references.
 
 ---
 
@@ -111,6 +112,7 @@ type Grader = {
   name: string // User-provided. Non-empty, unique across all graders
   description: string // User-provided. May be empty string, never null
   rubric: string // User-provided. Non-empty. The full judging instruction for the LLM
+  deletedAt: timestamp | null // Soft-delete timestamp; null when active
 }
 ```
 
@@ -125,7 +127,7 @@ type Grader = {
 **Relationships:**
 
 - Referenced by many `Experiment`s (many-to-many via `graderIds`)
-- Cannot be deleted while any `ExperimentResult` references it (`onDelete: Restrict`). All referencing experiments (and their results) must be deleted first
+- Soft-deleted (hidden from lists and dropdowns). All experiments and results referencing the grader are preserved. `ExperimentResult.graderId` uses `onDelete: Restrict` at the database level as a safety net.
 
 ---
 
@@ -144,6 +146,7 @@ type Experiment = {
   graderIds: uuid[] // User-selected. List of Grader IDs; at least one required
   status: ExperimentStatus // System-managed. Starts as "queued" on creation
   modelId: string // Required. OpenRouter model ID selected by the user for evaluation
+  deletedAt: timestamp | null // Soft-delete timestamp; null when active
 }
 ```
 
@@ -171,8 +174,8 @@ type Experiment = {
 - References one `DatasetRevision` (many-to-one, pinned at creation — the frozen item set)
 - References one or more `Grader`s (many-to-many via `graderIds[]`)
 - Has many `ExperimentResult`s (one-to-many, cascade delete)
-- Cascade-deleted when its referenced `Dataset` is deleted
-- Cannot be deleted if any of its referenced `Grader`s is deleted while `ExperimentResult`s still reference it (blocked by `onDelete: Restrict`)
+- Protected by `onDelete: Restrict` on the Dataset FK — preserved when the dataset is soft-deleted
+- Graders are soft-deleted independently — experiments are never affected by grader deletion
 
 ---
 
@@ -220,10 +223,10 @@ type ExperimentResult = {
 Dataset ──< DatasetRevision                  (one-to-many, cascade delete)
 DatasetRevision ──< DatasetRevisionItem      (one-to-many, cascade delete)
 
-Dataset ──< Experiment                       (one-to-many via datasetId, cascade delete)
+Dataset ──< Experiment                       (one-to-many via datasetId, onDelete: Restrict)
 DatasetRevision ──< Experiment               (one-to-many via datasetRevisionId, pinned at creation)
 
-Grader  ──< Experiment                       (many-to-many via graderIds[], Restrict on ExperimentResult — experiments must be deleted first)
+Grader  ──< Experiment                       (many-to-many via graderIds[], soft delete independent)
 
 Experiment ──< ExperimentResult              (one-to-many, cascade delete)
 ExperimentResult >── DatasetRevisionItem     (many-to-one, reference only)
@@ -232,16 +235,16 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 
 ---
 
-### Cascade Delete Rules
+### Deletion Rules
 
-| Entity deleted       | Also deletes                                                                                                                                              |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dataset`            | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments               |
-| `DatasetRevision`    | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually)                                                       |
-| `Grader`             | **Cannot be deleted** while any `ExperimentResult` references it (`onDelete: Restrict`). Delete all referencing experiments first, then delete the grader |
-| `Experiment`         | All its `ExperimentResult`s                                                                                                                               |
-| Attribute change     | Creates a new revision; previous revisions are unchanged                                                                                                  |
-| Item add/edit/delete | Creates a new revision; previous revisions are unchanged                                                                                                  |
+| Entity deleted       | Behavior                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `Dataset`            | Soft-deleted (`deletedAt` set). All revisions, items, experiments, and results preserved. Name available for reuse. |
+| `Grader`             | Soft-deleted (`deletedAt` set). All experiments and results referencing it preserved. Name available for reuse.     |
+| `Experiment`         | Soft-deleted (`deletedAt` set). All results preserved in the database.                                              |
+| `DatasetRevision`    | Never deleted individually — preserved even when parent dataset is soft-deleted.                                    |
+| Attribute change     | Creates a new revision; previous revisions are unchanged.                                                           |
+| Item add/edit/delete | Creates a new revision; previous revisions are unchanged.                                                           |
 
 ---
 
@@ -263,7 +266,7 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 1. **Revision immutability:** Once a `DatasetRevision` is created, its `attributes` and all its `DatasetRevisionItem` rows are never modified
 2. **Schema conformance:** For every `DatasetRevisionItem` in a revision, the keys of `item.values` equal exactly the entries in `revision.attributes`
 3. **Built-in immutability:** No operation may remove `"input"` or `"expected_output"` from any revision's attributes
-4. **Name uniqueness:** Dataset names are unique across all datasets. Grader names are unique across all graders. Attribute names are unique within a revision's attributes
+4. **Name uniqueness:** Dataset names are unique across all active (non-deleted) datasets. Grader names are unique across all active (non-deleted) graders. Names can be reused after soft deletion. Attribute names are unique within a revision's attributes
 5. **Non-empty selection:** A dataset whose latest revision has zero items is never available for experiment creation
 6. **Concurrency limit:** At most two experiments may have `status === "running"` at any time
 7. **Cell uniqueness:** Within an experiment, `(datasetRevisionItemId, graderId)` uniquely identifies exactly one cell

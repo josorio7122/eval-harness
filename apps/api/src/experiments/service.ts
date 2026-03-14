@@ -84,12 +84,7 @@ export function createExperimentService(
         const result = await repo.findById(id)
         if (!result.success) return result
 
-        const experiment = result.data as unknown as {
-          status: ExperimentStatus
-          modelId: string
-          revision?: { items: Array<{ id: string; values: unknown }> }
-          graders: Array<{ grader: { id: string; rubric: string } }>
-        }
+        const experiment = result.data
 
         if (experiment.status !== 'queued') {
           return fail('Experiment is not in a runnable state')

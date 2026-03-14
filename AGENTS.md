@@ -63,3 +63,59 @@ test-data/         — Seed script + sample CSV for manual testing
 - **Result pattern**: All repo/service methods return `Result<T>`. Errors propagate via `tryCatch`.
 - **Dataset versioning**: Every mutation creates a new `DatasetRevision`. Experiments pin to a specific revision.
 - **Frontend**: Uses Base UI (not Radix) for primitives via shadcn/ui v4.
+
+## Code rules
+
+### Functions with 3+ parameters must use an object parameter
+
+Any function (or method) with **3 or more parameters** must accept a single object instead of positional args. This improves readability at call sites and makes parameter order irrelevant.
+
+```typescript
+// ❌ Wrong — positional args are ambiguous at call sites
+function createExperiment(name: string, datasetId: string, graderId: string) { ... }
+
+// ✅ Right — object param with named fields
+function createExperiment(params: { name: string; datasetId: string; graderId: string }) { ... }
+```
+
+### Minimize type casting — avoid `as` unless absolutely necessary
+
+Never use `as unknown as T` or `as T` to silence the compiler. If a cast is needed, it means the types are wrong — fix the types instead. The only acceptable uses of `as` are:
+
+- `as const` for literal inference
+- Narrowing after a runtime type guard when TypeScript can't infer it
+- Third-party library gaps where no `@types` fix exists (add a `// CAST:` comment explaining why)
+
+```typescript
+// ❌ Wrong
+const data = result as unknown as MyType
+
+// ✅ Right — fix the generic or return type so no cast is needed
+const data: MyType = await fetchTypedResult()
+```
+
+### Prisma queries: prefer `select` over `include`
+
+Always use `select` to explicitly pick the fields you need. Never use `include` to pull in entire relations — it over-fetches and couples code to the full model shape.
+
+```typescript
+// ❌ Wrong — fetches all fields + entire relation
+const dataset = await prisma.dataset.findUnique({
+  where: { id },
+  include: { revisions: true },
+})
+
+// ✅ Right — fetches only what's needed
+const dataset = await prisma.dataset.findUnique({
+  where: { id },
+  select: {
+    id: true,
+    name: true,
+    revisions: {
+      select: { id: true, version: true },
+    },
+  },
+})
+```
+
+Exception: when you genuinely need every field on the model and all fields on the relation (rare). In that case, add a `// SELECT-EXCEPTION:` comment explaining why `include` is justified.

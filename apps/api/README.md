@@ -29,30 +29,30 @@ Same pattern for `graders/` and `experiments/`.
 
 ### Datasets
 
-| Method | Path                                | Description               |
-| ------ | ----------------------------------- | ------------------------- |
-| GET    | /datasets                           | List all datasets         |
-| POST   | /datasets                           | Create dataset            |
-| GET    | /datasets/:id                       | Get dataset with items    |
-| PATCH  | /datasets/:id                       | Rename dataset            |
-| DELETE | /datasets/:id                       | Delete dataset (cascades) |
-| POST   | /datasets/:id/attributes            | Add attribute             |
-| DELETE | /datasets/:id/attributes/:name      | Remove attribute          |
-| GET    | /datasets/:id/revisions             | List revisions            |
-| GET    | /datasets/:id/revisions/:revisionId | Get revision detail       |
-| GET    | /datasets/:id/csv/template          | Download CSV template     |
-| POST   | /datasets/:id/csv/import            | Import items from CSV     |
-| GET    | /datasets/:id/csv/export            | Export items as CSV       |
+| Method | Path                                | Description            |
+| ------ | ----------------------------------- | ---------------------- |
+| GET    | /datasets                           | List all datasets      |
+| POST   | /datasets                           | Create dataset         |
+| GET    | /datasets/:id                       | Get dataset with items |
+| PATCH  | /datasets/:id                       | Rename dataset         |
+| DELETE | /datasets/:id                       | Soft-delete dataset    |
+| POST   | /datasets/:id/attributes            | Add attribute          |
+| DELETE | /datasets/:id/attributes/:name      | Remove attribute       |
+| GET    | /datasets/:id/revisions             | List revisions         |
+| GET    | /datasets/:id/revisions/:revisionId | Get revision detail    |
+| GET    | /datasets/:id/csv/template          | Download CSV template  |
+| POST   | /datasets/:id/csv/import            | Import items from CSV  |
+| GET    | /datasets/:id/csv/export            | Export items as CSV    |
 
 ### Graders
 
-| Method | Path         | Description              |
-| ------ | ------------ | ------------------------ |
-| GET    | /graders     | List all graders         |
-| POST   | /graders     | Create grader            |
-| GET    | /graders/:id | Get grader               |
-| PATCH  | /graders/:id | Update grader            |
-| DELETE | /graders/:id | Delete grader (cascades) |
+| Method | Path         | Description        |
+| ------ | ------------ | ------------------ |
+| GET    | /graders     | List all graders   |
+| POST   | /graders     | Create grader      |
+| GET    | /graders/:id | Get grader         |
+| PATCH  | /graders/:id | Update grader      |
+| DELETE | /graders/:id | Soft-delete grader |
 
 ### Experiments
 

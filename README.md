@@ -7,7 +7,7 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 - Create datasets with custom attributes (input, expected_output, plus any custom fields)
 - Define graders with natural-language rubrics for LLM-based evaluation
 - Run experiments that evaluate every test case against selected graders, using a model you choose per experiment
-- Select from 15 pre-configured models grouped by tier (Top-Tier Reasoning, Fast / Cost-Effective, Open Source)
+- Select from 14 pre-configured models grouped by provider (Anthropic, OpenAI, Google, Meta, Mistral, DeepSeek)
 - Review results in a dense table — rows are items, columns are graders, cells show pass/fail verdicts
 - Dataset versioning via immutable revisions — experiments pin to a snapshot, so results are reproducible
 
