@@ -21,7 +21,7 @@ export function AggregateStats({
   const allResults = experiment.results ?? []
   const results = filteredResults ?? allResults
   const graders = experiment.graders ?? []
-  const items = experiment.dataset?.items ?? []
+  const items = experiment.revision?.items ?? []
 
   const itemCount = filteredItemCount ?? items.length
   const totalCells = itemCount * graders.length

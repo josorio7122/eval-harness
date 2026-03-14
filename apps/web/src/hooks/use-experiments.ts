@@ -26,7 +26,6 @@ export interface Experiment {
     id: string
     name: string
     attributes: string[]
-    items: Array<{ id: string; values: Record<string, string> }>
   }
   graders?: ExperimentGrader[]
   results?: ExperimentResult[]
@@ -34,6 +33,7 @@ export interface Experiment {
   revision?: {
     schemaVersion: number
     createdAt: string
+    items?: Array<{ id: string; values: Record<string, string> }>
   }
 }
 

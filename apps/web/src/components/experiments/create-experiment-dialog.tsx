@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useCreateExperiment } from '@/hooks/use-experiments'
+import { useCreateExperiment, useRunExperiment } from '@/hooks/use-experiments'
 import { useDatasets } from '@/hooks/use-datasets'
 import { useGraders } from '@/hooks/use-graders'
 import { Button } from '@/components/ui/button'
@@ -35,6 +35,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
 
   const [prevOpen, setPrevOpen] = useState(open)
   const createExperiment = useCreateExperiment()
+  const runExperiment = useRunExperiment()
   const { data: datasets } = useDatasets()
   const { data: graders } = useGraders()
 
@@ -64,12 +65,12 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     e.preventDefault()
     if (!name.trim() || !datasetId || graderIds.length === 0) return
     try {
-      const result = await createExperiment.mutateAsync({
-        name: name.trim(),
-        datasetId,
-        graderIds,
-      })
-      onCreated?.((result as { id?: string }).id ?? '')
+      const result = await createExperiment.mutateAsync({ name: name.trim(), datasetId, graderIds })
+      const newId = (result as { id?: string }).id ?? ''
+      if (newId) {
+        runExperiment.mutate(newId)
+      }
+      onCreated?.(newId)
       onClose()
     } catch {
       // error handled by mutation state
@@ -182,7 +183,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
             Cancel
           </Button>
           <Button type="submit" form="create-experiment" disabled={!canSubmit || createExperiment.isPending}>
-            {createExperiment.isPending ? 'Creating…' : 'Create experiment'}
+            {createExperiment.isPending ? 'Creating…' : 'Create & run'}
           </Button>
         </DialogFooter>
       </DialogContent>

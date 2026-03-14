@@ -31,7 +31,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
   const [filter, setFilter] = useState<ResultsFilter>('all')
 
   const graders = experiment.graders ?? []
-  const items = experiment.dataset?.items ?? []
+  const items = experiment.revision?.items ?? []
   const results = experiment.results ?? []
 
   // Sort items: fail count descending (failures float to top)

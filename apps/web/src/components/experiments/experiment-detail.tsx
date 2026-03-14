@@ -75,7 +75,10 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
     navigate('/experiments')
   }
 
-  const totalCells = (experiment.dataset?.items?.length ?? 0) * (experiment.graders?.length ?? 0)
+  const totalCells =
+    isRunning && progress.totalCells > 0
+      ? progress.totalCells
+      : (experiment.revision?.items?.length ?? 0) * (experiment.graders?.length ?? 0)
   const completedCells =
     isRunning && progress.totalCells > 0
       ? progress.cellsCompleted
