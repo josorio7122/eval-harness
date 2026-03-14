@@ -275,12 +275,6 @@ export const datasetRepository = {
     return tryCatch(async () => {
       const latest = await getLatestRevisionOrThrow(datasetId)
 
-      const existingItems = latest.items.map((item) => ({
-        itemId: item.itemId,
-        values: item.values as Record<string, string>,
-        createdAt: item.createdAt,
-      }))
-
       const newItems = valuesArray.map((values) => ({
         itemId: randomUUID(),
         values,
@@ -289,7 +283,7 @@ export const datasetRepository = {
       const revision = await createRevision(datasetId, {
         schemaVersionDelta: 0,
         attributes: latest.attributes,
-        items: [...existingItems, ...newItems],
+        items: [...newItems],
       })
 
       return ok(revision)

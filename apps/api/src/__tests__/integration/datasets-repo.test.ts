@@ -247,8 +247,8 @@ describe('datasets repository (integration)', () => {
     expect(detail.attributes).toEqual(['input', 'expected_output'])
   })
 
-  // 18. importItems creates exactly one new revision
-  it('importItems creates exactly one revision with all items', async () => {
+  // 18. importItems creates exactly one new revision and REPLACES existing items
+  it('importItems creates exactly one revision with only the imported items (replaces existing)', async () => {
     const ds = unwrap(await repo.create('import-ds'))
     unwrap(await repo.createItem(ds.id, { input: 'existing', expected_output: 'item' }))
 
@@ -266,7 +266,7 @@ describe('datasets repository (integration)', () => {
     expect(afterRevisions.length).toBe(beforeCount + 1) // exactly one new revision
 
     const found = unwrap(await repo.findById(ds.id))
-    expect(found.items).toHaveLength(4) // 1 existing + 3 imported
+    expect(found.items).toHaveLength(3) // existing item REPLACED — only 3 imported items remain
   })
 
   // 19. findItemById returns item from latest revision by stable itemId

@@ -157,4 +157,39 @@ describe('datasets service (integration)', () => {
       expected_output: 'world',
     })
   })
+
+  // 9. importCsv REPLACES existing items (not appends)
+  it('importCsv replaces existing items with only the imported rows', async () => {
+    const ds = unwrap(await datasetRepository.create(uid('svc-csv-replace')))
+    // Add two items manually first
+    unwrap(await datasetRepository.createItem(ds.id, { input: 'old1', expected_output: 'out1' }))
+    unwrap(await datasetRepository.createItem(ds.id, { input: 'old2', expected_output: 'out2' }))
+
+    const itemsBefore = unwrap(await datasetRepository.findItemsByDatasetId(ds.id))
+    expect(itemsBefore).toHaveLength(2)
+
+    // Now import a CSV with 3 different rows
+    const csv = `input,expected_output\nnew1,newout1\nnew2,newout2\nnew3,newout3`
+    const result = await service.importCsv(ds.id, csv)
+
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    expect(result.data.imported).toBe(3)
+
+    // After import: only the 3 new rows exist — old items are gone
+    const itemsAfter = unwrap(await datasetRepository.findItemsByDatasetId(ds.id))
+    expect(itemsAfter).toHaveLength(3)
+    const values = itemsAfter.map((i) => i.values as Record<string, string>)
+    expect(values).toEqual(
+      expect.arrayContaining([
+        { input: 'new1', expected_output: 'newout1' },
+        { input: 'new2', expected_output: 'newout2' },
+        { input: 'new3', expected_output: 'newout3' },
+      ]),
+    )
+    // Old items must not be present
+    const inputs = values.map((v) => v.input)
+    expect(inputs).not.toContain('old1')
+    expect(inputs).not.toContain('old2')
+  })
 })
