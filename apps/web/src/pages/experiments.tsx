@@ -4,5 +4,5 @@ import { ExperimentDetail } from '@/components/experiments/experiment-detail'
 
 export function ExperimentsPage() {
   const { id } = useParams<{ id: string }>()
-  return id ? <ExperimentDetail id={id} /> : <ExperimentList />
+  return id ? <ExperimentDetail key={id} id={id} /> : <ExperimentList />
 }
