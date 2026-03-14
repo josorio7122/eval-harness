@@ -19,11 +19,12 @@ export interface Dataset {
   id: string
   name: string
   attributes: string[]
-  _count?: { items: number }
+  itemCount: number
 }
 
 export interface DatasetItem {
   id: string
+  itemId: string
   datasetId: string
   values: Record<string, string>
 }

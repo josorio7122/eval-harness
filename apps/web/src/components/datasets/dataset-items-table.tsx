@@ -77,7 +77,7 @@ export default function DatasetItemsTable({
                   item={item}
                   attributes={dataset.attributes}
                   onEdit={() => onEditItem(item)}
-                  onDelete={() => deleteItem.mutate({ datasetId: dataset.id, itemId: item.id })}
+                  onDelete={() => deleteItem.mutate({ datasetId: dataset.id, itemId: item.itemId })}
                 />
               ))}
             </TableBody>

@@ -15,6 +15,12 @@ export async function tryCatch<T>(fn: () => Promise<Result<T>>) {
   try {
     return await fn()
   } catch (e) {
-    return fail(e instanceof Error ? e.message : 'Unknown error')
+    if (e instanceof Error) {
+      if (e.name === 'NotFoundError' || (e as { code?: string }).code === 'P2025') {
+        return fail('Record not found')
+      }
+      return fail(e.message)
+    }
+    return fail('Unknown error')
   }
 }

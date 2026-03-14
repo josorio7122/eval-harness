@@ -81,7 +81,7 @@ export function EditItemDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    await updateItem.mutateAsync({ datasetId, itemId: item.id, values })
+    await updateItem.mutateAsync({ datasetId, itemId: item.itemId, values })
     onOpenChange(false)
   }
 

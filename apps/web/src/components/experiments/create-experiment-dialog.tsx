@@ -85,7 +85,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
           <DialogTitle>New Experiment</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form id="create-experiment" onSubmit={handleSubmit} className="flex flex-col gap-4 min-w-0">
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <Label>
@@ -107,11 +107,13 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
             </Label>
             <Select value={datasetId} onValueChange={(v) => setDatasetId(v ?? '')}>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a dataset…" />
+                <SelectValue placeholder="Select a dataset…">
+                  {datasetId && datasets?.find(ds => ds.id === datasetId)?.name}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {datasets
-                  ?.filter((ds) => (ds._count?.items ?? 0) > 0)
+                  ?.filter((ds) => ds.itemCount > 0)
                   .map((ds) => (
                     <SelectItem key={ds.id} value={ds.id}>
                       {ds.name}
@@ -126,7 +128,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
             <Label>
               Graders <span className="text-destructive">*</span>
             </Label>
-            <div className="border border-border rounded-md max-h-[160px] overflow-y-auto bg-card">
+            <div className="border border-border rounded-md max-h-[160px] overflow-y-auto overflow-x-hidden bg-card">
               {!graders || graders.length === 0 ? (
                 <p className="text-xs text-muted-foreground p-3">
                   No graders available. Create graders first.
@@ -144,10 +146,10 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
                         checked={selected}
                         onCheckedChange={() => toggleGrader(grader.id)}
                       />
-                      <Label htmlFor={grader.id} className="cursor-pointer flex-1 text-sm">
-                        <span className="font-medium truncate block">{grader.name}</span>
+                      <Label htmlFor={grader.id} className="cursor-pointer flex-1 min-w-0 flex-col items-start gap-0.5 text-sm font-normal">
+                        <span className="font-medium truncate max-w-full">{grader.name}</span>
                         {grader.description && (
-                          <span className="text-[11px] text-muted-foreground truncate block">
+                          <span className="text-[11px] text-muted-foreground truncate max-w-full">
                             {grader.description}
                           </span>
                         )}
@@ -173,15 +175,16 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
             </p>
           )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!canSubmit || createExperiment.isPending}>
-              {createExperiment.isPending ? 'Creating…' : 'Create experiment'}
-            </Button>
-          </DialogFooter>
         </form>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" form="create-experiment" disabled={!canSubmit || createExperiment.isPending}>
+            {createExperiment.isPending ? 'Creating…' : 'Create experiment'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

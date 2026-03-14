@@ -22,7 +22,7 @@ const columns: Column<Dataset>[] = [
     cellClassName: 'text-right',
     render: (d) => (
       <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
-        {d._count?.items ?? '—'} items · {d.attributes.length} attr
+        {d.itemCount} items · {d.attributes.length} attr
       </span>
     ),
   },

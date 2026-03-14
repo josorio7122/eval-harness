@@ -79,6 +79,7 @@ export const datasetRepository = {
         datasets.map((ds) => ({
           id: ds.id,
           name: ds.name,
+          attributes: ds.revisions[0]?.attributes ?? [],
           itemCount: ds.revisions[0]?._count.items ?? 0,
         })),
       )

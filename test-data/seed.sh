@@ -73,10 +73,10 @@ if [ ! -f "$CSV_FILE" ]; then
   exit 1
 fi
 
-CSV_CONTENT=$(cat "$CSV_FILE")
-CSV_BODY=$(jq -n --arg content "$CSV_CONTENT" '{"content": $content}')
-
-IMPORT_RESPONSE=$(post "/datasets/$DATASET_ID/csv/import" "$CSV_BODY")
+IMPORT_RESPONSE=$(curl -s -X POST \
+  -H "Content-Type: text/plain" \
+  --data-binary "@$CSV_FILE" \
+  "${API_URL}/datasets/${DATASET_ID}/csv/import")
 assert_success "$IMPORT_RESPONSE" "CSV import"
 echo "  ✓ CSV imported successfully"
 
