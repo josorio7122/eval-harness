@@ -1,5 +1,6 @@
 import { Play, RotateCcw, Trash2, Loader2, Download } from 'lucide-react'
 import { useNavigate } from 'react-router'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Experiment } from '@/hooks/use-experiments'
 import { PageHeader } from '@/components/shared/page-header'
@@ -42,28 +43,16 @@ export function ExperimentHeader({
         {experiment.name}
       </h2>
 
-      {/* Dataset name */}
+      {/* Metadata badges */}
       {experiment.dataset && (
-        <span className="text-sm text-muted-foreground shrink-0">{experiment.dataset.name}</span>
+        <Badge variant="secondary" className="shrink-0 font-normal">
+          {experiment.dataset.name}
+        </Badge>
       )}
-
-      {/* Revision metadata */}
-      {experiment.revision && (
-        <>
-          <span className="text-sm font-mono text-muted-foreground shrink-0">
-            Schema v{experiment.revision.schemaVersion}
-          </span>
-          <span className="text-sm font-mono text-muted-foreground shrink-0">
-            Pinned {new Date(experiment.revision.createdAt).toLocaleDateString()}
-          </span>
-        </>
-      )}
-
-      {/* Model */}
       {experiment.modelId && (
-        <span className="text-sm text-muted-foreground shrink-0">
+        <Badge variant="outline" className="shrink-0 font-normal">
           {getModelDisplayName(experiment.modelId)}
-        </span>
+        </Badge>
       )}
 
       {/* Status badge */}
