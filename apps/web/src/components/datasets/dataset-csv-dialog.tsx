@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { Upload, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Loader2 } from 'lucide-react'
 import { usePreviewCsv, useImportCsv } from '@/hooks/use-datasets'
 import type { CsvPreview } from '@/hooks/use-datasets'
 import {
@@ -19,6 +19,7 @@ import {
   TableCell,
 } from '@/components/ui/table'
 import { SectionLabel } from '@/components/shared/section-label'
+import { FileDropZone } from '@/components/shared/file-drop-zone'
 
 interface DatasetCsvDialogProps {
   open: boolean
@@ -33,7 +34,6 @@ export default function DatasetCsvDialog({
   datasetId,
   onImportSuccess,
 }: DatasetCsvDialogProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [csvPreview, setCsvPreview] = useState<CsvPreview | null>(null)
   const previewCsv = usePreviewCsv()
@@ -58,30 +58,21 @@ export default function DatasetCsvDialog({
         </DialogHeader>
 
         {/* File picker */}
-        <div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0]
-              if (!file) return
-              setImportFile(file)
-              setCsvPreview(null)
-              try {
-                const preview = await previewCsv.mutateAsync({ datasetId, file })
-                setCsvPreview(preview)
-              } catch {
-                // error shown via previewCsv.error
-              }
-            }}
-          />
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-3 w-3" />
-            {importFile ? importFile.name : 'Choose CSV file'}
-          </Button>
-        </div>
+        <FileDropZone
+          accept=".csv,text/csv"
+          fileName={importFile?.name}
+          disabled={importCsv.isPending}
+          onFileSelect={async (file) => {
+            setImportFile(file)
+            setCsvPreview(null)
+            try {
+              const preview = await previewCsv.mutateAsync({ datasetId, file })
+              setCsvPreview(preview)
+            } catch {
+              // error shown via previewCsv.error
+            }
+          }}
+        />
 
         {/* Preview loading */}
         {previewCsv.isPending && (

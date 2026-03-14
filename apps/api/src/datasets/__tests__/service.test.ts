@@ -407,14 +407,18 @@ describe('importCsv', () => {
     if (!result.success) expect(result.error).toContain('Missing required columns')
   })
 
-  it('fails with distinct error for unknown columns', async () => {
+  it('imports successfully ignoring unknown columns', async () => {
     const dataset = { id: '1', name: 'ds1', attributes: ['input', 'expected_output'] }
     mockRepo.findById.mockResolvedValue(ok(dataset))
+    mockRepo.importItems.mockResolvedValue(ok(undefined))
     // All required columns present, plus one unknown
     const csv = 'input,expected_output,extra_column\nhello,world,extra'
     const result = await service.importCsv('1', csv)
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toContain('Unknown columns')
+    expect(result.success).toBe(true)
+    expect(mockRepo.importItems).toHaveBeenCalledTimes(1)
+    expect(mockRepo.importItems).toHaveBeenCalledWith('1', [
+      { input: 'hello', expected_output: 'world' },
+    ])
   })
 })
 

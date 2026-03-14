@@ -20,6 +20,7 @@ function normalizeItemValues(
 type ParsedCsvRow = {
   validRows: Record<string, string>[]
   skippedRows: { row: number; reason: string }[]
+  ignoredColumns: string[]
 }
 
 async function parseCsvContent(
@@ -59,13 +60,9 @@ async function parseCsvContent(
       .on('end', () => {
         // Validate headers
         const missingCols = attributes.filter((a) => !headers.includes(a))
-        const unknownCols = headers.filter((h) => !attributes.includes(h))
+        const ignoredColumns = headers.filter((h) => !attributes.includes(h))
         if (missingCols.length > 0) {
           resolve(fail(`Missing required columns: ${missingCols.join(', ')}`))
-          return
-        }
-        if (unknownCols.length > 0) {
-          resolve(fail(`Unknown columns: ${unknownCols.join(', ')}`))
           return
         }
 
@@ -101,7 +98,7 @@ async function parseCsvContent(
           validRows.push(filtered)
         }
 
-        resolve(ok({ validRows, skippedRows }))
+        resolve(ok({ validRows, skippedRows, ignoredColumns }))
       })
   })
 }

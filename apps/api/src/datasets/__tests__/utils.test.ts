@@ -75,9 +75,12 @@ describe('parseCsvContent', () => {
     )
   })
 
-  it('throws on unknown columns', async () => {
+  it('ignores unknown columns and returns them in ignoredColumns', async () => {
     const csv = 'input,expected_output,extra\nhello,world,surprise'
-    await expect(parseCsvContent(attrs, csv)).rejects.toThrow('Unknown columns: extra')
+    const result = await parseCsvContent(attrs, csv)
+    expect(result.validRows).toEqual([{ input: 'hello', expected_output: 'world' }])
+    expect(result.ignoredColumns).toEqual(['extra'])
+    expect(result.skippedRows).toEqual([])
   })
 
   it('throws on header-only CSV (no data rows)', async () => {

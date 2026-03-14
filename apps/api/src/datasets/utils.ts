@@ -18,8 +18,8 @@ export function normalizeItemValues(
 
 /**
  * Parses CSV text against a dataset's attribute schema.
- * Validates headers match exactly, skips rows with empty built-in fields.
- * Throws on structural errors (empty CSV, missing columns, unknown columns).
+ * Validates headers contain all required columns, skips rows with empty built-in fields.
+ * Throws on structural errors (empty CSV, missing columns). Unknown columns are ignored.
  */
 export async function parseCsvContent(
   attributes: string[],
@@ -27,6 +27,7 @@ export async function parseCsvContent(
 ): Promise<{
   validRows: Record<string, string>[]
   skippedRows: { row: number; reason: string }[]
+  ignoredColumns: string[]
 }> {
   // Normalize line endings
   csvText = csvText.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -61,13 +62,9 @@ export async function parseCsvContent(
       .on('end', () => {
         // Validate headers
         const missingCols = attributes.filter((a) => !headers.includes(a))
-        const unknownCols = headers.filter((h) => !attributes.includes(h))
+        const ignoredColumns = headers.filter((h) => !attributes.includes(h))
         if (missingCols.length > 0) {
           reject(new Error(`Missing required columns: ${missingCols.join(', ')}`))
-          return
-        }
-        if (unknownCols.length > 0) {
-          reject(new Error(`Unknown columns: ${unknownCols.join(', ')}`))
           return
         }
 
@@ -103,7 +100,7 @@ export async function parseCsvContent(
           validRows.push(filtered)
         }
 
-        resolve({ validRows, skippedRows })
+        resolve({ validRows, skippedRows, ignoredColumns })
       })
   })
 }
