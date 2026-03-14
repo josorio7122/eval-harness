@@ -1,7 +1,12 @@
 import { useRef, useState } from 'react'
 import { Trash2, Download, Upload, FileDown, Pencil } from 'lucide-react'
 import type { DatasetWithItems } from '@/hooks/use-datasets'
-import type { useUpdateDataset, useDownloadCsvTemplate, useExportCsv, useDeleteDataset } from '@/hooks/use-datasets'
+import type {
+  useUpdateDataset,
+  useDownloadCsvTemplate,
+  useExportCsv,
+  useDeleteDataset,
+} from '@/hooks/use-datasets'
 import type { NavigateFunction } from 'react-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -110,12 +115,7 @@ export default function DatasetHeader({
           </Button>
 
           {/* Import CSV */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onImportClick}
-            title="Import from CSV"
-          >
+          <Button variant="outline" size="sm" onClick={onImportClick} title="Import from CSV">
             <Upload size={12} />
             Import CSV
           </Button>
@@ -148,11 +148,7 @@ export default function DatasetHeader({
       </PageHeader>
 
       {/* Rename error */}
-      {renameError && (
-        <p className="text-destructive text-xs px-6 py-1">
-          {renameError}
-        </p>
-      )}
+      {renameError && <p className="text-destructive text-xs px-6 py-1">{renameError}</p>}
     </>
   )
 }

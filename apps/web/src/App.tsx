@@ -19,19 +19,19 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Navigate to="/datasets" replace />} />
-            <Route path="/datasets" element={<DatasetsPage />} />
-            <Route path="/datasets/:id" element={<DatasetsPage />} />
-            <Route path="/graders" element={<GradersPage />} />
-            <Route path="/graders/:id" element={<GradersPage />} />
-            <Route path="/experiments" element={<ExperimentsPage />} />
-            <Route path="/experiments/:id" element={<ExperimentsPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+        <BrowserRouter>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Navigate to="/datasets" replace />} />
+              <Route path="/datasets" element={<DatasetsPage />} />
+              <Route path="/datasets/:id" element={<DatasetsPage />} />
+              <Route path="/graders" element={<GradersPage />} />
+              <Route path="/graders/:id" element={<GradersPage />} />
+              <Route path="/experiments" element={<ExperimentsPage />} />
+              <Route path="/experiments/:id" element={<ExperimentsPage />} />
+            </Route>
+          </Routes>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   )

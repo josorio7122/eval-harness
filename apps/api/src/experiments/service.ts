@@ -19,11 +19,7 @@ export function createExperimentService(
 
     getExperiment: repo.findById.bind(repo),
 
-    createExperiment(input: {
-      name: string
-      datasetId: string
-      graderIds: string[]
-    }) {
+    createExperiment(input: { name: string; datasetId: string; graderIds: string[] }) {
       return tryCatch(async () => {
         const datasetResult = await datasetRepo.findById(input.datasetId)
         if (!datasetResult.success) return fail('Dataset not found')

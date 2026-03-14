@@ -27,9 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
   if (status === 'running') {
-    return (
-      <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20">Running</Badge>
-    )
+    return <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20">Running</Badge>
   }
   if (status === 'complete') {
     return (
@@ -116,11 +114,7 @@ export function ExperimentHeader({
         {/* Re-run — only when complete or failed */}
         {(isComplete || experiment.status === 'failed') && (
           <Button variant="outline" size="sm" onClick={onRerun} disabled={isRerunning}>
-            {isRerunning ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <RotateCcw size={12} />
-            )}
+            {isRerunning ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
             Re-run
           </Button>
         )}
@@ -128,11 +122,7 @@ export function ExperimentHeader({
         {/* Export CSV — when complete or failed */}
         {(isComplete || experiment.status === 'failed') && (
           <Button variant="outline" size="sm" onClick={onExport} disabled={isExporting}>
-            {isExporting ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Download size={12} />
-            )}
+            {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
             Export CSV
           </Button>
         )}

@@ -58,7 +58,11 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
     await experimentQueue.add(async () => {
       const statusResult = await repo.updateStatus(experimentId, 'running')
       if (!statusResult.success) {
-        experimentEvents.emit(experimentId, { type: 'error', experimentId, error: statusResult.error })
+        experimentEvents.emit(experimentId, {
+          type: 'error',
+          experimentId,
+          error: statusResult.error,
+        })
         return
       }
 

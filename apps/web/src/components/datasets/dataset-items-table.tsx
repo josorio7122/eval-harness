@@ -1,7 +1,14 @@
 import { Plus, Trash2, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
 import { AddItemDialog } from './add-item-dialog'
 import type { DatasetWithItems, DatasetItem, useDeleteItem } from '@/hooks/use-datasets'
 import { SectionLabel } from '@/components/shared/section-label'
@@ -23,7 +30,9 @@ export default function DatasetItemsTable({
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <SectionLabel>
           Items{' '}
-          <Badge variant="secondary" className="ml-2">{dataset.items.length}</Badge>
+          <Badge variant="secondary" className="ml-2">
+            {dataset.items.length}
+          </Badge>
         </SectionLabel>
         <AddItemDialog
           datasetId={dataset.id}
@@ -104,10 +113,7 @@ function ItemRow({
   return (
     <TableRow className="group hover:bg-accent">
       {attributes.map((attr) => (
-        <TableCell
-          key={attr}
-          className="text-sm font-mono truncate max-w-[200px]"
-        >
+        <TableCell key={attr} className="text-sm font-mono truncate max-w-[200px]">
           {item.values[attr] ?? ''}
         </TableCell>
       ))}
@@ -116,7 +122,12 @@ function ItemRow({
           <Button variant="ghost" size="sm" onClick={onEdit} className="text-muted-foreground">
             <Pencil size={12} />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-muted-foreground hover:text-destructive">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            className="text-muted-foreground hover:text-destructive"
+          >
             <Trash2 size={12} />
           </Button>
         </div>

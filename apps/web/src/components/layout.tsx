@@ -12,9 +12,7 @@ export function Layout() {
     <div className="flex h-screen">
       <aside className="w-[220px] flex-shrink-0 border-r border-border bg-background">
         <div className="p-4">
-          <h1 className="text-[16px] font-semibold tracking-tight text-foreground">
-            Eval Harness
-          </h1>
+          <h1 className="text-[16px] font-semibold tracking-tight text-foreground">Eval Harness</h1>
         </div>
         <nav className="mt-4 flex flex-col gap-1">
           {navItems.map((item) => (

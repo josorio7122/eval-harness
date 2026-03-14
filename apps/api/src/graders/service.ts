@@ -7,11 +7,7 @@ export function createGraderService(repo: typeof graderRepository) {
 
     getGrader: repo.findById.bind(repo),
 
-    createGrader(input: {
-      name: string
-      description: string
-      rubric: string
-    }) {
+    createGrader(input: { name: string; description: string; rubric: string }) {
       return tryCatch(async () => {
         const existing = await repo.findByName(input.name)
         if (existing) return fail('Grader name already exists')
@@ -19,10 +15,7 @@ export function createGraderService(repo: typeof graderRepository) {
       })
     },
 
-    updateGrader(
-      id: string,
-      input: { name?: string; description?: string; rubric?: string },
-    ) {
+    updateGrader(id: string, input: { name?: string; description?: string; rubric?: string }) {
       return tryCatch(async () => {
         const graderResult = await repo.findById(id)
         if (!graderResult.success) return graderResult

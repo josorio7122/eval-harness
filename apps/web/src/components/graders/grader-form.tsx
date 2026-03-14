@@ -60,10 +60,7 @@ export function GraderForm({
       {/* Name */}
       <div className="flex flex-col gap-1.5">
         <SectionLabel>Name</SectionLabel>
-        <Input
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-        />
+        <Input value={name} onChange={(e) => onNameChange(e.target.value)} />
       </div>
 
       {/* Description */}
@@ -95,14 +92,10 @@ export function GraderForm({
       </div>
 
       {/* Validation error */}
-      {validationError && (
-        <p className="text-destructive text-xs">{validationError}</p>
-      )}
+      {validationError && <p className="text-destructive text-xs">{validationError}</p>}
 
       {/* Save error */}
-      {saveError && (
-        <p className="text-destructive text-xs">{saveError}</p>
-      )}
+      {saveError && <p className="text-destructive text-xs">{saveError}</p>}
 
       {/* Action row */}
       <div className="flex items-center justify-between pt-4">
@@ -117,9 +110,7 @@ export function GraderForm({
         </Button>
 
         <div className="flex items-center gap-2">
-          {isDirty && (
-            <span className="text-destructive text-xs">Unsaved changes</span>
-          )}
+          {isDirty && <span className="text-destructive text-xs">Unsaved changes</span>}
           <Button size="sm" onClick={onSave} disabled={!isDirty || isSaving}>
             {isSaving ? 'Saving…' : 'Save'}
           </Button>

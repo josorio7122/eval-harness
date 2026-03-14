@@ -12,17 +12,17 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 
 ## Tech Stack
 
-| Layer | Tech |
-|-------|------|
-| Monorepo | Turborepo + pnpm |
-| Backend | Hono + Node.js |
-| Database | PostgreSQL 17 + Prisma ORM |
-| Frontend | React 19 + Vite |
-| UI | shadcn/ui + Tailwind CSS |
-| State | TanStack Query |
-| LLM | Vercel AI SDK + OpenRouter |
-| Validation | Zod |
-| Testing | Vitest |
+| Layer      | Tech                       |
+| ---------- | -------------------------- |
+| Monorepo   | Turborepo + pnpm           |
+| Backend    | Hono + Node.js             |
+| Database   | PostgreSQL 17 + Prisma ORM |
+| Frontend   | React 19 + Vite            |
+| UI         | shadcn/ui + Tailwind CSS   |
+| State      | TanStack Query             |
+| LLM        | Vercel AI SDK + OpenRouter |
+| Validation | Zod                        |
+| Testing    | Vitest                     |
 
 ## Project Structure
 
@@ -65,15 +65,15 @@ API runs on http://localhost:3001, frontend on http://localhost:5173
 
 ## Scripts
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start API + web in dev mode |
-| `pnpm build` | Build all packages |
-| `pnpm test` | Run unit tests |
+| Command                 | Description                      |
+| ----------------------- | -------------------------------- |
+| `pnpm dev`              | Start API + web in dev mode      |
+| `pnpm build`            | Build all packages               |
+| `pnpm test`             | Run unit tests                   |
 | `pnpm test:integration` | Run integration tests (needs DB) |
-| `pnpm lint` | Lint all packages |
-| `pnpm typecheck` | Type-check all packages |
-| `pnpm format` | Format with Prettier |
+| `pnpm lint`             | Lint all packages                |
+| `pnpm typecheck`        | Type-check all packages          |
+| `pnpm format`           | Format with Prettier             |
 
 ## Try It Out
 
@@ -95,12 +95,12 @@ This creates a "Customer Support QA" dataset with 30 test cases, adds four grade
 
 **[recommended-evals.md](test-data/recommended-evals.md)** — Four grader rubrics designed for this dataset. Each grader evaluates a different dimension of response quality:
 
-| Grader | What it evaluates |
-|--------|-------------------|
-| Helpfulness | Does the response actually answer the question with actionable next steps? |
-| Tone & Empathy | Is the tone professional and calibrated to the customer's emotional state? |
-| Accuracy | Are all facts consistent with the expected output — no contradictions or fabrications? |
-| Completeness | Does the response address every part of the question without omitting key details? |
+| Grader         | What it evaluates                                                                      |
+| -------------- | -------------------------------------------------------------------------------------- |
+| Helpfulness    | Does the response actually answer the question with actionable next steps?             |
+| Tone & Empathy | Is the tone professional and calibrated to the customer's emotional state?             |
+| Accuracy       | Are all facts consistent with the expected output — no contradictions or fabrications? |
+| Completeness   | Does the response address every part of the question without omitting key details?     |
 
 You can use these rubrics as-is or adapt them for your own datasets. The seed script creates all four automatically, or you can copy them from the markdown file and create graders manually in the UI.
 

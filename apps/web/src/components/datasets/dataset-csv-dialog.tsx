@@ -46,7 +46,12 @@ export default function DatasetCsvDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) handleClose()
+      }}
+    >
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-auto flex flex-col gap-4">
         <DialogHeader>
           <DialogTitle>Import CSV</DialogTitle>
@@ -72,11 +77,7 @@ export default function DatasetCsvDialog({
               }
             }}
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
             <Upload className="h-3 w-3" />
             {importFile ? importFile.name : 'Choose CSV file'}
           </Button>
@@ -126,10 +127,7 @@ export default function DatasetCsvDialog({
                 <TableHeader>
                   <TableRow>
                     {csvPreview.headers.map((h) => (
-                      <TableHead
-                        key={h}
-                        className="bg-secondary whitespace-nowrap"
-                      >
+                      <TableHead key={h} className="bg-secondary whitespace-nowrap">
                         <SectionLabel>{h}</SectionLabel>
                       </TableHead>
                     ))}

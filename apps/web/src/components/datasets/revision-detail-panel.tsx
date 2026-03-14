@@ -115,7 +115,9 @@ export function RevisionDetailPanel({ datasetId, revisionId }: RevisionDetailPan
             <CardTitle>
               <div className="flex items-center justify-between">
                 <SectionLabel>Items ({revision.items.length})</SectionLabel>
-                <span className="text-[10px] text-muted-foreground/70 italic font-normal">Read-only</span>
+                <span className="text-[10px] text-muted-foreground/70 italic font-normal">
+                  Read-only
+                </span>
               </div>
             </CardTitle>
           </CardHeader>
@@ -130,10 +132,7 @@ export function RevisionDetailPanel({ datasetId, revisionId }: RevisionDetailPan
                   <TableHeader>
                     <TableRow>
                       {revision.attributes.map((attr) => (
-                        <TableHead
-                          key={attr}
-                          className="bg-secondary whitespace-nowrap"
-                        >
+                        <TableHead key={attr} className="bg-secondary whitespace-nowrap">
                           <SectionLabel>{attr}</SectionLabel>
                         </TableHead>
                       ))}

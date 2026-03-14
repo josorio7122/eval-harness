@@ -6,15 +6,15 @@ TypeScript monorepo (Turbo + pnpm) for running LLM-based evaluations.
 
 All checks run through pnpm scripts. **Always use these commands** — never run `tsc`, `eslint`, or `prettier` directly.
 
-| Task | Command | Notes |
-|------|---------|-------|
-| Typecheck | `pnpm run typecheck` | Runs `tsc --noEmit` across all packages via Turbo |
-| Lint | `pnpm run lint` | Runs ESLint across all packages via Turbo |
-| Format | `pnpm run format` | Runs Prettier on all `.ts`, `.tsx`, `.md` files |
-| Test all | `pnpm run test` | Runs Vitest across all packages via Turbo |
-| Test one package | `pnpm --filter <pkg> run test` | e.g. `pnpm --filter api run test` |
-| Dev | `pnpm run dev` | Starts API + web concurrently |
-| Build | `pnpm run build` | Builds all packages |
+| Task             | Command                        | Notes                                             |
+| ---------------- | ------------------------------ | ------------------------------------------------- |
+| Typecheck        | `pnpm run typecheck`           | Runs `tsc --noEmit` across all packages via Turbo |
+| Lint             | `pnpm run lint`                | Runs ESLint across all packages via Turbo         |
+| Format           | `pnpm run format`              | Runs Prettier on all `.ts`, `.tsx`, `.md` files   |
+| Test all         | `pnpm run test`                | Runs Vitest across all packages via Turbo         |
+| Test one package | `pnpm --filter <pkg> run test` | e.g. `pnpm --filter api run test`                 |
+| Dev              | `pnpm run dev`                 | Starts API + web concurrently                     |
+| Build            | `pnpm run build`               | Builds all packages                               |
 
 ## Pre-commit checks
 

@@ -57,12 +57,7 @@ export function CreateDatasetDialog({ trigger, onCreated }: CreateDatasetDialogP
               </p>
             )}
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setOpen(false)}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
                 Cancel
               </Button>
               <Button

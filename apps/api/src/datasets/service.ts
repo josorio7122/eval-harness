@@ -169,10 +169,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    createItem(
-      datasetId: string,
-      input: { values: Record<string, string> },
-    ) {
+    createItem(datasetId: string, input: { values: Record<string, string> }) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -182,11 +179,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    updateItem(
-      datasetId: string,
-      itemId: string,
-      input: { values: Record<string, string> },
-    ) {
+    updateItem(datasetId: string, itemId: string, input: { values: Record<string, string> }) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -234,10 +227,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    previewCsv(
-      datasetId: string,
-      csvContent: string,
-    ) {
+    previewCsv(datasetId: string, csvContent: string) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result
@@ -250,10 +240,7 @@ export function createDatasetService(repo: typeof datasetRepository) {
       })
     },
 
-    importCsv(
-      datasetId: string,
-      csvContent: string,
-    ) {
+    importCsv(datasetId: string, csvContent: string) {
       return tryCatch(async () => {
         const result = await repo.findById(datasetId)
         if (!result.success) return result

@@ -22,15 +22,15 @@ Dataset (unique name)
 
 ### Entities
 
-| Entity | Purpose | Key fields | Constraints |
-|--------|---------|------------|-------------|
-| `Dataset` | Top-level container for a dataset | `id` (UUID), `name` | `name` UNIQUE |
-| `DatasetRevision` | Immutable snapshot of the dataset at a point in time | `schemaVersion` (Int), `attributes` (String[]), `createdAt` | No updates — every mutation creates a new revision |
-| `DatasetRevisionItem` | A single row within a revision | `itemId` (UUID, stable), `values` (JSON) | `itemId` is preserved across revisions to track the same logical row |
-| `Grader` | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric` | `name` UNIQUE |
-| `Experiment` | A run definition, pinned to a specific revision | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId` | Status transitions: queued → running → complete/failed |
-| `ExperimentGrader` | Junction between Experiment and Grader | composite PK `(experimentId, graderId)` | — |
-| `ExperimentResult` | Verdict for one (item × grader) cell | `verdict` (String), `reason` (String) | UNIQUE `(experimentId, datasetRevisionItemId, graderId)` |
+| Entity                | Purpose                                                    | Key fields                                                                          | Constraints                                                          |
+| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`                                                                 | `name` UNIQUE                                                        |
+| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                         | No updates — every mutation creates a new revision                   |
+| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                            | `itemId` is preserved across revisions to track the same logical row |
+| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`                                                     | `name` UNIQUE                                                        |
+| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId` | Status transitions: queued → running → complete/failed               |
+| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                             | —                                                                    |
+| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String)                                               | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
 
 ### Cascade Delete Chains
 
@@ -60,12 +60,12 @@ DELETE DatasetRevision
 
 ### Key Invariants
 
-| Invariant | Enforcement |
-|-----------|-------------|
-| Revision immutability | No UPDATE on `DatasetRevision` or `DatasetRevisionItem` — every dataset mutation creates a new revision |
-| Stable `itemId` | When a new revision is created from an existing one, rows carry forward the same `itemId` UUID to track identity across revisions |
-| Experiment pinning | `Experiment.datasetRevisionId` is set at creation time and never changed — a re-run creates a new `Experiment` pinned to the latest revision |
-| Cell uniqueness | `ExperimentResult` has a UNIQUE constraint on `(experimentId, datasetRevisionItemId, graderId)` — one verdict per cell |
+| Invariant             | Enforcement                                                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Revision immutability | No UPDATE on `DatasetRevision` or `DatasetRevisionItem` — every dataset mutation creates a new revision                                      |
+| Stable `itemId`       | When a new revision is created from an existing one, rows carry forward the same `itemId` UUID to track identity across revisions            |
+| Experiment pinning    | `Experiment.datasetRevisionId` is set at creation time and never changed — a re-run creates a new `Experiment` pinned to the latest revision |
+| Cell uniqueness       | `ExperimentResult` has a UNIQUE constraint on `(experimentId, datasetRevisionItemId, graderId)` — one verdict per cell                       |
 
 ---
 
@@ -86,12 +86,12 @@ Repository (Prisma queries wrapped in tryCatch, returns Result<T>)
 
 Each domain has four files:
 
-| File | Responsibility |
-|------|----------------|
-| `validator.ts` | Zod schemas for request bodies |
-| `repository.ts` | Prisma queries; every method returns `Result<T>` via `tryCatch` |
-| `service.ts` | Business logic; factory function `createXService(repo, ...)` for DI |
-| `router.ts` | HTTP layer; factory function `createXRouter(service)`; maps `Result` to HTTP status |
+| File            | Responsibility                                                                      |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `validator.ts`  | Zod schemas for request bodies                                                      |
+| `repository.ts` | Prisma queries; every method returns `Result<T>` via `tryCatch`                     |
+| `service.ts`    | Business logic; factory function `createXService(repo, ...)` for DI                 |
+| `router.ts`     | HTTP layer; factory function `createXRouter(service)`; maps `Result` to HTTP status |
 
 Domains: `datasets/`, `graders/`, `experiments/`
 
@@ -102,12 +102,15 @@ Defined in `packages/shared/src/result.ts`, exported from `@eval-harness/shared`
 ```typescript
 type Result<T, E = string> = { success: true; data: T } | { success: false; error: E }
 
-const ok   = <T>(data: T): Result<T, never>  => ({ success: true, data })
+const ok = <T>(data: T): Result<T, never> => ({ success: true, data })
 const fail = <E>(error: E): Result<never, E> => ({ success: false, error })
 
 async function tryCatch<T>(fn: () => Promise<Result<T>>): Promise<Result<T>> {
-  try   { return await fn() }
-  catch (e) { return fail(e instanceof Error ? e.message : 'Unknown error') }
+  try {
+    return await fn()
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : 'Unknown error')
+  }
 }
 ```
 
@@ -120,14 +123,14 @@ async function tryCatch<T>(fn: () => Promise<Result<T>>): Promise<Result<T>> {
 Services are constructed as factory functions in `index.ts`:
 
 ```typescript
-const experimentRunner  = createExperimentRunner(experimentRepository, evaluate)
+const experimentRunner = createExperimentRunner(experimentRepository, evaluate)
 const experimentService = createExperimentService(
   experimentRepository,
-  datasetRepository,    // cross-domain repo dependency
-  graderRepository,     // cross-domain repo dependency
+  datasetRepository, // cross-domain repo dependency
+  graderRepository, // cross-domain repo dependency
   experimentRunner,
 )
-const experimentRouter  = createExperimentRouter(experimentService)
+const experimentRouter = createExperimentRouter(experimentService)
 ```
 
 ### Experiment Runner
@@ -142,6 +145,7 @@ experimentQueue  (concurrency: 2)   — limits parallel experiments
 ```
 
 Flow:
+
 1. `runner.enqueue(experimentId, items, graders)` adds to `experimentQueue`.
 2. When the experiment slot opens: status → `running`, emit `progress` events per cell.
 3. All item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls).
@@ -163,10 +167,10 @@ Flow:
 
 Two templates with `{variable}` placeholders replaced via `String.prototype.replace()`:
 
-| Template | Placeholders | Produced by |
-|----------|-------------|-------------|
-| `SYSTEM_TEMPLATE` | `{rubric}` | `buildSystemPrompt(rubric)` |
-| `USER_TEMPLATE` | `{input}`, `{expected_output}`, `{context}` | `buildUserMessage(itemAttributes)` |
+| Template          | Placeholders                                | Produced by                        |
+| ----------------- | ------------------------------------------- | ---------------------------------- |
+| `SYSTEM_TEMPLATE` | `{rubric}`                                  | `buildSystemPrompt(rubric)`        |
+| `USER_TEMPLATE`   | `{input}`, `{expected_output}`, `{context}` | `buildUserMessage(itemAttributes)` |
 
 Required item attributes: `input`, `expected_output`. Any additional attributes are rendered as a `## Additional Context` section appended to the user message.
 
@@ -176,12 +180,12 @@ Required item attributes: `input`, `expected_output`. Any additional attributes 
 
 Event types emitted over the stream:
 
-| Event | Payload |
-|-------|---------|
-| `connected` | `{ experimentId }` |
-| `progress` | `{ cellsCompleted, totalCells, status, result }` |
-| `completed` | `{ cellsCompleted, totalCells, status }` |
-| `error` | `{ error }` |
+| Event       | Payload                                          |
+| ----------- | ------------------------------------------------ |
+| `connected` | `{ experimentId }`                               |
+| `progress`  | `{ cellsCompleted, totalCells, status, result }` |
+| `completed` | `{ cellsCompleted, totalCells, status }`         |
+| `error`     | `{ error }`                                      |
 
 The SSE handler attaches a listener to `experimentEvents` (the shared `EventEmitter`). It removes the listener and closes the stream on `completed`, `error`, or client disconnect (`stream.onAbort`).
 
@@ -238,14 +242,14 @@ App
 
 **Shared components** (`components/shared/`):
 
-| Component | Purpose |
-|-----------|---------|
-| `DataTable` | Generic column-keyed table |
-| `PageHeader` | Back-button + breadcrumb strip |
-| `SectionLabel` | Typography primitive (`text-[10px] font-semibold uppercase`) |
-| `EmptyState` | Placeholder when a list is empty |
-| `ListSkeleton` | Loading skeleton for lists |
-| `ConfirmDeleteDialog` | Reusable delete confirmation dialog |
+| Component             | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `DataTable`           | Generic column-keyed table                                   |
+| `PageHeader`          | Back-button + breadcrumb strip                               |
+| `SectionLabel`        | Typography primitive (`text-[10px] font-semibold uppercase`) |
+| `EmptyState`          | Placeholder when a list is empty                             |
+| `ListSkeleton`        | Loading skeleton for lists                                   |
+| `ConfirmDeleteDialog` | Reusable delete confirmation dialog                          |
 
 ### State Management
 
@@ -255,10 +259,10 @@ App
 
 Query hooks per domain (`hooks/use-*.ts`):
 
-| Hook file | Key hooks |
-|-----------|-----------|
-| `use-datasets.ts` | `useDatasets`, `useDataset`, `useCreateDataset`, `useAddAttribute`, `useAddItem`, `useDeleteDataset`, `useImportCsv` |
-| `use-graders.ts` | `useGraders`, `useGrader`, `useCreateGrader`, `useUpdateGrader`, `useDeleteGrader` |
+| Hook file            | Key hooks                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `use-datasets.ts`    | `useDatasets`, `useDataset`, `useCreateDataset`, `useAddAttribute`, `useAddItem`, `useDeleteDataset`, `useImportCsv`                          |
+| `use-graders.ts`     | `useGraders`, `useGrader`, `useCreateGrader`, `useUpdateGrader`, `useDeleteGrader`                                                            |
 | `use-experiments.ts` | `useExperiments`, `useExperiment`, `useCreateExperiment`, `useRunExperiment`, `useRerunExperiment`, `useDeleteExperiment`, `useExperimentSSE` |
 
 ### Results Table

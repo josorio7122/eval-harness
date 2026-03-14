@@ -31,7 +31,11 @@ function ShimmerRow() {
   )
 }
 
-export function RevisionListPanel({ datasetId, selectedRevisionId, onSelect }: RevisionListPanelProps) {
+export function RevisionListPanel({
+  datasetId,
+  selectedRevisionId,
+  onSelect,
+}: RevisionListPanelProps) {
   const { data: revisions, isLoading } = useRevisions(datasetId)
 
   return (

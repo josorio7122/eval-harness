@@ -62,7 +62,12 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
   }
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose()
+      }}
+    >
       <DialogContent className="sm:max-w-[480px]" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>New Grader</DialogTitle>
@@ -71,7 +76,9 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <SectionLabel>Name <span className="text-destructive">*</span></SectionLabel>
+            <SectionLabel>
+              Name <span className="text-destructive">*</span>
+            </SectionLabel>
             <Input
               ref={nameRef}
               value={name}
@@ -96,7 +103,9 @@ export function CreateGraderDialog({ open, onClose, onCreated }: CreateGraderDia
 
           {/* Rubric */}
           <div className="flex flex-col gap-1.5">
-            <SectionLabel>Rubric <span className="text-destructive">*</span></SectionLabel>
+            <SectionLabel>
+              Rubric <span className="text-destructive">*</span>
+            </SectionLabel>
             <Textarea
               value={rubric}
               onChange={(e) => setRubric(e.target.value)}

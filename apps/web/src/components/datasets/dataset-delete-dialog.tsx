@@ -1,12 +1,12 @@
-import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
+import { ConfirmDeleteDialog } from '@/components/shared/confirm-delete-dialog'
 
 interface DatasetDeleteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  datasetName: string;
-  affectedExperiments: string[];
-  onConfirm: () => void;
-  isDeleting: boolean;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  datasetName: string
+  affectedExperiments: string[]
+  onConfirm: () => void
+  isDeleting: boolean
 }
 
 export function DatasetDeleteDialog(props: DatasetDeleteDialogProps) {
@@ -21,5 +21,5 @@ export function DatasetDeleteDialog(props: DatasetDeleteDialogProps) {
       onConfirm={props.onConfirm}
       isDeleting={props.isDeleting}
     />
-  );
+  )
 }

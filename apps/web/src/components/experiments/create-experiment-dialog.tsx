@@ -80,13 +80,22 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
   const canSubmit = name.trim() && datasetId && graderIds.length > 0
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose()
+      }}
+    >
       <DialogContent showCloseButton className="sm:max-w-[440px]">
         <DialogHeader>
           <DialogTitle>New Experiment</DialogTitle>
         </DialogHeader>
 
-        <form id="create-experiment" onSubmit={handleSubmit} className="flex flex-col gap-4 min-w-0">
+        <form
+          id="create-experiment"
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4 min-w-0"
+        >
           {/* Name */}
           <div className="flex flex-col gap-1.5">
             <Label>
@@ -109,7 +118,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
             <Select value={datasetId} onValueChange={(v) => setDatasetId(v ?? '')}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a dataset…">
-                  {datasetId && datasets?.find(ds => ds.id === datasetId)?.name}
+                  {datasetId && datasets?.find((ds) => ds.id === datasetId)?.name}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -147,7 +156,10 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
                         checked={selected}
                         onCheckedChange={() => toggleGrader(grader.id)}
                       />
-                      <Label htmlFor={grader.id} className="cursor-pointer flex-1 min-w-0 flex-col items-start gap-0.5 text-sm font-normal">
+                      <Label
+                        htmlFor={grader.id}
+                        className="cursor-pointer flex-1 min-w-0 flex-col items-start gap-0.5 text-sm font-normal"
+                      >
                         <span className="font-medium truncate max-w-full">{grader.name}</span>
                         {grader.description && (
                           <span className="text-[11px] text-muted-foreground truncate max-w-full">
@@ -175,14 +187,17 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
                 : 'Failed to create experiment'}
             </p>
           )}
-
         </form>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form="create-experiment" disabled={!canSubmit || createExperiment.isPending}>
+          <Button
+            type="submit"
+            form="create-experiment"
+            disabled={!canSubmit || createExperiment.isPending}
+          >
             {createExperiment.isPending ? 'Creating…' : 'Create & run'}
           </Button>
         </DialogFooter>

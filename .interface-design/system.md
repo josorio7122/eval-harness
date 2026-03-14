@@ -22,11 +22,11 @@ The **results grid cell** — a dense table where each cell has a 2px colored le
 
 ### Defaults Rejected
 
-| Default                                 | Replacement                                                                     |
-| --------------------------------------- | ------------------------------------------------------------------------------- |
-| Generic blue primary actions            | Saturated blue accent (hsl 215, 65%, 50%) — precise, not generic               |
-| Color-coded status badges (pill-shaped) | Left-border accent on table rows — color at the edge, not inside a badge        |
-| Soft shadows and rounded cards          | Subtle borders, minimal radius, structured depth                                |
+| Default                                 | Replacement                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| Generic blue primary actions            | Saturated blue accent (hsl 215, 65%, 50%) — precise, not generic         |
+| Color-coded status badges (pill-shaped) | Left-border accent on table rows — color at the edge, not inside a badge |
+| Soft shadows and rounded cards          | Subtle borders, minimal radius, structured depth                         |
 
 ## Token Architecture
 
@@ -202,13 +202,13 @@ Hover: popover after 150ms delay
 
 ## States
 
-| View            | Loading                        | Empty                                 | Error                       | Populated        |
-| --------------- | ------------------------------ | ------------------------------------- | --------------------------- | ---------------- |
-| Lists           | Skeleton rows (3)              | Inset panel + icon + action           | Inset panel + alert + retry | Dense rows       |
-| Dataset schema  | Skeleton block                 | Dashed border + "+" button            | Inline alert                | Definition list  |
-| Dataset items   | Skeleton rows + visible headers| Inset panel with column headers shown | Alert in table body         | Scrollable table |
-| Results table   | Skeleton grid (headers first)  | Centered inset panel                  | Error strip + partial data  | Dense matrix     |
-| Aggregate stats | `—` placeholder                | N/A                                   | Error strip                 | Stats + chart    |
+| View            | Loading                         | Empty                                 | Error                       | Populated        |
+| --------------- | ------------------------------- | ------------------------------------- | --------------------------- | ---------------- |
+| Lists           | Skeleton rows (3)               | Inset panel + icon + action           | Inset panel + alert + retry | Dense rows       |
+| Dataset schema  | Skeleton block                  | Dashed border + "+" button            | Inline alert                | Definition list  |
+| Dataset items   | Skeleton rows + visible headers | Inset panel with column headers shown | Alert in table body         | Scrollable table |
+| Results table   | Skeleton grid (headers first)   | Centered inset panel                  | Error strip + partial data  | Dense matrix     |
+| Aggregate stats | `—` placeholder                 | N/A                                   | Error strip                 | Stats + chart    |
 
 **Universal rule**: Error never hides existing data. Show stale data + error bar: `"Last updated 4 min ago · Refresh failed"`.
 
@@ -218,16 +218,17 @@ Hover: popover after 150ms delay
 
 No JS animation library. All transitions use native CSS `transition` property.
 
-| Element                  | CSS property               | Duration    | Easing      |
-| ------------------------ | -------------------------- | ----------- | ----------- |
-| Cell hover popover       | opacity, transform (y 4px) | 150ms       | ease-out    |
-| Popover dismiss          | opacity                    | 100ms       | ease-in     |
-| Nav item active state    | background-color, color    | 150ms       | ease-out    |
-| Button hover             | background-color           | 150ms       | ease-out    |
-| Row hover fill           | background-color           | 100ms       | ease-out    |
-| Tab content switch       | opacity                    | 100ms       | ease-out    |
+| Element               | CSS property               | Duration | Easing   |
+| --------------------- | -------------------------- | -------- | -------- |
+| Cell hover popover    | opacity, transform (y 4px) | 150ms    | ease-out |
+| Popover dismiss       | opacity                    | 100ms    | ease-in  |
+| Nav item active state | background-color, color    | 150ms    | ease-out |
+| Button hover          | background-color           | 150ms    | ease-out |
+| Row hover fill        | background-color           | 100ms    | ease-out |
+| Tab content switch    | opacity                    | 100ms    | ease-out |
 
 **Not implemented / not used**:
+
 - Breathing cell animation — pending cells use `<Skeleton>` instead
 - Slide panel open/close — navigation is full-page, no side panels
 - New row enter animation — lists refresh in place

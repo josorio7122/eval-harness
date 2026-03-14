@@ -7,17 +7,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog'
 
 interface ConfirmDeleteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description: string;
-  affectedItems?: string[];
-  affectedItemsLabel?: string;
-  onConfirm: () => void;
-  isDeleting: boolean;
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  affectedItems?: string[]
+  affectedItemsLabel?: string
+  onConfirm: () => void
+  isDeleting: boolean
 }
 
 export function ConfirmDeleteDialog({
@@ -26,7 +26,7 @@ export function ConfirmDeleteDialog({
   title,
   description,
   affectedItems,
-  affectedItemsLabel = "The following will also be deleted:",
+  affectedItemsLabel = 'The following will also be deleted:',
   onConfirm,
   isDeleting,
 }: ConfirmDeleteDialogProps) {
@@ -56,10 +56,10 @@ export function ConfirmDeleteDialog({
             disabled={isDeleting}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {isDeleting ? "Deleting…" : "Delete"}
+            {isDeleting ? 'Deleting…' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
+  )
 }

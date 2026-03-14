@@ -12,16 +12,12 @@ const columns: Column<Grader>[] = [
   {
     header: 'Name',
     width: '1fr',
-    render: (g) => (
-      <span className="font-medium text-foreground">{g.name}</span>
-    ),
+    render: (g) => <span className="font-medium text-foreground">{g.name}</span>,
   },
   {
     header: 'Description',
     width: '1fr',
-    render: (g) => (
-      <span className="text-muted-foreground pr-4">{g.description || '—'}</span>
-    ),
+    render: (g) => <span className="text-muted-foreground pr-4">{g.description || '—'}</span>,
   },
 ]
 

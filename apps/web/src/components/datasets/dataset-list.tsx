@@ -11,9 +11,7 @@ const columns: Column<Dataset>[] = [
   {
     header: 'Name',
     width: '1fr',
-    render: (d) => (
-      <span className="font-medium text-foreground">{d.name}</span>
-    ),
+    render: (d) => <span className="font-medium text-foreground">{d.name}</span>,
   },
   {
     header: 'Items / Attrs',

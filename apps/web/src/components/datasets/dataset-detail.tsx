@@ -62,11 +62,7 @@ export function DatasetDetail({ id }: DatasetDetailProps) {
   }
 
   if (!dataset) {
-    return (
-      <div className="p-6 text-muted-foreground">
-        Dataset not found.
-      </div>
-    )
+    return <div className="p-6 text-muted-foreground">Dataset not found.</div>
   }
 
   return (

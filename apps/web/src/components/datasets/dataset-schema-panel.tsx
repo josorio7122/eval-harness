@@ -31,9 +31,7 @@ export default function DatasetSchemaPanel({ dataset, removeAttr }: DatasetSchem
       </div>
 
       {/* Attribute remove error */}
-      {removeAttrError && (
-        <p className="text-destructive text-xs px-4 py-2">{removeAttrError}</p>
-      )}
+      {removeAttrError && <p className="text-destructive text-xs px-4 py-2">{removeAttrError}</p>}
 
       {/* Attribute list */}
       <div className="flex-1 overflow-auto">
@@ -90,7 +88,9 @@ function AttributeRow({
     <div className="group flex items-center justify-between px-4 py-2 border-b border-border hover:bg-accent">
       <span className="text-sm font-mono">{name}</span>
       {isProtected ? (
-        <Badge variant="secondary" className="text-[10px]">required</Badge>
+        <Badge variant="secondary" className="text-[10px]">
+          required
+        </Badge>
       ) : (
         <Button
           variant="ghost"

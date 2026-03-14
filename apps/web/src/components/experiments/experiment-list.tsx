@@ -46,16 +46,12 @@ const columns: Column<Experiment>[] = [
   {
     header: 'Name',
     width: '1fr',
-    render: (exp) => (
-      <span className="font-medium text-foreground">{exp.name}</span>
-    ),
+    render: (exp) => <span className="font-medium text-foreground">{exp.name}</span>,
   },
   {
     header: 'Dataset',
     width: '1fr',
-    render: (exp) => (
-      <span className="text-muted-foreground pr-4">{exp.dataset?.name ?? '—'}</span>
-    ),
+    render: (exp) => <span className="text-muted-foreground pr-4">{exp.dataset?.name ?? '—'}</span>,
   },
   {
     header: 'Graders',
