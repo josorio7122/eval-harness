@@ -1,0 +1,43 @@
+# ── Build stage ──────────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@9
+
+# VITE_API_URL is inlined at build time by Vite — must be provided as a build arg
+ARG VITE_API_URL=http://localhost:3001
+ENV VITE_API_URL=$VITE_API_URL
+
+# Copy workspace manifests and lockfile first for layer caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/eslint-config/package.json ./packages/eslint-config/
+COPY packages/typescript-config/package.json ./packages/typescript-config/
+
+# Install all dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy full source
+COPY . .
+
+# Build the web app (vite build only — type checking is a CI concern, not a build blocker)
+RUN cd apps/web && pnpm exec vite build
+
+# ── Production stage ──────────────────────────────────────────────────────────
+FROM nginx:alpine AS runner
+
+# SPA routing: all paths serve index.html
+RUN printf 'server {\n\
+    listen 80;\n\
+    root /usr/share/nginx/html;\n\
+    index index.html;\n\
+    location / {\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
+
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+
+EXPOSE 80
