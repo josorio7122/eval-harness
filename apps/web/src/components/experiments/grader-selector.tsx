@@ -1,6 +1,12 @@
-import { Checkbox } from '@/components/ui/checkbox'
+import { useState } from 'react'
+import { Check, ChevronsUpDown } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
+import { Command, CommandEmpty, CommandItem, CommandList } from '@/components/ui/command'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type { Grader } from '@/hooks/use-graders'
+import { cn } from '@/lib/utils'
 
 interface GraderSelectorProps {
   graders: Grader[] | undefined
@@ -9,49 +15,65 @@ interface GraderSelectorProps {
 }
 
 export function GraderSelector({ graders, selectedIds, onToggle }: GraderSelectorProps) {
+  const [open, setOpen] = useState(false)
+
   return (
     <div className="flex flex-col gap-1.5">
       <Label>
         Graders <span className="text-destructive">*</span>
       </Label>
-      <div className="border border-border rounded-md max-h-[160px] overflow-y-auto overflow-x-hidden bg-card">
-        {!graders || graders.length === 0 ? (
-          <p className="text-xs text-muted-foreground p-3">
-            No graders available. Create graders first.
-          </p>
-        ) : (
-          graders.map((grader) => {
-            const selected = selectedIds.includes(grader.id)
-            return (
-              <div
-                key={grader.id}
-                className="flex items-center gap-3 px-3 py-2 border-b border-border last:border-b-0 hover:bg-accent"
-              >
-                <Checkbox
-                  id={grader.id}
-                  checked={selected}
-                  onCheckedChange={() => onToggle(grader.id)}
-                />
-                <Label
-                  htmlFor={grader.id}
-                  className="cursor-pointer flex-1 min-w-0 flex-col items-start gap-0.5 text-sm font-normal"
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            buttonVariants({ variant: 'outline' }),
+            'w-full justify-between font-normal',
+          )}
+        >
+          {selectedIds.length === 0
+            ? 'Select graders…'
+            : `${selectedIds.length} grader${selectedIds.length !== 1 ? 's' : ''} selected`}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+          <Command>
+            <CommandList>
+              <CommandEmpty>No graders available.</CommandEmpty>
+              {graders?.map((grader) => (
+                <CommandItem
+                  key={grader.id}
+                  value={grader.name}
+                  onSelect={() => onToggle(grader.id)}
                 >
-                  <span className="font-medium truncate max-w-full">{grader.name}</span>
-                  {grader.description && (
-                    <span className="text-[11px] text-muted-foreground truncate max-w-full">
-                      {grader.description}
-                    </span>
-                  )}
-                </Label>
-              </div>
-            )
-          })
-        )}
-      </div>
+                  <Check
+                    className={cn(
+                      'mr-2 h-4 w-4',
+                      selectedIds.includes(grader.id) ? 'opacity-100' : 'opacity-0',
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span className="font-medium">{grader.name}</span>
+                    {grader.description && (
+                      <span className="text-xs text-muted-foreground">{grader.description}</span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
       {selectedIds.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {selectedIds.length} grader{selectedIds.length !== 1 ? 's' : ''} selected
-        </p>
+        <div className="flex flex-wrap gap-1">
+          {graders
+            ?.filter((g) => selectedIds.includes(g.id))
+            .map((g) => (
+              <Badge key={g.id} variant="secondary" className="text-xs">
+                {g.name}
+              </Badge>
+            ))}
+        </div>
       )}
     </div>
   )
