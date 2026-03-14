@@ -36,7 +36,7 @@ Fix any errors or warnings before committing. Zero warnings policy — treat war
 | ---- | ------- | ----- |
 | Start dev (API + web) | `pnpm run dev` | Runs both from root via Turbo |
 | Start DB | `docker compose up -d` | PostgreSQL 17 in Docker |
-| Push schema | `pnpm --filter db exec prisma db push` | Syncs schema to DB |
+| Push schema | `pnpm --filter db exec prisma migrate dev` | Creates migration + applies locally |
 | Seed data | `./test-data/seed.sh` | Seeds demo data via Docker |
 | Reset DB | `docker compose down -v && docker compose up -d` | Wipes volumes and restarts |
 
@@ -44,6 +44,7 @@ Fix any errors or warnings before committing. Zero warnings policy — treat war
 - Always start the dev server from the **root** with `pnpm run dev` — never `cd` into a package and run it individually
 - Database always runs in Docker — never install PostgreSQL on the host
 - Use `docker exec eval-harness-db psql ...` for direct DB access
+- **Never use `prisma db push`** in production or CI — always use `prisma migrate dev` (local) or `prisma migrate deploy` (production/CI). `db push` has no migration history, can silently drop data, and is not idempotent.
 
 ## Project structure
 
