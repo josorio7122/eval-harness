@@ -3,8 +3,6 @@ import { EventEmitter } from 'events'
 import type { experimentRepository } from './repository.js'
 import type { ExperimentStatus } from './repository.js'
 
-export type ExperimentEvents = EventEmitter
-
 export const experimentEvents = new EventEmitter()
 
 const experimentQueue = new PQueue({ concurrency: 2 })
