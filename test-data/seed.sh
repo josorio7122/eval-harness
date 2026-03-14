@@ -2,8 +2,9 @@
 # seed.sh — Seeds the eval harness with the Customer Support QA dataset, 4 graders,
 #           and 3 pre-seeded experiments with mixed pass/fail/error results.
 # Usage: ./seed.sh [API_URL]
-# Requires: curl, jq, psql
+# Requires: curl, jq
 # Note: Each run creates new records. Run once against a fresh environment.
+# Note: psql runs inside the Docker container 'eval-harness-db' — no local psql needed.
 
 set -euo pipefail
 
@@ -14,7 +15,7 @@ CSV_FILE="$SCRIPT_DIR/customer-support-dataset.csv"
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 check_deps() {
-  for cmd in curl jq psql; do
+  for cmd in curl jq; do
     if ! command -v "$cmd" &>/dev/null; then
       echo "ERROR: '$cmd' is required but not installed." >&2
       exit 1
@@ -137,22 +138,9 @@ echo "  ✓ Grader 'Completeness' created: $G4_ID"
 
 echo "Seeding experiments with pre-computed results..."
 
-# Load DATABASE_URL from .env if not already set
-if [ -z "${DATABASE_URL:-}" ]; then
-  ENV_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.env"
-  if [ -f "$ENV_FILE" ]; then
-    DATABASE_URL=$(grep -E '^DATABASE_URL=' "$ENV_FILE" | head -1 | cut -d'=' -f2- | tr -d '"')
-  fi
-fi
-
-if [ -z "${DATABASE_URL:-}" ]; then
-  echo "ERROR: DATABASE_URL is not set and could not be loaded from .env" >&2
-  exit 1
-fi
-
 # Fetch the latest revision ID and all item IDs for this dataset
-REVISION_ID=$(psql "$DATABASE_URL" -t -A -c \
-  "SELECT id FROM \"DatasetRevision\" WHERE \"datasetId\" = '$DATASET_ID' ORDER BY \"createdAt\" DESC LIMIT 1;")
+REVISION_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
+  "SELECT id FROM \"DatasetRevision\" WHERE \"datasetId\" = '$DATASET_ID' ORDER BY \"createdAt\" DESC LIMIT 1;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 if [ -z "$REVISION_ID" ]; then
   echo "ERROR: Could not find a revision for dataset $DATASET_ID" >&2
@@ -161,8 +149,8 @@ fi
 echo "  ✓ Using revision: $REVISION_ID"
 
 # Fetch all item IDs ordered deterministically
-mapfile -t ITEM_IDS < <(psql "$DATABASE_URL" -t -A -c \
-  "SELECT id FROM \"DatasetRevisionItem\" WHERE \"revisionId\" = '$REVISION_ID' ORDER BY \"createdAt\", id;")
+IFS=$'\n' read -r -d '' -a ITEM_IDS < <(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
+  "SELECT id FROM \"DatasetRevisionItem\" WHERE \"revisionId\" = '$REVISION_ID' ORDER BY \"createdAt\", id;" && printf '\0')
 
 ITEM_COUNT="${#ITEM_IDS[@]}"
 if [ "$ITEM_COUNT" -eq 0 ]; then
@@ -221,7 +209,8 @@ build_results_sql() {
       verdict="error"
       reason="${error_reasons[$((ei % ${#error_reasons[@]}))]}"
     fi
-    reason="${reason//\'/\'\'}"  # escape single quotes for SQL
+    local sq="'" dq="''"
+    reason="${reason//$sq/$dq}"  # escape single quotes for SQL
     sql+="INSERT INTO \"ExperimentResult\" (id, \"experimentId\", \"datasetRevisionItemId\", \"graderId\", verdict, reason)
   VALUES (gen_random_uuid(), '$exp_id', '$item_id', '$grader_id', '$verdict', '$reason')
   ON CONFLICT (\"experimentId\", \"datasetRevisionItemId\", \"graderId\") DO NOTHING;
@@ -234,12 +223,12 @@ build_results_sql() {
 # ── Experiment 1: "Baseline GPT-4o Run" (high quality) ────────────────────
 echo "Creating experiment 'Baseline GPT-4o Run'..."
 
-EXP1_ID=$(psql "$DATABASE_URL" -t -A -c \
+EXP1_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
   "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status)
    VALUES (gen_random_uuid(), 'Baseline GPT-4o Run', '$DATASET_ID', '$REVISION_ID', 'complete')
-   RETURNING id;")
+   RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
-psql "$DATABASE_URL" -q -c \
+docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
   "INSERT INTO \"ExperimentGrader\" (\"experimentId\", \"graderId\") VALUES
    ('$EXP1_ID', '$G1_ID'),
    ('$EXP1_ID', '$G2_ID'),
@@ -248,22 +237,22 @@ psql "$DATABASE_URL" -q -c \
    ON CONFLICT DO NOTHING;"
 
 # Helpfulness:    28 pass, 2 fail,  0 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP1_ID" "$G1_ID" 28 2)
 SQL
 
 # Tone & Empathy: 27 pass, 2 fail,  1 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP1_ID" "$G2_ID" 27 2)
 SQL
 
 # Accuracy:       29 pass, 1 fail,  0 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP1_ID" "$G3_ID" 29 1)
 SQL
 
 # Completeness:   24 pass, 5 fail,  1 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP1_ID" "$G4_ID" 24 5)
 SQL
 
@@ -272,12 +261,12 @@ echo "  ✓ Experiment 1 created: $EXP1_ID"
 # ── Experiment 2: "Gemini Flash Run" (medium quality) ─────────────────────
 echo "Creating experiment 'Gemini Flash Run'..."
 
-EXP2_ID=$(psql "$DATABASE_URL" -t -A -c \
+EXP2_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
   "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status)
    VALUES (gen_random_uuid(), 'Gemini Flash Run', '$DATASET_ID', '$REVISION_ID', 'complete')
-   RETURNING id;")
+   RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
-psql "$DATABASE_URL" -q -c \
+docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
   "INSERT INTO \"ExperimentGrader\" (\"experimentId\", \"graderId\") VALUES
    ('$EXP2_ID', '$G1_ID'),
    ('$EXP2_ID', '$G2_ID'),
@@ -286,22 +275,22 @@ psql "$DATABASE_URL" -q -c \
    ON CONFLICT DO NOTHING;"
 
 # Helpfulness:    20 pass, 8 fail,  2 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP2_ID" "$G1_ID" 20 8)
 SQL
 
 # Tone & Empathy: 22 pass, 7 fail,  1 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP2_ID" "$G2_ID" 22 7)
 SQL
 
 # Accuracy:       18 pass, 10 fail, 2 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP2_ID" "$G3_ID" 18 10)
 SQL
 
 # Completeness:   15 pass, 12 fail, 3 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP2_ID" "$G4_ID" 15 12)
 SQL
 
@@ -310,12 +299,12 @@ echo "  ✓ Experiment 2 created: $EXP2_ID"
 # ── Experiment 3: "Claude Haiku Run" (lower quality) ──────────────────────
 echo "Creating experiment 'Claude Haiku Run'..."
 
-EXP3_ID=$(psql "$DATABASE_URL" -t -A -c \
+EXP3_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
   "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status)
    VALUES (gen_random_uuid(), 'Claude Haiku Run', '$DATASET_ID', '$REVISION_ID', 'complete')
-   RETURNING id;")
+   RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
-psql "$DATABASE_URL" -q -c \
+docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
   "INSERT INTO \"ExperimentGrader\" (\"experimentId\", \"graderId\") VALUES
    ('$EXP3_ID', '$G1_ID'),
    ('$EXP3_ID', '$G2_ID'),
@@ -324,22 +313,22 @@ psql "$DATABASE_URL" -q -c \
    ON CONFLICT DO NOTHING;"
 
 # Helpfulness:    14 pass, 14 fail, 2 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP3_ID" "$G1_ID" 14 14)
 SQL
 
 # Tone & Empathy: 16 pass, 12 fail, 2 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP3_ID" "$G2_ID" 16 12)
 SQL
 
 # Accuracy:       12 pass, 15 fail, 3 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP3_ID" "$G3_ID" 12 15)
 SQL
 
 # Completeness:   10 pass, 16 fail, 4 error
-psql "$DATABASE_URL" -q <<SQL
+docker exec -i eval-harness-db psql -U eval -d eval_harness -q <<SQL
 $(build_results_sql "$EXP3_ID" "$G4_ID" 10 16)
 SQL
 
