@@ -1,10 +1,11 @@
 import { BarChart, Bar, XAxis, YAxis, Cell, Tooltip } from 'recharts'
 import { ChartContainer } from '@/components/ui/chart'
 import type { ChartConfig } from '@/components/ui/chart'
-import type { Experiment } from '@/hooks/use-experiments'
+import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 
 interface GraderChartProps {
   experiment: Experiment
+  filteredResults: ExperimentResult[]
 }
 
 interface ChartEntry {
@@ -34,9 +35,9 @@ function GraderTooltip({ active, payload }: TooltipProps) {
   )
 }
 
-export function GraderChart({ experiment }: GraderChartProps) {
+export function GraderChart({ experiment, filteredResults }: GraderChartProps) {
   const graders = experiment.graders ?? []
-  const results = experiment.results ?? []
+  const results = filteredResults
 
   if (graders.length === 0) return null
 

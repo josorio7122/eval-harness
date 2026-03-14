@@ -9,6 +9,7 @@ import {
 } from '@/hooks/use-experiments'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ResultsTable } from './results-table'
+import type { ResultsFilter } from './results-table'
 import { GraderChart } from './grader-chart'
 import { ExperimentHeader } from './experiment-header'
 import { ExperimentDeleteDialog } from './experiment-delete-dialog'
@@ -39,6 +40,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   const deleteExp = useDeleteExperiment()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [filter, setFilter] = useState<ResultsFilter>('all')
 
   // SSE: keep experiment results updated while running
   useExperimentSSE(id, experiment?.status)
@@ -94,6 +96,26 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   })()
   const progressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
 
+  const items = experiment.revision?.items ?? []
+  const results = experiment.results ?? []
+  const graders = experiment.graders ?? []
+
+  const filteredItems = items.filter((item) => {
+    if (filter === 'all') return true
+    const itemResults = results.filter((r) => r.datasetRevisionItemId === item.id)
+    if (filter === 'passed-all') {
+      const passes = itemResults.filter((r) => r.verdict === 'pass').length
+      return passes === graders.length && graders.length > 0
+    }
+    if (filter === 'any-failed') {
+      return itemResults.some((r) => r.verdict === 'fail' || r.verdict === 'error')
+    }
+    return true
+  })
+
+  const filteredItemIds = new Set(filteredItems.map((i) => i.id))
+  const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetRevisionItemId))
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -148,13 +170,13 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
       {/* Chart — above table when results exist */}
       {(isComplete || hasResults) && (
         <div className="px-6 py-4 border-b border-border flex-shrink-0">
-          <GraderChart experiment={experiment} />
+          <GraderChart experiment={experiment} filteredResults={filteredResults} />
         </div>
       )}
 
       {/* Results table — when running (partial) or complete */}
       {isRunning || isComplete || hasResults ? (
-        <ResultsTable experiment={experiment} />
+        <ResultsTable experiment={experiment} filter={filter} onFilterChange={setFilter} />
       ) : (
         /* Empty / queued state */
         <div className="flex flex-col flex-1 overflow-hidden px-6 py-6">

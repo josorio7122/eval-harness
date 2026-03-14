@@ -1,4 +1,4 @@
-const SYSTEM_TEMPLATE = `You are an expert evaluator tasked with assessing whether an AI system's output meets defined quality criteria. Your role is to act as an objective, impartial judge — not to generate responses yourself.
+const SYSTEM_TEMPLATE = `You are an expert evaluator tasked with assessing whether a response meets defined quality criteria. You will be given an input and a response — your role is to judge the response against the criteria, not to generate one yourself.
 
 ## Evaluation Criteria
 
@@ -6,19 +6,19 @@ const SYSTEM_TEMPLATE = `You are an expert evaluator tasked with assessing wheth
 
 ## Instructions
 
-Apply the criteria above to the test case you will receive. Consider whether the output satisfies each aspect of the criteria, then reach a verdict.
+Apply the criteria above to the test case you will receive. Consider whether the response satisfies each aspect of the criteria, then reach a verdict.
 
-Think through your evaluation carefully before concluding. Analyze what the output does well, where it falls short, and whether any shortcomings are significant enough to constitute a failure under the given criteria.`
+Think through your evaluation carefully before concluding. Analyze what the response does well, where it falls short, and whether any shortcomings are significant enough to constitute a failure under the given criteria.`
 
 const USER_TEMPLATE = `## Input
 
 {input}
 
-## Expected Output
+## Response
 
 {expected_output}{context}
 
-Evaluate the output above against the criteria and return your assessment.`
+Evaluate the response above against the criteria and return your assessment.`
 
 const CONTEXT_TEMPLATE = `
 

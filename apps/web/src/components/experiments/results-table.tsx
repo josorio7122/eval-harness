@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -12,10 +11,12 @@ import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 import { VerdictCell } from './verdict-cell'
 import { SectionLabel } from '@/components/shared/section-label'
 
-type ResultsFilter = 'all' | 'passed-all' | 'any-failed'
+export type ResultsFilter = 'all' | 'passed-all' | 'any-failed'
 
 interface ResultsTableProps {
   experiment: Experiment
+  filter: ResultsFilter
+  onFilterChange: (filter: ResultsFilter) => void
 }
 
 // Long-text attributes get wider max-width
@@ -35,9 +36,7 @@ function passCount(itemId: string, results: ExperimentResult[]): number {
   return results.filter((r) => r.datasetRevisionItemId === itemId && r.verdict === 'pass').length
 }
 
-export function ResultsTable({ experiment }: ResultsTableProps) {
-  const [filter, setFilter] = useState<ResultsFilter>('all')
-
+export function ResultsTable({ experiment, filter, onFilterChange }: ResultsTableProps) {
   const graders = experiment.graders ?? []
   const items = experiment.revision?.items ?? []
   const results = experiment.results ?? []
@@ -87,7 +86,7 @@ export function ResultsTable({ experiment }: ResultsTableProps) {
               key={opt}
               variant={isActive ? 'secondary' : 'ghost'}
               size="sm"
-              onClick={() => setFilter(opt)}
+              onClick={() => onFilterChange(opt)}
               className="h-6 px-2 text-[11px]"
             >
               {filterLabels[opt]}
