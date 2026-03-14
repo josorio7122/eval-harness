@@ -35,10 +35,10 @@ flowchart TD
     LLM["LLM Judge<br/>(OpenRouter)"]
     DB["PostgreSQL<br/>(pinned revision)"]
 
-    UI -->|"POST /experiments\n(creates + enqueues runner)"| API
+    UI -->|"POST /experiments<br/>(creates + enqueues runner)"| API
     API --> Runner
     Runner -->|"rubric + item attributes"| LLM
-    LLM -->|"structured verdict\n(pass/fail + reasoning)"| Runner
+    LLM -->|"structured verdict<br/>(pass/fail + reasoning)"| Runner
     Runner -->|"save results"| DB
     Runner -->|"emit progress events"| API
     API -->|"real-time updates via SSE"| UI
