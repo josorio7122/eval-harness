@@ -2,38 +2,13 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { FlaskConical, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useExperiments } from '@/hooks/use-experiments'
 import type { Experiment } from '@/hooks/use-experiments'
 import { CreateExperimentDialog } from './create-experiment-dialog'
 import { DataTable } from '@/components/shared/data-table'
 import type { Column } from '@/components/shared/data-table'
-
-const STATUS_LABEL: Record<Experiment['status'], string> = {
-  running: 'Running',
-  complete: 'Complete',
-  failed: 'Failed',
-  queued: 'Queued',
-}
-
-function StatusBadge({ status }: { status: Experiment['status'] }) {
-  if (status === 'running') {
-    return <Badge className="bg-primary/10 text-primary border-primary/20">Running</Badge>
-  }
-  if (status === 'complete') {
-    return (
-      <Badge className="bg-[var(--pass)]/10 text-[var(--pass-fg)] border-[var(--pass)]/20">
-        Complete
-      </Badge>
-    )
-  }
-  if (status === 'failed') {
-    return (
-      <Badge className="bg-destructive/10 text-destructive border-destructive/20">Failed</Badge>
-    )
-  }
-  return <Badge variant="outline">{STATUS_LABEL[status]}</Badge>
-}
+import { getModelDisplayName } from '@/lib/models'
+import { StatusBadge } from './status-badge'
 
 function progressPct(exp: Experiment): number {
   const total = (exp.revision?.items?.length ?? 0) * (exp.graders?.length ?? 0)
@@ -52,6 +27,15 @@ const columns: Column<Experiment>[] = [
     header: 'Dataset',
     width: '1fr',
     render: (exp) => <span className="text-muted-foreground pr-4">{exp.dataset?.name ?? '—'}</span>,
+  },
+  {
+    header: 'Model',
+    width: '1fr',
+    render: (exp) => (
+      <span className="text-muted-foreground">
+        {exp.modelId ? getModelDisplayName(exp.modelId) : '—'}
+      </span>
+    ),
   },
   {
     header: 'Graders',

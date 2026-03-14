@@ -20,6 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { GraderSelector } from './grader-selector'
+import { ModelSelector } from './model-selector'
+import { DEFAULT_MODEL_ID } from '@/lib/models'
 
 interface CreateExperimentDialogProps {
   open: boolean
@@ -30,6 +32,7 @@ interface CreateExperimentDialogProps {
 export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExperimentDialogProps) {
   const [name, setName] = useState('')
   const [datasetId, setDatasetId] = useState('')
+  const [modelId, setModelId] = useState(DEFAULT_MODEL_ID)
   const [graderIds, setGraderIds] = useState<string[]>([])
   const nameRef = useRef<HTMLInputElement>(null)
 
@@ -44,6 +47,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     setPrevOpen(true)
     setName('')
     setDatasetId('')
+    setModelId(DEFAULT_MODEL_ID)
     setGraderIds([])
   } else if (!open && prevOpen) {
     setPrevOpen(false)
@@ -65,7 +69,12 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     e.preventDefault()
     if (!name.trim() || !datasetId || graderIds.length === 0) return
     try {
-      const result = await createExperiment.mutateAsync({ name: name.trim(), datasetId, graderIds })
+      const result = await createExperiment.mutateAsync({
+        name: name.trim(),
+        datasetId,
+        graderIds,
+        modelId,
+      })
       const newId = (result as { id?: string }).id ?? ''
       if (newId) {
         runExperiment.mutate(newId)
@@ -110,12 +119,23 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
             />
           </div>
 
+          {/* Model */}
+          <div className="flex flex-col gap-1.5">
+            <Label>Model</Label>
+            <ModelSelector value={modelId} onChange={setModelId} />
+          </div>
+
           {/* Dataset */}
           <div className="flex flex-col gap-1.5">
             <Label>
               Dataset <span className="text-destructive">*</span>
             </Label>
-            <Select value={datasetId} onValueChange={(v) => setDatasetId(v ?? '')}>
+            <Select
+              value={datasetId}
+              onValueChange={(v) => {
+                if (v) setDatasetId(v)
+              }}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select a dataset…">
                   {datasetId && datasets?.find((ds) => ds.id === datasetId)?.name}
