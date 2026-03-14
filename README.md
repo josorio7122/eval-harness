@@ -54,8 +54,8 @@ docker compose up -d
 cp .env.example .env
 # Edit .env with your OPENROUTER_API_KEY
 
-# 4. Run database migrations
-pnpm --filter @eval-harness/db exec prisma migrate dev
+# 4. Push database schema
+pnpm --filter db exec prisma db push
 
 # 5. Start development servers
 pnpm dev
@@ -65,15 +65,14 @@ API runs on http://localhost:3001, frontend on http://localhost:5173
 
 ## Scripts
 
-| Command                 | Description                      |
-| ----------------------- | -------------------------------- |
-| `pnpm dev`              | Start API + web in dev mode      |
-| `pnpm build`            | Build all packages               |
-| `pnpm test`             | Run unit tests                   |
-| `pnpm test:integration` | Run integration tests (needs DB) |
-| `pnpm lint`             | Lint all packages                |
-| `pnpm typecheck`        | Type-check all packages          |
-| `pnpm format`           | Format with Prettier             |
+| Command          | Description                 |
+| ---------------- | --------------------------- |
+| `pnpm dev`       | Start API + web in dev mode |
+| `pnpm build`     | Build all packages          |
+| `pnpm test`      | Run unit tests              |
+| `pnpm lint`      | Lint all packages           |
+| `pnpm typecheck` | Type-check all packages     |
+| `pnpm format`    | Format with Prettier        |
 
 ## Try It Out
 
@@ -87,11 +86,19 @@ With the dev server running:
 ./test-data/seed.sh
 ```
 
-This creates a "Customer Support QA" dataset with 30 test cases, adds four graders (Helpfulness, Tone & Empathy, Accuracy, Completeness), and prints the IDs you need to create your first experiment. Open the UI at http://localhost:5173, create an experiment using the seeded dataset and graders, and hit Run.
+This creates a "Customer Support QA" dataset with 30 test cases, four graders (Helpfulness, Tone & Empathy, Accuracy, Completeness), and three pre-seeded experiments with pre-computed results:
+
+- **Baseline GPT-4o Run** (~90% pass)
+- **Gemini Flash Run** (~63% pass)
+- **Claude Haiku Run** (~43% pass)
+
+Open the UI at http://localhost:5173 to explore the seeded experiments immediately — no API key needed to browse results. An `OPENROUTER_API_KEY` is only required to run new experiments.
 
 ### What's included
 
 **[customer-support-dataset.csv](test-data/customer-support-dataset.csv)** — 30 customer support interactions across billing, account, technical, product, and policy categories. Each row has an `input` (customer message), `expected_output` (ideal response), `category`, and `difficulty` (easy/medium/hard). You can also import this CSV manually from the Datasets page in the UI.
+
+> **Note:** The seed script requires Docker. The `eval-harness-db` container must be running because the script uses `docker exec` to insert experiment results directly via psql.
 
 **[recommended-evals.md](test-data/recommended-evals.md)** — Four grader rubrics designed for this dataset. Each grader evaluates a different dimension of response quality:
 

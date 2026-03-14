@@ -1,73 +1,57 @@
-# React + TypeScript + Vite
+# Eval Harness Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 frontend for the eval harness. Dense, data-focused interface for managing datasets, graders, and experiment results.
 
-Currently, two official plugins are available:
+## Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# From monorepo root
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Frontend runs on `http://localhost:5173`. Requires the API at `http://localhost:3001`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Layer     | Tech                                                |
+| --------- | --------------------------------------------------- |
+| Framework | React 19 + Vite                                     |
+| Routing   | React Router 7                                      |
+| State     | TanStack Query (server state) + useState (UI state) |
+| UI        | shadcn/ui (Base UI v4) + Tailwind CSS 4             |
+| Charts    | Recharts                                            |
+| Icons     | Lucide React                                        |
+
+## Structure
+
 ```
+src/
+├── components/
+│   ├── datasets/        — Dataset list, detail, items, revisions, CSV import/export
+│   ├── graders/         — Grader list, detail, form editing
+│   ├── experiments/     — Experiment list, detail, results table, charts
+│   ├── shared/          — DataTable, PageHeader, EmptyState, ConfirmDeleteDialog
+│   └── ui/              — shadcn/ui primitives (Button, Dialog, Table, etc.)
+├── hooks/               — TanStack Query hooks per domain
+├── lib/                 — API client, utilities
+├── pages/               — Thin route handlers
+└── App.tsx              — Router + providers
+```
+
+## Pages
+
+| Route            | View                                      |
+| ---------------- | ----------------------------------------- |
+| /                | Redirects to /datasets                    |
+| /datasets        | Dataset list                              |
+| /datasets/:id    | Dataset detail (items, schema, revisions) |
+| /graders         | Grader list                               |
+| /graders/:id     | Grader detail (edit form)                 |
+| /experiments     | Experiment list                           |
+| /experiments/:id | Experiment detail (results table, charts) |
+
+## Environment Variables
+
+| Variable     | Default               | Description  |
+| ------------ | --------------------- | ------------ |
+| VITE_API_URL | http://localhost:3001 | API base URL |

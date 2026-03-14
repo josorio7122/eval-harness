@@ -224,7 +224,7 @@ App
     │       │   └── RevisionDetailPanel
     │       ├── DatasetItemsTable
     │       ├── RevisionHistory
-    │       └── Dialogs: AddAttribute, AddItem, CreateDataset, DatasetCsv, DatasetDelete
+    │       └── Dialogs: AddAttributeDialog, AddItemDialog, CreateDatasetDialog, DatasetCsvDialog, DatasetDeleteDialog
     ├── GradersPage
     │   ├── GraderList
     │   └── GraderDetail
@@ -234,10 +234,13 @@ App
         ├── ExperimentList
         └── ExperimentDetail
             ├── ExperimentHeader
-            ├── AggregateStats
+            ├── GraderChart
+            ├── ResultsFilterBar
             ├── ResultsTable
-            │   └── VerdictCell
-            └── Dialogs: CreateExperiment, ExperimentDelete
+            │   └── ResultsTableRow
+            │       └── VerdictCell
+            ├── GraderSelector
+            └── Dialogs: CreateExperimentDialog, ExperimentDeleteDialog
 ```
 
 **Shared components** (`components/shared/`):

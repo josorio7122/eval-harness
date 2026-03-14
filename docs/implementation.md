@@ -326,25 +326,20 @@ All three modules follow the same pattern. The experiments module has additional
 ### Frontend (`apps/web`)
 
 - **Vite** — build tool
-- **React** — UI framework
-- **shadcn/ui** — component library (CLI-first: `pnpm dlx shadcn@latest init`)
+- **React 19** — UI framework
+- **shadcn/ui** — component library (Base UI v4 primitives via `pnpm dlx shadcn@latest init`)
 - **Tailwind CSS v4** — styling
-- **Zod** — client-side validation
 - **TanStack Query** — server state management (queries, mutations, cache)
-- **TanStack Table** — data tables (results, datasets, graders)
-- **TanStack Form** — form state management
-- **Tremor** — charts and aggregate stats visualization (pass rates, bar charts)
-- **Lucide React** — icon library (consistent, MIT licensed, pairs with shadcn/ui)
-- **Motion** — animation library (formerly Framer Motion, use when needed for transitions and micro-interactions)
+- **Recharts** — charts for pass rate visualization
+- **Lucide React** — icon library
 
 ### Shared Packages (`packages/`)
 
 - **`packages/db`** — Prisma schema, migrations, generated client. Both API and (if needed) seed scripts import from here
-- **`packages/shared`** — Shared TypeScript types:
+- **`packages/shared`** — Shared TypeScript utilities:
   - `Result<T, E>` type
-  - Zod schemas used by both API validation and frontend form validation
-  - Entity types derived from Prisma (re-exported without Prisma internals)
-  - API contract types (request/response shapes)
+  - `ok`, `fail` constructors
+  - `tryCatch` helper
 
 ---
 
@@ -434,9 +429,9 @@ app.post('/datasets', async (c) => {
 ### Frontend Patterns
 
 - **TanStack Query** for all API calls — no raw `fetch` in components
-- **TanStack Table** for dataset items table, graders list, experiment results table
-- **TanStack Form** with Zod resolvers for all forms (create/edit dataset, grader, experiment)
-- **Tremor** charts for aggregate stats (pass rates per grader, experiment summary)
+- **Custom DataTable component** for all tables (dataset items, graders list, experiment results)
+- **Local useState** for form state management
+- **Recharts** for aggregate stats charts (pass rates per grader, experiment summary)
 - **shadcn/ui** for all base components (buttons, dialogs, inputs, tabs, etc.)
 - Components organized by feature, not by type
 
@@ -657,30 +652,31 @@ Cell completes → EventEmitter fires → SSE stream writes progress event
 
 - **Vercel AI SDK** (`ai` package) — for structured LLM calls
 - **OpenRouter** (`@openrouter/ai-sdk-provider`) — model gateway, access to 400+ models
-- **Default judge model**: configurable via environment variable (e.g. `google/gemini-3-flash-preview` for speed, `anthropic/claude-sonnet-4-6` for quality)
+- **Default judge model**: configurable via environment variable (e.g. `google/gemini-2.5-flash-preview` for speed, `anthropic/claude-sonnet-4-6` for quality)
 
 ### Structured Output
 
-Each evaluation call uses `generateObject()` from the Vercel AI SDK with a Zod schema to guarantee type-safe responses:
+Each evaluation call uses `generateText()` with `Output.object()` from the Vercel AI SDK to guarantee type-safe structured responses:
 
 ```ts
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { z } from 'zod'
 
 const verdictSchema = z.object({
-  verdict: z.enum(['pass', 'fail']),
   reason: z.string(),
+  verdict: z.enum(['pass', 'fail']),
 })
 
-// Per the spec: system message = rubric, user message = item attributes
-const result = await generateObject({
-  model: openrouter(process.env.LLM_JUDGE_MODEL ?? 'google/gemini-3-flash-preview'),
-  schema: verdictSchema,
-  system: grader.rubric,
-  prompt: formatItemAttributes(datasetItem),
+const result = await generateText({
+  model: openrouter(process.env['LLM_JUDGE_MODEL'] ?? 'google/gemini-2.5-flash-preview'),
+  output: Output.object({ schema: verdictSchema }),
+  messages: [
+    { role: 'system', content: buildSystemPrompt(rubric) },
+    { role: 'user', content: buildUserMessage(itemAttributes) },
+  ],
 })
-// result.object is typed as { verdict: "pass" | "fail", reason: string }
+// result.output is typed as { verdict: "pass" | "fail", reason: string }
 ```
 
 ### Environment Variables
@@ -695,7 +691,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/eval_harness"
 
 # LLM
 OPENROUTER_API_KEY="sk-or-v1-..."    # OpenRouter API key
-LLM_JUDGE_MODEL="google/gemini-3-flash-preview"  # Default judge model (overridable)
+LLM_JUDGE_MODEL="google/gemini-2.5-flash-preview"  # Default judge model (overridable)
 
 # API
 API_PORT=3001
