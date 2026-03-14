@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
+import { type Result } from '@eval-harness/shared'
+
+const MODEL_ID = 'openai/gpt-4o'
 import { graderRepository as repo } from '../../graders/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { experimentRepository } from '../../experiments/repository.js'
@@ -115,7 +117,7 @@ describe('graders repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: revision.id,
         graderIds: [grader.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 

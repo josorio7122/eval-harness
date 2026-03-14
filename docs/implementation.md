@@ -143,7 +143,7 @@ type Experiment = {
   datasetRevisionId: uuid // System-set. Reference to the DatasetRevision pinned at creation time
   graderIds: uuid[] // User-selected. List of Grader IDs; at least one required
   status: ExperimentStatus // System-managed. Starts as "queued" on creation
-  modelId: string // User-selected. OpenRouter model ID used by the evaluator. Defaults to DEFAULT_MODEL_ID ("google/gemini-2.5-flash")
+  modelId: string // Required. OpenRouter model ID selected by the user for evaluation
 }
 ```
 
@@ -163,7 +163,7 @@ type Experiment = {
 - At most two experiments may be `"running"` at a time; others queue
 - `datasetRevisionId` references the dataset's latest revision at the time of experiment creation. This reference never changes after creation
 - Re-running creates a new `Experiment` with a new `id` and derived `name`; original is preserved
-- `modelId` must be a non-empty string; defaults to `DEFAULT_MODEL_ID` from `packages/shared/src/constants.ts` if not provided
+- `modelId` must be a non-empty string; required when creating an experiment
 
 **Relationships:**
 
@@ -654,7 +654,7 @@ Cell completes → EventEmitter fires → SSE stream writes progress event
 
 - **Vercel AI SDK** (`ai` package) — for structured LLM calls
 - **OpenRouter** (`@openrouter/ai-sdk-provider`) — model gateway, access to 400+ models
-- **Default judge model**: stored per experiment at creation time. The `DEFAULT_MODEL_ID` constant in `packages/shared/src/constants.ts` is `"google/gemini-2.5-flash"`. The `LLM_JUDGE_MODEL` env var is a fallback for backward compatibility only — the experiment's `modelId` field takes precedence.
+- **Judge model**: stored per experiment at creation time as `modelId` — required, no fallback. The model is passed directly to the evaluator.
 
 ### Structured Output
 
@@ -671,7 +671,7 @@ const verdictSchema = z.object({
 })
 
 const result = await generateText({
-  model: openrouter(modelId), // modelId comes from the experiment; falls back to LLM_JUDGE_MODEL, then DEFAULT_MODEL_ID
+  model: openrouter(modelId), // modelId comes from the experiment — required, no fallback
   output: Output.object({ schema: verdictSchema }),
   messages: [
     { role: 'system', content: buildSystemPrompt(rubric) },
@@ -693,7 +693,6 @@ DATABASE_URL="postgresql://user:password@localhost:5432/eval_harness"
 
 # LLM
 OPENROUTER_API_KEY="sk-or-v1-..."    # OpenRouter API key
-LLM_JUDGE_MODEL="google/gemini-2.5-flash"  # Fallback judge model (used only if experiment has no modelId)
 
 # API
 API_PORT=3001
@@ -708,7 +707,6 @@ VITE_API_URL="http://localhost:3001"
 - `.env.example` committed to repo with placeholder values (no real keys)
 - `.env` added to `.gitignore` — never committed
 - `OPENROUTER_API_KEY` is the only secret — everything else is configuration
-- `LLM_JUDGE_MODEL` is a fallback only — the experiment's `modelId` field takes precedence; set this for backward compatibility or to override experiments that somehow lack a `modelId`
 - Vite requires `VITE_` prefix for frontend-accessible variables
 
 ---

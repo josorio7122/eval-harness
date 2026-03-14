@@ -23,7 +23,9 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
       }}
     >
       <SelectTrigger className="w-full">
-        <SelectValue>{getModelDisplayName(value)}</SelectValue>
+        <SelectValue placeholder="Select a model…">
+          {value ? getModelDisplayName(value) : null}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         {MODEL_TIERS.map((tier) => (

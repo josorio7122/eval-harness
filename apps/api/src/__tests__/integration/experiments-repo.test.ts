@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
+import { type Result } from '@eval-harness/shared'
+
+const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository as repo } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
@@ -54,7 +56,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -72,7 +74,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -93,7 +95,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -113,7 +115,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -132,7 +134,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -160,7 +162,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -205,7 +207,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -240,7 +242,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -273,7 +275,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 
@@ -304,7 +306,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
     const expB = unwrap(
@@ -313,7 +315,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 

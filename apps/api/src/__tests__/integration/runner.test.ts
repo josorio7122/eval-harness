@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
+import { type Result } from '@eval-harness/shared'
+
+const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
@@ -59,7 +61,7 @@ async function seedExperiment(itemCount: number, graderCount: number) {
       datasetId: dataset.id,
       datasetRevisionId: revisionId,
       graderIds,
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
@@ -82,7 +84,7 @@ describe('experiment runner (integration)', () => {
   it('full run: 3 items × 2 graders → 6 results in DB, status = complete', async () => {
     const { experiment, items, graders } = await seedExperiment(3, 2)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     const count = unwrap(await experimentRepository.countResultsByExperimentId(experiment.id))
     expect(count).toBe(6)
@@ -100,7 +102,7 @@ describe('experiment runner (integration)', () => {
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
     expect(results).toHaveLength(4)
@@ -111,7 +113,7 @@ describe('experiment runner (integration)', () => {
   it('final status = complete when all evaluations succeed', async () => {
     const { experiment, items, graders } = await seedExperiment(2, 1)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     const found = unwrap(await experimentRepository.findById(experiment.id))
     expect(found.status).toBe('complete')
@@ -123,7 +125,7 @@ describe('experiment runner (integration)', () => {
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
     expect(results).toHaveLength(4)
@@ -144,7 +146,7 @@ describe('experiment runner (integration)', () => {
     const listener = (event: { type: string }) => emittedTypes.push(event.type)
     experimentEvents.on(experiment.id, listener)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     experimentEvents.off(experiment.id, listener)
 
@@ -163,7 +165,7 @@ describe('experiment runner (integration)', () => {
     const listener = (event: { type: string }) => emittedTypes.push(event.type)
     experimentEvents.on(experiment.id, listener)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     experimentEvents.off(experiment.id, listener)
 
@@ -184,7 +186,7 @@ describe('experiment runner (integration)', () => {
 
     const { experiment, items, graders } = await seedExperiment(2, 2)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
     expect(results).toHaveLength(4)
@@ -201,7 +203,7 @@ describe('experiment runner (integration)', () => {
   it('unique constraint respected: result count equals exactly items × graders', async () => {
     const { experiment, items, graders } = await seedExperiment(3, 3)
 
-    await runner.enqueue(experiment.id, items, graders)
+    await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
     const count = unwrap(await experimentRepository.countResultsByExperimentId(experiment.id))
     expect(count).toBe(items.length * graders.length)

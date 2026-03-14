@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
+import { type Result } from '@eval-harness/shared'
+
+const MODEL_ID = 'openai/gpt-4o'
 import { datasetRepository as datasetRepo } from '../../datasets/repository.js'
 import { graderRepository as graderRepo } from '../../graders/repository.js'
 import { experimentRepository as experimentRepo } from '../../experiments/repository.js'
@@ -50,7 +52,7 @@ async function seedFullScenario() {
       datasetId: dataset.id,
       datasetRevisionId: latestRevision.id,
       graderIds: [grader.id],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     }),
   )
 
@@ -196,7 +198,7 @@ describe('GraderDelete with multiple experiments', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
     const expB = unwrap(
@@ -205,7 +207,7 @@ describe('GraderDelete with multiple experiments', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
 

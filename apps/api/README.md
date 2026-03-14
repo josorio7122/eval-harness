@@ -69,12 +69,11 @@ Same pattern for `graders/` and `experiments/`.
 
 ## Environment Variables
 
-| Variable           | Required                | Default                         | Description                  |
-| ------------------ | ----------------------- | ------------------------------- | ---------------------------- |
-| DATABASE_URL       | Yes                     | —                               | PostgreSQL connection string |
-| OPENROUTER_API_KEY | For running experiments | —                               | OpenRouter API key           |
-| LLM_JUDGE_MODEL    | No                      | google/gemini-2.5-flash-preview | Model for LLM judge          |
-| API_PORT           | No                      | 3001                            | Server port                  |
+| Variable           | Required                | Default | Description                  |
+| ------------------ | ----------------------- | ------- | ---------------------------- |
+| DATABASE_URL       | Yes                     | —       | PostgreSQL connection string |
+| OPENROUTER_API_KEY | For running experiments | —       | OpenRouter API key           |
+| API_PORT           | No                      | 3001    | Server port                  |
 
 ## Testing
 

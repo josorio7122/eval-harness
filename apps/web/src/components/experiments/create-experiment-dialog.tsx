@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/select'
 import { GraderSelector } from './grader-selector'
 import { ModelSelector } from './model-selector'
-import { DEFAULT_MODEL_ID } from '@/lib/models'
 
 interface CreateExperimentDialogProps {
   open: boolean
@@ -32,7 +31,7 @@ interface CreateExperimentDialogProps {
 export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExperimentDialogProps) {
   const [name, setName] = useState('')
   const [datasetId, setDatasetId] = useState('')
-  const [modelId, setModelId] = useState(DEFAULT_MODEL_ID)
+  const [modelId, setModelId] = useState('')
   const [graderIds, setGraderIds] = useState<string[]>([])
   const nameRef = useRef<HTMLInputElement>(null)
 
@@ -47,7 +46,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     setPrevOpen(true)
     setName('')
     setDatasetId('')
-    setModelId(DEFAULT_MODEL_ID)
+    setModelId('')
     setGraderIds([])
   } else if (!open && prevOpen) {
     setPrevOpen(false)
@@ -86,7 +85,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     }
   }
 
-  const canSubmit = name.trim() && datasetId && graderIds.length > 0
+  const canSubmit = name.trim() && datasetId && graderIds.length > 0 && modelId
 
   return (
     <Dialog
@@ -121,7 +120,9 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
 
           {/* Model */}
           <div className="flex flex-col gap-1.5">
-            <Label>Model</Label>
+            <Label>
+              Model <span className="text-destructive">*</span>
+            </Label>
             <ModelSelector value={modelId} onChange={setModelId} />
           </div>
 

@@ -74,6 +74,7 @@ describe('POST /experiments', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: 'openai/gpt-4o',
     })
     expect(res.status).toBe(201)
     const body = await res.json()
@@ -85,6 +86,7 @@ describe('POST /experiments', () => {
       name: '',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: 'openai/gpt-4o',
     })
     expect(res.status).toBe(400)
     expect(mockService.createExperiment).not.toHaveBeenCalled()
@@ -95,6 +97,17 @@ describe('POST /experiments', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [],
+      modelId: 'openai/gpt-4o',
+    })
+    expect(res.status).toBe(400)
+    expect(mockService.createExperiment).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when modelId is missing', async () => {
+    const res = await jsonPost('/experiments', {
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
     })
     expect(res.status).toBe(400)
     expect(mockService.createExperiment).not.toHaveBeenCalled()
@@ -106,6 +119,7 @@ describe('POST /experiments', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: 'openai/gpt-4o',
     })
     expect(res.status).toBe(400)
     const body = await res.json()

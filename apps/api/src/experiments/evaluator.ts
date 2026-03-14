@@ -1,7 +1,6 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateText, Output } from 'ai'
 import { z } from 'zod'
-import { DEFAULT_MODEL_ID } from '@eval-harness/shared'
 import { buildSystemPrompt, buildUserMessage } from './judge-template.js'
 
 const verdictSchema = z.object({
@@ -16,9 +15,9 @@ const openrouter = createOpenRouter({
 export const evaluate = async (
   rubric: string,
   itemAttributes: Record<string, string>,
-  modelId?: string,
+  modelId: string,
 ): Promise<{ verdict: 'pass' | 'fail'; reason: string }> => {
-  const model = modelId || process.env['LLM_JUDGE_MODEL'] || DEFAULT_MODEL_ID
+  const model = modelId
 
   const result = await generateText({
     model: openrouter(model),

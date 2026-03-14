@@ -1,5 +1,3 @@
-export { DEFAULT_MODEL_ID } from '@eval-harness/shared'
-
 export const AVAILABLE_MODELS = [
   // Top-Tier Reasoning
   {

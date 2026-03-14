@@ -169,7 +169,7 @@ Flow:
 
 - Provider: OpenRouter via `@openrouter/ai-sdk-provider`
 - SDK: Vercel AI SDK `generateText` with `Output.object` (structured output)
-- Model: accepts `modelId` as a parameter sourced from `experiment.modelId`. Falls back to the `LLM_JUDGE_MODEL` env var, then to `DEFAULT_MODEL_ID` (`google/gemini-2.5-flash`) from `packages/shared/src/constants.ts`.
+- Model: accepts `modelId` as a parameter sourced from `experiment.modelId`. Uses the experiment's `modelId` directly — required, no fallback.
 - Output schema: `{ reason: string, verdict: enum('pass', 'fail') }` (Zod)
 
 **Model flow:**

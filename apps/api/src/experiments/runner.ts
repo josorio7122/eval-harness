@@ -12,7 +12,7 @@ type Repo = Pick<typeof experimentRepository, 'updateStatus' | 'createResult'>
 type EvaluateFn = (
   rubric: string,
   itemAttributes: Record<string, string>,
-  modelId?: string,
+  modelId: string,
 ) => Promise<{ verdict: string; reason: string }>
 
 async function evaluateCell(
@@ -21,7 +21,7 @@ async function evaluateCell(
   experimentId: string,
   item: { id: string; values: Record<string, string> },
   grader: { id: string; rubric: string },
-  modelId?: string,
+  modelId: string,
 ) {
   let verdict: string
   let reason: string
@@ -54,7 +54,7 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
     experimentId: string,
     datasetItems: Array<{ id: string; values: Record<string, string> }>,
     graders: Array<{ id: string; rubric: string }>,
-    modelId?: string,
+    modelId: string,
   ): Promise<void> {
     await experimentQueue.add(async () => {
       const statusResult = await repo.updateStatus(experimentId, 'running')

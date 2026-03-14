@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ok, fail, DEFAULT_MODEL_ID } from '@eval-harness/shared'
+import { ok, fail } from '@eval-harness/shared'
+
+const MODEL_ID = 'openai/gpt-4o'
 import { createExperimentService } from '../service.js'
 
 const VALID_UUID = '123e4567-e89b-42d3-a456-426614174000'
@@ -120,7 +122,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     })
     expect(result).toEqual({ success: true, data: created })
     expect(mockRepo.create).toHaveBeenCalledWith({
@@ -128,7 +130,7 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       datasetRevisionId: 'rev-1',
       graderIds: [VALID_UUID_3],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     })
   })
 
@@ -163,7 +165,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -181,7 +183,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset has no items' })
   })
@@ -201,7 +203,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
   })
@@ -221,7 +223,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Grader not found' })
   })

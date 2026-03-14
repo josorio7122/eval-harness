@@ -31,10 +31,11 @@ describe('evaluate', () => {
       output: { verdict: 'pass', reason: 'Looks good' },
     } as unknown as Awaited<ReturnType<typeof generateText>>)
 
-    const result = await evaluate('Grade this response', {
-      input: 'hello',
-      expected_output: 'world',
-    })
+    const result = await evaluate(
+      'Grade this response',
+      { input: 'hello', expected_output: 'world' },
+      'openai/gpt-4o',
+    )
 
     expect(result).toEqual({ verdict: 'pass', reason: 'Looks good' })
     expect(mockGenerateText).toHaveBeenCalledOnce()
@@ -45,7 +46,11 @@ describe('evaluate', () => {
       output: { verdict: 'fail', reason: 'Does not match' },
     } as unknown as Awaited<ReturnType<typeof generateText>>)
 
-    const result = await evaluate('Grade this response', { input: 'hello', expected_output: 'bad' })
+    const result = await evaluate(
+      'Grade this response',
+      { input: 'hello', expected_output: 'bad' },
+      'openai/gpt-4o',
+    )
 
     expect(result).toEqual({ verdict: 'fail', reason: 'Does not match' })
   })
@@ -55,7 +60,7 @@ describe('evaluate', () => {
       output: { verdict: 'pass', reason: 'ok' },
     } as unknown as Awaited<ReturnType<typeof generateText>>)
 
-    await evaluate('Check quality', { input: 'foo', expected_output: 'bar' })
+    await evaluate('Check quality', { input: 'foo', expected_output: 'bar' }, 'openai/gpt-4o')
 
     const call = mockGenerateText.mock.calls[0][0]
     const messages = call.messages!
@@ -69,24 +74,24 @@ describe('evaluate', () => {
   it('throws when generateText rejects', async () => {
     mockGenerateText.mockRejectedValue(new Error('API error'))
 
-    await expect(evaluate('rubric', { input: 'test', expected_output: 'result' })).rejects.toThrow(
-      'API error',
-    )
+    await expect(
+      evaluate('rubric', { input: 'test', expected_output: 'result' }, 'openai/gpt-4o'),
+    ).rejects.toThrow('API error')
   })
 
   it('throws when input is missing from itemAttributes', async () => {
-    await expect(evaluate('rubric', { expected_output: 'result' })).rejects.toThrow(
-      'Missing required field: input',
-    )
+    await expect(
+      evaluate('rubric', { expected_output: 'result' }, 'openai/gpt-4o'),
+    ).rejects.toThrow('Missing required field: input')
   })
 
   it('throws when expected_output is missing from itemAttributes', async () => {
-    await expect(evaluate('rubric', { input: 'hello' })).rejects.toThrow(
+    await expect(evaluate('rubric', { input: 'hello' }, 'openai/gpt-4o')).rejects.toThrow(
       'Missing required field: expected_output',
     )
   })
 
-  it('uses provided modelId instead of env var', async () => {
+  it('passes modelId directly to openrouter with no fallback', async () => {
     mockGenerateText.mockResolvedValue({
       output: { verdict: 'pass', reason: 'ok' },
     } as unknown as Awaited<ReturnType<typeof generateText>>)
@@ -100,29 +105,5 @@ describe('evaluate', () => {
     // The openrouter mock returns { model: modelId } — verify the model passed to generateText
     const call = mockGenerateText.mock.calls[0][0]
     expect((call.model as unknown as { model: string }).model).toBe('anthropic/claude-3-5-sonnet')
-  })
-
-  it('falls back to env var when modelId is not provided', async () => {
-    mockGenerateText.mockResolvedValue({
-      output: { verdict: 'pass', reason: 'ok' },
-    } as unknown as Awaited<ReturnType<typeof generateText>>)
-
-    vi.stubEnv('LLM_JUDGE_MODEL', 'env-model/test')
-    await evaluate('rubric', { input: 'hello', expected_output: 'world' })
-
-    const call = mockGenerateText.mock.calls[0][0]
-    expect((call.model as unknown as { model: string }).model).toBe('env-model/test')
-  })
-
-  it('falls back to hardcoded default when modelId is undefined and LLM_JUDGE_MODEL is unset', async () => {
-    mockGenerateText.mockResolvedValue({
-      output: { verdict: 'pass', reason: 'ok' },
-    } as unknown as Awaited<ReturnType<typeof generateText>>)
-
-    vi.stubEnv('LLM_JUDGE_MODEL', '')
-    await evaluate('rubric', { input: 'hello', expected_output: 'world' })
-
-    const call = mockGenerateText.mock.calls[0][0]
-    expect((call.model as unknown as { model: string }).model).toBe('google/gemini-2.5-flash')
   })
 })

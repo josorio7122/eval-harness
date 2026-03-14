@@ -55,7 +55,7 @@ model Experiment {
   datasetId         String             @db.Uuid
   datasetRevisionId String             @db.Uuid
   status            String             @default("queued")
-  modelId           String             @default("google/gemini-2.5-flash")
+  modelId           String
   dataset           Dataset            @relation(fields: [datasetId], references: [id], onDelete: Cascade)
   revision          DatasetRevision    @relation(fields: [datasetRevisionId], references: [id])
   graders           ExperimentGrader[]

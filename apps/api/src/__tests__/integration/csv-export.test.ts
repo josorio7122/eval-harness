@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
+import { type Result } from '@eval-harness/shared'
+
+const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
@@ -59,13 +61,13 @@ async function seedAndRun(
       datasetId: dataset.id,
       datasetRevisionId: revisionId,
       graderIds,
-      modelId: DEFAULT_MODEL_ID,
+      modelId: MODEL_ID,
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
 
   const runner = createExperimentRunner(experimentRepository, mockEvaluate)
-  await runner.enqueue(experiment.id, items, graders)
+  await runner.enqueue(experiment.id, items, graders, MODEL_ID)
 
   return { experiment, items, graders, dataset }
 }
@@ -195,7 +197,7 @@ describe('CSV export (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
-        modelId: DEFAULT_MODEL_ID,
+        modelId: MODEL_ID,
       }),
     )
     // Status is 'queued' (default), not 'complete'
