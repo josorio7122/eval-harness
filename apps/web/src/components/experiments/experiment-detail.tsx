@@ -127,6 +127,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
         onRerun={async () => {
           const result = await rerunExp.mutateAsync(id)
           if (result?.id) {
+            runExp.mutate(result.id)
             navigate(`/experiments/${result.id}`)
           }
         }}
