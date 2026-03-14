@@ -138,7 +138,7 @@ describe('experiments service (integration)', () => {
     expect(stillExists).not.toBeNull()
   })
 
-  it('deleteExperiment removes the experiment but leaves dataset and grader intact', async () => {
+  it('deleteExperiment soft-deletes the experiment but leaves dataset and grader intact', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
 
@@ -156,6 +156,7 @@ describe('experiments service (integration)', () => {
     const result = await service.deleteExperiment(experiment.id)
     expect(result.success).toBe(true)
 
+    // Soft-deleted: findById (filters deletedAt: null) returns fail
     const expFound = await experimentRepository.findById(experiment.id)
     expect(expFound.success).toBe(false)
 

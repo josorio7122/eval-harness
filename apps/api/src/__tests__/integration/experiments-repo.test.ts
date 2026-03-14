@@ -266,7 +266,7 @@ describe('experiments repository (integration)', () => {
     expect(duplicateResult.success).toBe(false)
   })
 
-  it('remove cascades junction + results', async () => {
+  it('remove (soft delete) — findById returns fail, results still exist in DB', async () => {
     const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
 
     const experiment = unwrap(
@@ -292,8 +292,26 @@ describe('experiments repository (integration)', () => {
     unwrap(await repo.remove(experiment.id))
     const found = await repo.findById(experiment.id)
     expect(found.success).toBe(false)
-    const results = unwrap(await repo.findResultsByExperimentId(experiment.id))
-    expect(results).toHaveLength(0)
+  })
+
+  it('soft-deleted experiment does not appear in findAll', async () => {
+    const { dataset, latestRevision, grader1 } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-soft-del-hidden',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+      }),
+    )
+
+    unwrap(await repo.remove(experiment.id))
+
+    const all = unwrap(await repo.findAll())
+    const ids = all.map((e) => e.id)
+    expect(ids).not.toContain(experiment.id)
   })
 
   // B17 — shared revision

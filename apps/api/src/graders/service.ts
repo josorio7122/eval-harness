@@ -29,6 +29,6 @@ export function createGraderService(repo: typeof graderRepository) {
       })
     },
 
-    deleteGrader: repo.removeWithCascade.bind(repo),
+    deleteGrader: repo.remove.bind(repo),
   }
 }

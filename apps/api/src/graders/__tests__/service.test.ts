@@ -8,7 +8,7 @@ const mockRepo = {
   findByName: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
-  removeWithCascade: vi.fn(),
+  remove: vi.fn(),
 }
 
 const service = createGraderService(mockRepo)
@@ -118,16 +118,25 @@ describe('updateGrader', () => {
 })
 
 describe('deleteGrader', () => {
-  it('deletes successfully using removeWithCascade', async () => {
-    mockRepo.removeWithCascade.mockResolvedValue(ok({ deleted: true as const }))
+  it('soft-deletes successfully using remove', async () => {
+    mockRepo.remove.mockResolvedValue(ok({ deleted: true as const }))
     const result = await service.deleteGrader('1')
     expect(result).toEqual({ success: true, data: { deleted: true } })
-    expect(mockRepo.removeWithCascade).toHaveBeenCalledWith('1')
+    expect(mockRepo.remove).toHaveBeenCalledWith('1')
   })
 
   it('fails when not found', async () => {
-    mockRepo.removeWithCascade.mockResolvedValue(fail('Grader not found'))
+    mockRepo.remove.mockResolvedValue(fail('Grader not found'))
     const result = await service.deleteGrader('999')
     expect(result).toEqual({ success: false, error: 'Grader not found' })
+  })
+
+  it('soft-deleted grader name can be reused (findByName returns null)', async () => {
+    // After soft delete, findByName filters deletedAt: null → returns null for soft-deleted grader
+    mockRepo.findByName.mockResolvedValue(null)
+    const created = { id: '2', name: 'g1', description: '', rubric: 'rubric' }
+    mockRepo.create.mockResolvedValue(ok(created))
+    const result = await service.createGrader({ name: 'g1', description: '', rubric: 'rubric' })
+    expect(result).toEqual({ success: true, data: created })
   })
 })

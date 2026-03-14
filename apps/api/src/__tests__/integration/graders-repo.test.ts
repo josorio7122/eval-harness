@@ -38,7 +38,7 @@ describe('graders repository (integration)', () => {
     expect(found.rubric).toBe('Award 1 point for exact match, 0 otherwise.')
   })
 
-  // 2. findAll returns graders
+  // 2. findAll returns only non-deleted graders
   it('findAll returns all created graders', async () => {
     const g1 = unwrap(
       await repo.create({
@@ -80,8 +80,8 @@ describe('graders repository (integration)', () => {
     expect(found.description).toBe('Original description')
   })
 
-  // 4. removeWithCascade deletes
-  it('removeWithCascade deletes the grader so findById returns fail', async () => {
+  // 4. remove (soft delete) — findById returns fail, record has deletedAt set
+  it('remove soft-deletes the grader so findById returns fail', async () => {
     const created = unwrap(
       await repo.create({
         name: 'delete-me-grader',
@@ -90,30 +90,87 @@ describe('graders repository (integration)', () => {
       }),
     )
 
-    unwrap(await repo.removeWithCascade(created.id))
+    unwrap(await repo.remove(created.id))
     const result = await repo.findById(created.id)
 
     expect(result.success).toBe(false)
   })
 
-  // 5. removeWithCascade deletes grader + its experiments
-  it('removeWithCascade deletes associated experiments', async () => {
-    const dataset = unwrap(await datasetRepository.create('cascade-test-dataset'))
+  // 5. soft-deleted grader not returned by findAll
+  it('soft-deleted grader does not appear in findAll', async () => {
+    const grader = unwrap(
+      await repo.create({
+        name: 'invisible-grader',
+        description: 'Will be soft-deleted',
+        rubric: 'Not visible after delete',
+      }),
+    )
+
+    unwrap(await repo.remove(grader.id))
+
+    const all = unwrap(await repo.findAll())
+    const ids = all.map((g) => g.id)
+    expect(ids).not.toContain(grader.id)
+  })
+
+  // 6. soft-deleted grader name can be reused (findByName returns null)
+  it('findByName returns null for a soft-deleted grader', async () => {
+    const grader = unwrap(
+      await repo.create({
+        name: 'reusable-name-grader',
+        description: 'Will be soft-deleted',
+        rubric: 'Rubric',
+      }),
+    )
+
+    unwrap(await repo.remove(grader.id))
+
+    const found = await repo.findByName('reusable-name-grader')
+    expect(found).toBeNull()
+  })
+
+  // 7. soft-deleted grader name can be reused to create a new grader
+  it('can create a new grader with the same name after soft-delete', async () => {
+    const original = unwrap(
+      await repo.create({
+        name: 'reused-grader-name',
+        description: 'Original',
+        rubric: 'Original rubric',
+      }),
+    )
+
+    unwrap(await repo.remove(original.id))
+
+    const reused = unwrap(
+      await repo.create({
+        name: 'reused-grader-name',
+        description: 'New grader with same name',
+        rubric: 'New rubric',
+      }),
+    )
+
+    expect(reused.id).not.toBe(original.id)
+    expect(reused.name).toBe('reused-grader-name')
+  })
+
+  // 8. soft-deleting a grader does NOT delete experiments referencing it
+  it('soft-deleting grader does not delete experiments referencing it', async () => {
+    const dataset = unwrap(await datasetRepository.create('grader-soft-del-dataset'))
     unwrap(await datasetRepository.createItem(dataset.id, { input: 'q1', expected_output: 'a1' }))
     const revisions = unwrap(await datasetRepository.findRevisions(dataset.id))
     const revision = revisions[0]
 
     const grader = unwrap(
       await repo.create({
-        name: 'cascade-grader',
-        description: 'Will cascade',
+        name: 'soft-del-grader',
+        description: 'Will be soft-deleted',
         rubric: 'Does not matter',
       }),
     )
 
     const experiment = unwrap(
       await experimentRepository.create({
-        name: 'cascade-experiment',
+        name: 'grader-soft-del-experiment',
         datasetId: dataset.id,
         datasetRevisionId: revision.id,
         graderIds: [grader.id],
@@ -121,12 +178,13 @@ describe('graders repository (integration)', () => {
       }),
     )
 
-    unwrap(await repo.removeWithCascade(grader.id))
+    unwrap(await repo.remove(grader.id))
 
     const foundGrader = await repo.findById(grader.id)
     expect(foundGrader.success).toBe(false)
 
+    // Experiment still exists
     const foundExperiment = await experimentRepository.findById(experiment.id)
-    expect(foundExperiment.success).toBe(false)
+    expect(foundExperiment.success).toBe(true)
   })
 })

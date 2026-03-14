@@ -70,95 +70,174 @@ async function seedFullScenario() {
   return { dataset, grader, experiment, result, revisionItemId, latestRevision }
 }
 
-describe('DatasetDelete cascade', () => {
-  it('deleting a dataset removes its experiments and their results', async () => {
-    const { dataset, grader, experiment } = await seedFullScenario()
+describe('DatasetDelete soft delete', () => {
+  it('soft-deleting a dataset makes it invisible via findById', async () => {
+    const { dataset, grader } = await seedFullScenario()
 
     unwrap(await datasetRepo.remove(dataset.id))
 
-    // dataset is gone
+    // dataset is invisible via findById
     const foundDataset = await datasetRepo.findById(dataset.id)
     expect(foundDataset.success).toBe(false)
-
-    // experiment is gone
-    const foundExperiment = await experimentRepo.findById(experiment.id)
-    expect(foundExperiment.success).toBe(false)
-
-    // results are gone
-    const resultCount = await prisma.experimentResult.count({
-      where: { experimentId: experiment.id },
-    })
-    expect(resultCount).toBe(0)
 
     // grader is unaffected
     const foundGrader = unwrap(await graderRepo.findById(grader.id))
     expect(foundGrader.id).toBe(grader.id)
   })
 
-  it('deleting a dataset removes all revisions and revision items', async () => {
-    const { dataset, latestRevision } = await seedFullScenario()
-
-    // Verify revisions exist before delete
-    const revisionsBefore = unwrap(await datasetRepo.findRevisions(dataset.id))
-    expect(revisionsBefore.length).toBeGreaterThan(0)
+  it('soft-deleting a dataset sets deletedAt in the DB', async () => {
+    const { dataset } = await seedFullScenario()
 
     unwrap(await datasetRepo.remove(dataset.id))
 
-    // revisions are gone
-    const revisionsAfter = await prisma.datasetRevision.count({
-      where: { datasetId: dataset.id },
-    })
-    expect(revisionsAfter).toBe(0)
+    const raw = await prisma.dataset.findUnique({ where: { id: dataset.id } })
+    expect(raw).not.toBeNull()
+    expect(raw!.deletedAt).not.toBeNull()
+  })
 
-    // revision items are gone
-    const itemCount = await prisma.datasetRevisionItem.count({
-      where: { revisionId: latestRevision.id },
-    })
-    expect(itemCount).toBe(0)
+  it('soft-deleted dataset does not appear in findAll', async () => {
+    const { dataset } = await seedFullScenario()
+
+    unwrap(await datasetRepo.remove(dataset.id))
+
+    const all = unwrap(await datasetRepo.findAll())
+    const ids = all.map((d) => d.id)
+    expect(ids).not.toContain(dataset.id)
+  })
+
+  it('soft-deleted dataset name can be reused', async () => {
+    const { dataset } = await seedFullScenario()
+    const originalName = dataset.name
+
+    unwrap(await datasetRepo.remove(dataset.id))
+
+    const found = await datasetRepo.findByName(originalName)
+    expect(found).toBeNull()
+
+    // Can create a new dataset with the same name
+    const reused = unwrap(await datasetRepo.create(originalName))
+    expect(reused.id).not.toBe(dataset.id)
+    expect(reused.name).toBe(originalName)
+  })
+
+  it('soft-deleting dataset does NOT delete the experiment in the DB', async () => {
+    const { dataset, experiment } = await seedFullScenario()
+
+    unwrap(await datasetRepo.remove(dataset.id))
+
+    // Experiment record still exists in DB (just the dataset is soft-deleted)
+    const raw = await prisma.experiment.findUnique({ where: { id: experiment.id } })
+    expect(raw).not.toBeNull()
   })
 })
 
-describe('GraderDelete cascade', () => {
-  it('removeWithCascade deletes grader, experiments, and their results', async () => {
-    const { dataset, grader, experiment } = await seedFullScenario()
+describe('GraderDelete soft delete', () => {
+  it('soft-deleting a grader makes it invisible via findById', async () => {
+    const { grader } = await seedFullScenario()
 
-    unwrap(await graderRepo.removeWithCascade(grader.id))
+    unwrap(await graderRepo.remove(grader.id))
 
-    // grader is gone
+    const foundGrader = await graderRepo.findById(grader.id)
+    expect(foundGrader.success).toBe(false)
+  })
+
+  it('soft-deleting a grader sets deletedAt in the DB', async () => {
+    const { grader } = await seedFullScenario()
+
+    unwrap(await graderRepo.remove(grader.id))
+
+    const raw = await prisma.grader.findUnique({ where: { id: grader.id } })
+    expect(raw).not.toBeNull()
+    expect(raw!.deletedAt).not.toBeNull()
+  })
+
+  it('soft-deleted grader does not appear in findAll', async () => {
+    const { grader } = await seedFullScenario()
+
+    unwrap(await graderRepo.remove(grader.id))
+
+    const all = unwrap(await graderRepo.findAll())
+    const ids = all.map((g) => g.id)
+    expect(ids).not.toContain(grader.id)
+  })
+
+  it('soft-deleted grader name can be reused', async () => {
+    const { grader } = await seedFullScenario()
+    const originalName = grader.name
+
+    unwrap(await graderRepo.remove(grader.id))
+
+    const found = await graderRepo.findByName(originalName)
+    expect(found).toBeNull()
+
+    const reused = unwrap(
+      await graderRepo.create({
+        name: originalName,
+        description: 'New grader with same name',
+        rubric: 'New rubric',
+      }),
+    )
+    expect(reused.id).not.toBe(grader.id)
+    expect(reused.name).toBe(originalName)
+  })
+
+  it('soft-deleting a grader does NOT delete experiments referencing it', async () => {
+    const { grader, experiment, dataset } = await seedFullScenario()
+
+    unwrap(await graderRepo.remove(grader.id))
+
+    // Grader is soft-deleted
     const foundGrader = await graderRepo.findById(grader.id)
     expect(foundGrader.success).toBe(false)
 
-    // experiment is gone
-    const foundExperiment = await experimentRepo.findById(experiment.id)
-    expect(foundExperiment.success).toBe(false)
+    // Experiment still exists in DB
+    const raw = await prisma.experiment.findUnique({ where: { id: experiment.id } })
+    expect(raw).not.toBeNull()
 
-    // results are gone
-    const resultCount = await prisma.experimentResult.count({
-      where: { experimentId: experiment.id },
-    })
-    expect(resultCount).toBe(0)
-
-    // dataset is unaffected
+    // Dataset still exists
     const foundDataset = unwrap(await datasetRepo.findById(dataset.id))
     expect(foundDataset.id).toBe(dataset.id)
   })
 })
 
-describe('ExperimentDelete isolation', () => {
-  it('deleting an experiment removes results but leaves dataset and grader intact', async () => {
+describe('ExperimentDelete soft delete', () => {
+  it('soft-deleting an experiment makes it invisible via findById', async () => {
+    const { experiment } = await seedFullScenario()
+
+    unwrap(await experimentRepo.remove(experiment.id))
+
+    const foundExperiment = await experimentRepo.findById(experiment.id)
+    expect(foundExperiment.success).toBe(false)
+  })
+
+  it('soft-deleting an experiment sets deletedAt in the DB', async () => {
+    const { experiment } = await seedFullScenario()
+
+    unwrap(await experimentRepo.remove(experiment.id))
+
+    const raw = await prisma.experiment.findUnique({ where: { id: experiment.id } })
+    expect(raw).not.toBeNull()
+    expect(raw!.deletedAt).not.toBeNull()
+  })
+
+  it('soft-deleted experiment does not appear in findAll', async () => {
+    const { experiment } = await seedFullScenario()
+
+    unwrap(await experimentRepo.remove(experiment.id))
+
+    const all = unwrap(await experimentRepo.findAll())
+    const ids = all.map((e) => e.id)
+    expect(ids).not.toContain(experiment.id)
+  })
+
+  it('deleting an experiment leaves dataset and grader intact', async () => {
     const { dataset, grader, experiment } = await seedFullScenario()
 
     unwrap(await experimentRepo.remove(experiment.id))
 
-    // experiment is gone
+    // experiment is soft-deleted
     const foundExperiment = await experimentRepo.findById(experiment.id)
     expect(foundExperiment.success).toBe(false)
-
-    // results are gone
-    const resultCount = await prisma.experimentResult.count({
-      where: { experimentId: experiment.id },
-    })
-    expect(resultCount).toBe(0)
 
     // dataset still exists with its items
     const foundDataset = unwrap(await datasetRepo.findById(dataset.id))
@@ -167,93 +246,5 @@ describe('ExperimentDelete isolation', () => {
     // grader still exists
     const foundGrader = unwrap(await graderRepo.findById(grader.id))
     expect(foundGrader.id).toBe(grader.id)
-  })
-})
-
-describe('GraderDelete with multiple experiments', () => {
-  it('removeWithCascade deletes all experiments referencing the grader', async () => {
-    const id = uid()
-
-    // Create dataset
-    const dataset = unwrap(await datasetRepo.create(`multi-exp-dataset-${id}`))
-    unwrap(await datasetRepo.createItem(dataset.id, { input: 'q', expected_output: 'a' }))
-    const revisions = unwrap(await datasetRepo.findRevisions(dataset.id))
-    const latestRevision = revisions[0]
-    const revisionDetail = unwrap(await datasetRepo.findRevisionById(dataset.id, latestRevision.id))
-    const revisionItemId = revisionDetail.items[0].id
-
-    // Create grader
-    const grader = unwrap(
-      await graderRepo.create({
-        name: `shared-grader-${id}`,
-        description: 'Used by multiple experiments',
-        rubric: 'Multi-exp rubric',
-      }),
-    )
-
-    // Create two experiments using the same grader
-    const expA = unwrap(
-      await experimentRepo.create({
-        name: `multi-exp-a-${id}`,
-        datasetId: dataset.id,
-        datasetRevisionId: latestRevision.id,
-        graderIds: [grader.id],
-        modelId: MODEL_ID,
-      }),
-    )
-    const expB = unwrap(
-      await experimentRepo.create({
-        name: `multi-exp-b-${id}`,
-        datasetId: dataset.id,
-        datasetRevisionId: latestRevision.id,
-        graderIds: [grader.id],
-        modelId: MODEL_ID,
-      }),
-    )
-
-    // Create a result for each experiment
-    unwrap(
-      await experimentRepo.createResult({
-        experimentId: expA.id,
-        datasetRevisionItemId: revisionItemId,
-        graderId: grader.id,
-        verdict: 'pass',
-        reason: 'result A',
-      }),
-    )
-    unwrap(
-      await experimentRepo.createResult({
-        experimentId: expB.id,
-        datasetRevisionItemId: revisionItemId,
-        graderId: grader.id,
-        verdict: 'fail',
-        reason: 'result B',
-      }),
-    )
-
-    // Delete grader with cascade
-    unwrap(await graderRepo.removeWithCascade(grader.id))
-
-    // Both experiments are gone
-    const foundExpA = await experimentRepo.findById(expA.id)
-    expect(foundExpA.success).toBe(false)
-
-    const foundExpB = await experimentRepo.findById(expB.id)
-    expect(foundExpB.success).toBe(false)
-
-    // Both results are gone
-    const resultCountA = await prisma.experimentResult.count({
-      where: { experimentId: expA.id },
-    })
-    expect(resultCountA).toBe(0)
-
-    const resultCountB = await prisma.experimentResult.count({
-      where: { experimentId: expB.id },
-    })
-    expect(resultCountB).toBe(0)
-
-    // Dataset still exists
-    const foundDataset = unwrap(await datasetRepo.findById(dataset.id))
-    expect(foundDataset.id).toBe(dataset.id)
   })
 })

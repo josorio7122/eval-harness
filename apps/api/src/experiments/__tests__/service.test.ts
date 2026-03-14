@@ -51,7 +51,6 @@ const mockGraderRepo = {
   create: vi.fn(),
   update: vi.fn(),
   remove: vi.fn(),
-  removeWithCascade: vi.fn(),
 }
 
 const service = createExperimentService(mockRepo, mockDatasetRepo, mockGraderRepo, mockRunner)

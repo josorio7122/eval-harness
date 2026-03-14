@@ -32,15 +32,16 @@ Fix any errors or warnings before committing. Zero warnings policy — treat war
 
 **Never start services with `pnpm --filter` or direct commands.** Always use root-level scripts or Docker.
 
-| Task | Command | Notes |
-| ---- | ------- | ----- |
-| Start dev (API + web) | `pnpm run dev` | Runs both from root via Turbo |
-| Start DB | `docker compose up -d` | PostgreSQL 17 in Docker |
-| Push schema | `pnpm --filter db exec prisma migrate dev` | Creates migration + applies locally |
-| Seed data | `./test-data/seed.sh` | Seeds demo data via Docker |
-| Reset DB | `docker compose down -v && docker compose up -d` | Wipes volumes and restarts |
+| Task                  | Command                                          | Notes                               |
+| --------------------- | ------------------------------------------------ | ----------------------------------- |
+| Start dev (API + web) | `pnpm run dev`                                   | Runs both from root via Turbo       |
+| Start DB              | `docker compose up -d`                           | PostgreSQL 17 in Docker             |
+| Push schema           | `pnpm --filter db exec prisma migrate dev`       | Creates migration + applies locally |
+| Seed data             | `./test-data/seed.sh`                            | Seeds demo data via Docker          |
+| Reset DB              | `docker compose down -v && docker compose up -d` | Wipes volumes and restarts          |
 
 **Rules:**
+
 - Always start the dev server from the **root** with `pnpm run dev` — never `cd` into a package and run it individually
 - Database always runs in Docker — never install PostgreSQL on the host
 - Use `docker exec eval-harness-db psql ...` for direct DB access

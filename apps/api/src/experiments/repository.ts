@@ -7,6 +7,7 @@ export const experimentRepository = {
   findAll() {
     return tryCatch(async () => {
       const experiments = await prisma.experiment.findMany({
+        where: { deletedAt: null },
         orderBy: { name: 'asc' },
         include: {
           dataset: { select: { name: true } },
@@ -21,8 +22,8 @@ export const experimentRepository = {
 
   findById(id: string) {
     return tryCatch(async () => {
-      const experiment = await prisma.experiment.findUniqueOrThrow({
-        where: { id },
+      const experiment = await prisma.experiment.findFirstOrThrow({
+        where: { id, deletedAt: null },
         include: {
           dataset: true,
           revision: {
@@ -63,7 +64,7 @@ export const experimentRepository = {
 
   remove(id: string) {
     return tryCatch(async () => {
-      await prisma.experiment.delete({ where: { id } })
+      await prisma.experiment.update({ where: { id }, data: { deletedAt: new Date() } })
       return ok({ deleted: true as const })
     })
   },

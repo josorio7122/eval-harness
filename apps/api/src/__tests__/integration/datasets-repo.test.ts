@@ -67,10 +67,35 @@ describe('datasets repository (integration)', () => {
     expect(found.name).toBe('new-name')
   })
 
-  // 6. remove cascades to revisions and items
-  it('remove deletes the dataset and cascades to revisions', async () => {
-    const ds = unwrap(await repo.create('cascade-ds'))
+  // 6. remove (soft delete) — findById returns fail after removal
+  it('remove soft-deletes the dataset so findById returns fail', async () => {
+    const ds = unwrap(await repo.create('soft-delete-ds'))
     unwrap(await repo.createItem(ds.id, { input: 'x', expected_output: 'y' }))
+    unwrap(await repo.remove(ds.id))
+    const result = await repo.findById(ds.id)
+    expect(result.success).toBe(false)
+  })
+
+  // 6b. soft-deleted dataset does not appear in findAll
+  it('soft-deleted dataset does not appear in findAll', async () => {
+    const ds = unwrap(await repo.create('hidden-after-delete-ds'))
+    unwrap(await repo.remove(ds.id))
+    const all = unwrap(await repo.findAll())
+    const ids = all.map((d) => d.id)
+    expect(ids).not.toContain(ds.id)
+  })
+
+  // 6c. soft-deleted dataset name can be reused
+  it('findByName returns null for a soft-deleted dataset', async () => {
+    const ds = unwrap(await repo.create('reusable-ds-name'))
+    unwrap(await repo.remove(ds.id))
+    const found = await repo.findByName('reusable-ds-name')
+    expect(found).toBeNull()
+  })
+
+  // 6d. soft-deleting dataset does not delete experiments referencing it
+  it('soft-deleting dataset does not affect the grader', async () => {
+    const ds = unwrap(await repo.create('ds-soft-del-check'))
     unwrap(await repo.remove(ds.id))
     const result = await repo.findById(ds.id)
     expect(result.success).toBe(false)

@@ -51,7 +51,9 @@ async function createRevision(
 type RevisionWithItems = Awaited<ReturnType<typeof createRevision>>
 
 async function buildDatasetResponse(datasetId: string, revision: RevisionWithItems) {
-  const dataset = await prisma.dataset.findUniqueOrThrow({ where: { id: datasetId } })
+  const dataset = await prisma.dataset.findFirstOrThrow({
+    where: { id: datasetId, deletedAt: null },
+  })
   return {
     id: dataset.id,
     name: dataset.name,
@@ -65,6 +67,7 @@ export const datasetRepository = {
   async findAll() {
     return tryCatch(async () => {
       const datasets = await prisma.dataset.findMany({
+        where: { deletedAt: null },
         orderBy: { name: 'asc' },
         include: {
           revisions: {
@@ -95,7 +98,7 @@ export const datasetRepository = {
 
   /** Returns null when no match — used by services to check name availability. */
   findByName(name: string) {
-    return prisma.dataset.findUnique({ where: { name } })
+    return prisma.dataset.findFirst({ where: { name, deletedAt: null } })
   },
 
   async create(name: string) {
@@ -121,7 +124,7 @@ export const datasetRepository = {
 
   async remove(id: string) {
     return tryCatch(async () => {
-      await prisma.dataset.delete({ where: { id } })
+      await prisma.dataset.update({ where: { id }, data: { deletedAt: new Date() } })
       return ok({ deleted: true as const })
     })
   },
