@@ -39,8 +39,8 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
 
-  // SSE: live cell updates while running
-  const progress = useExperimentSSE(id, experiment?.status)
+  // SSE: keep experiment results updated while running
+  useExperimentSSE(id, experiment?.status)
 
   const isRunning = experiment?.status === 'running' || experiment?.status === 'queued'
   const isComplete = experiment?.status === 'complete'
@@ -75,23 +75,30 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
     navigate('/experiments')
   }
 
-  const totalCells =
-    isRunning && progress.totalCells > 0
-      ? progress.totalCells
-      : (experiment.revision?.items?.length ?? 0) * (experiment.graders?.length ?? 0)
-  const completedCells =
-    isRunning && progress.totalCells > 0
-      ? progress.cellsCompleted
-      : (experiment.results?.length ?? 0)
-  const progressPct = totalCells > 0 ? Math.round((completedCells / totalCells) * 100) : 0
+  const graderCount = experiment.graders?.length ?? 0
+  const totalItems = experiment.revision?.items?.length ?? 0
+  const completedItems = (() => {
+    const results = experiment.results ?? []
+    if (results.length === 0 || graderCount === 0) return 0
+    const countsByItem = new Map<string, number>()
+    for (const r of results) {
+      countsByItem.set(r.datasetRevisionItemId, (countsByItem.get(r.datasetRevisionItemId) ?? 0) + 1)
+    }
+    let done = 0
+    for (const count of countsByItem.values()) {
+      if (count >= graderCount) done++
+    }
+    return done
+  })()
+  const progressPct = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <ExperimentHeader
         experiment={experiment}
-        completedCount={completedCells}
-        totalCount={totalCells}
+        completedCount={completedItems}
+        totalCount={totalItems}
         onRun={() => runExp.mutate(id)}
         onRerun={async () => {
           const result = await rerunExp.mutateAsync(id)
