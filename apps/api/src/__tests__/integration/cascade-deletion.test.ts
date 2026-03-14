@@ -50,6 +50,7 @@ async function seedFullScenario() {
       datasetId: dataset.id,
       datasetRevisionId: latestRevision.id,
       graderIds: [grader.id],
+      modelId: 'google/gemini-2.5-flash',
     }),
   )
 
@@ -195,6 +196,7 @@ describe('GraderDelete with multiple experiments', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
     const expB = unwrap(
@@ -203,6 +205,7 @@ describe('GraderDelete with multiple experiments', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 

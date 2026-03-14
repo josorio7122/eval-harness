@@ -12,6 +12,7 @@ type Repo = Pick<typeof experimentRepository, 'updateStatus' | 'createResult'>
 type EvaluateFn = (
   rubric: string,
   itemAttributes: Record<string, string>,
+  modelId?: string,
 ) => Promise<{ verdict: string; reason: string }>
 
 async function evaluateCell(
@@ -20,13 +21,14 @@ async function evaluateCell(
   experimentId: string,
   item: { id: string; values: Record<string, string> },
   grader: { id: string; rubric: string },
+  modelId?: string,
 ) {
   let verdict: string
   let reason: string
   let isError: boolean
 
   try {
-    const result = await evaluate(grader.rubric, item.values)
+    const result = await evaluate(grader.rubric, item.values, modelId)
     verdict = result.verdict
     reason = result.reason
     isError = false
@@ -52,6 +54,7 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
     experimentId: string,
     datasetItems: Array<{ id: string; values: Record<string, string> }>,
     graders: Array<{ id: string; rubric: string }>,
+    modelId?: string,
   ): Promise<void> {
     await experimentQueue.add(async () => {
       const statusResult = await repo.updateStatus(experimentId, 'running')
@@ -72,7 +75,14 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn) => ({
       const tasks = datasetItems.flatMap((item) =>
         graders.map((grader) =>
           evalQueue.add(async () => {
-            const cellResult = await evaluateCell(evaluate, repo, experimentId, item, grader)
+            const cellResult = await evaluateCell(
+              evaluate,
+              repo,
+              experimentId,
+              item,
+              grader,
+              modelId,
+            )
 
             cellsCompleted++
             experimentEvents.emit(experimentId, {

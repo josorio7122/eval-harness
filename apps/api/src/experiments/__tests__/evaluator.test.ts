@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('ai', () => ({
   generateText: vi.fn(),
@@ -18,6 +18,11 @@ const mockGenerateText = vi.mocked(generateText)
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.unstubAllEnvs()
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe('evaluate', () => {
@@ -79,5 +84,45 @@ describe('evaluate', () => {
     await expect(evaluate('rubric', { input: 'hello' })).rejects.toThrow(
       'Missing required field: expected_output',
     )
+  })
+
+  it('uses provided modelId instead of env var', async () => {
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+    } as unknown as Awaited<ReturnType<typeof generateText>>)
+
+    await evaluate(
+      'rubric',
+      { input: 'hello', expected_output: 'world' },
+      'anthropic/claude-3-5-sonnet',
+    )
+
+    // The openrouter mock returns { model: modelId } — verify the model passed to generateText
+    const call = mockGenerateText.mock.calls[0][0]
+    expect((call.model as unknown as { model: string }).model).toBe('anthropic/claude-3-5-sonnet')
+  })
+
+  it('falls back to env var when modelId is not provided', async () => {
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+    } as unknown as Awaited<ReturnType<typeof generateText>>)
+
+    vi.stubEnv('LLM_JUDGE_MODEL', 'env-model/test')
+    await evaluate('rubric', { input: 'hello', expected_output: 'world' })
+
+    const call = mockGenerateText.mock.calls[0][0]
+    expect((call.model as unknown as { model: string }).model).toBe('env-model/test')
+  })
+
+  it('falls back to hardcoded default when modelId is undefined and LLM_JUDGE_MODEL is unset', async () => {
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+    } as unknown as Awaited<ReturnType<typeof generateText>>)
+
+    vi.stubEnv('LLM_JUDGE_MODEL', '')
+    await evaluate('rubric', { input: 'hello', expected_output: 'world' })
+
+    const call = mockGenerateText.mock.calls[0][0]
+    expect((call.model as unknown as { model: string }).model).toBe('google/gemini-2.5-flash')
   })
 })

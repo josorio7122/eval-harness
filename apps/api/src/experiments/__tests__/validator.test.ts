@@ -77,4 +77,35 @@ describe('createExperimentSchema', () => {
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.name).toBe('My Experiment')
   })
+
+  it('defaults modelId to google/gemini-2.5-flash when not provided', () => {
+    const result = createExperimentSchema.safeParse({
+      name: 'My Experiment',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID_2],
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.modelId).toBe('google/gemini-2.5-flash')
+  })
+
+  it('accepts a custom modelId string', () => {
+    const result = createExperimentSchema.safeParse({
+      name: 'My Experiment',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID_2],
+      modelId: 'openai/gpt-4o',
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.modelId).toBe('openai/gpt-4o')
+  })
+
+  it('rejects empty modelId string', () => {
+    const result = createExperimentSchema.safeParse({
+      name: 'My Experiment',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID_2],
+      modelId: '',
+    })
+    expect(result.success).toBe(false)
+  })
 })

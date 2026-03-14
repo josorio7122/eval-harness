@@ -43,6 +43,7 @@ export const experimentRepository = {
     datasetId: string
     datasetRevisionId: string
     graderIds: string[]
+    modelId: string
   }) {
     return tryCatch(async () => {
       const experiment = await prisma.experiment.create({
@@ -50,6 +51,7 @@ export const experimentRepository = {
           name: data.name,
           datasetId: data.datasetId,
           datasetRevisionId: data.datasetRevisionId,
+          modelId: data.modelId,
           graders: {
             create: data.graderIds.map((graderId) => ({ graderId })),
           },

@@ -115,6 +115,7 @@ describe('graders repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: revision.id,
         graderIds: [grader.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 

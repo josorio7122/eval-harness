@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ok, fail } from '@eval-harness/shared'
+import { ok, fail, DEFAULT_MODEL_ID } from '@eval-harness/shared'
 import { createExperimentService } from '../service.js'
 
 const VALID_UUID = '123e4567-e89b-42d3-a456-426614174000'
@@ -120,6 +120,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result).toEqual({ success: true, data: created })
     expect(mockRepo.create).toHaveBeenCalledWith({
@@ -127,7 +128,33 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       datasetRevisionId: 'rev-1',
       graderIds: [VALID_UUID_3],
+      modelId: DEFAULT_MODEL_ID,
     })
+  })
+
+  it('passes custom modelId to repo.create', async () => {
+    const dataset = {
+      id: VALID_UUID_2,
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+      items: [{ id: 'item1' }],
+    }
+    mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
+    mockDatasetRepo.countItems.mockResolvedValue(ok(1))
+    mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-1' }]))
+    mockGraderRepo.findById.mockResolvedValue(ok({ id: VALID_UUID_3, name: 'g1' }))
+    const created = { id: VALID_UUID, name: 'exp1', status: 'queued', datasetId: VALID_UUID_2 }
+    mockRepo.create.mockResolvedValue(ok(created))
+
+    await service.createExperiment({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+      modelId: 'openai/gpt-4o',
+    })
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'openai/gpt-4o' }),
+    )
   })
 
   it('fails when dataset not found', async () => {
@@ -136,6 +163,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -153,6 +181,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset has no items' })
   })
@@ -172,6 +201,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
   })
@@ -191,6 +221,7 @@ describe('createExperiment', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result).toEqual({ success: false, error: 'Grader not found' })
   })
@@ -217,6 +248,7 @@ describe('rerunExperiment', () => {
       name: 'exp1',
       status: 'done',
       datasetId: VALID_UUID_2,
+      modelId: 'google/gemini-2.5-flash',
       graders: [{ graderId: VALID_UUID_3 }],
     }
     mockRepo.findById.mockResolvedValue(ok(original))
@@ -237,7 +269,29 @@ describe('rerunExperiment', () => {
       datasetId: VALID_UUID_2,
       datasetRevisionId: 'rev-latest',
       graderIds: [VALID_UUID_3],
+      modelId: 'google/gemini-2.5-flash',
     })
+  })
+
+  it('copies modelId from original experiment on rerun', async () => {
+    const original = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'done',
+      datasetId: VALID_UUID_2,
+      modelId: 'anthropic/claude-3-5-sonnet',
+      graders: [{ graderId: VALID_UUID_3 }],
+    }
+    mockRepo.findById.mockResolvedValue(ok(original))
+    mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-latest' }]))
+    mockRepo.create.mockResolvedValue(
+      ok({ id: VALID_UUID_2, name: 'exp1 (re-run)', status: 'queued', datasetId: VALID_UUID_2 }),
+    )
+
+    await service.rerunExperiment(VALID_UUID)
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'anthropic/claude-3-5-sonnet' }),
+    )
   })
 
   it('fails when experiment not found', async () => {
@@ -252,6 +306,7 @@ describe('rerunExperiment', () => {
       name: 'exp1',
       status: 'done',
       datasetId: VALID_UUID_2,
+      modelId: 'google/gemini-2.5-flash',
       graders: [{ graderId: VALID_UUID_3 }],
     }
     mockRepo.findById.mockResolvedValue(ok(original))
@@ -267,6 +322,7 @@ describe('runExperiment', () => {
       id: VALID_UUID,
       name: 'exp1',
       status: 'queued',
+      modelId: 'google/gemini-2.5-flash',
       datasetId: VALID_UUID_2,
       revision: { items: [{ id: 'item-1', itemId: 'stable-1', values: { input: 'hi' } }] },
       graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'judge it' } }],
@@ -281,6 +337,7 @@ describe('runExperiment', () => {
       VALID_UUID,
       [{ id: 'item-1', values: { input: 'hi' } }],
       [{ id: VALID_UUID_3, rubric: 'judge it' }],
+      'google/gemini-2.5-flash',
     )
   })
 

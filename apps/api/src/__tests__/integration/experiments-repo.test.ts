@@ -54,6 +54,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -71,6 +72,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -91,6 +93,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -110,6 +113,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -128,6 +132,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -155,6 +160,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -199,6 +205,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -233,6 +240,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -265,6 +273,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 
@@ -295,6 +304,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
     const expB = unwrap(
@@ -303,6 +313,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
 

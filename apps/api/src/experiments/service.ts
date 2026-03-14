@@ -19,7 +19,12 @@ export function createExperimentService(
 
     getExperiment: repo.findById.bind(repo),
 
-    createExperiment(input: { name: string; datasetId: string; graderIds: string[] }) {
+    createExperiment(input: {
+      name: string
+      datasetId: string
+      graderIds: string[]
+      modelId: string
+    }) {
       return tryCatch(async () => {
         const datasetResult = await datasetRepo.findById(input.datasetId)
         if (!datasetResult.success) return fail('Dataset not found')
@@ -38,7 +43,10 @@ export function createExperimentService(
         if (revisionsResult.data.length === 0) return fail('Dataset has no revisions')
         const datasetRevisionId = revisionsResult.data[0].id
 
-        return repo.create({ ...input, datasetRevisionId })
+        return repo.create({
+          ...input,
+          datasetRevisionId,
+        })
       })
     },
 
@@ -48,9 +56,10 @@ export function createExperimentService(
       return tryCatch(async () => {
         const expResult = await repo.findById(id)
         if (!expResult.success) return expResult
-        const experiment = expResult.data as {
+        const experiment = expResult.data as unknown as {
           name: string
           datasetId: string
+          modelId: string
           graders: Array<{ graderId: string }>
         }
 
@@ -65,6 +74,7 @@ export function createExperimentService(
           datasetId: experiment.datasetId,
           datasetRevisionId,
           graderIds,
+          modelId: experiment.modelId,
         })
       })
     },
@@ -74,8 +84,9 @@ export function createExperimentService(
         const result = await repo.findById(id)
         if (!result.success) return result
 
-        const experiment = result.data as {
+        const experiment = result.data as unknown as {
           status: ExperimentStatus
+          modelId: string
           revision?: { items: Array<{ id: string; values: unknown }> }
           graders: Array<{ grader: { id: string; rubric: string } }>
         }
@@ -97,7 +108,7 @@ export function createExperimentService(
         }))
 
         if (!runner) return fail('Runner not configured')
-        void runner.enqueue(id, datasetItems, graders)
+        void runner.enqueue(id, datasetItems, graders, experiment.modelId)
         return ok({ status: 'queued' as ExperimentStatus })
       })
     },

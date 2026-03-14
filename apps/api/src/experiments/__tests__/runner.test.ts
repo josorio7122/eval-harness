@@ -204,4 +204,31 @@ describe('createExperimentRunner', () => {
     const connectedEvent = events.find((e) => e.type === 'connected')
     expect(connectedEvent).toBeUndefined()
   })
+
+  it('passes modelId to the evaluate function', async () => {
+    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    const runner = createExperimentRunner(mockRepo, mockEvaluate)
+
+    await runner.enqueue('exp-9', datasetItems, graders, 'anthropic/claude-opus-4')
+
+    // evaluate should be called with (rubric, values, modelId)
+    const calls = mockEvaluate.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    calls.forEach((call) => {
+      expect(call[2]).toBe('anthropic/claude-opus-4')
+    })
+  })
+
+  it('passes modelId undefined to evaluate when not provided', async () => {
+    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
+    const runner = createExperimentRunner(mockRepo, mockEvaluate)
+
+    await runner.enqueue('exp-10', datasetItems, graders)
+
+    const calls = mockEvaluate.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    calls.forEach((call) => {
+      expect(call[2]).toBeUndefined()
+    })
+  })
 })

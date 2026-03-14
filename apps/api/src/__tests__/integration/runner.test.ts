@@ -59,6 +59,7 @@ async function seedExperiment(itemCount: number, graderCount: number) {
       datasetId: dataset.id,
       datasetRevisionId: revisionId,
       graderIds,
+      modelId: 'google/gemini-2.5-flash',
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))

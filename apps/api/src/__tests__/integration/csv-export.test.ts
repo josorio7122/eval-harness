@@ -59,6 +59,7 @@ async function seedAndRun(
       datasetId: dataset.id,
       datasetRevisionId: revisionId,
       graderIds,
+      modelId: 'google/gemini-2.5-flash',
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
@@ -194,6 +195,7 @@ describe('CSV export (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
+        modelId: 'google/gemini-2.5-flash',
       }),
     )
     // Status is 'queued' (default), not 'complete'
