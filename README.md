@@ -11,6 +11,43 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 - Review results in a dense table — rows are items, columns are graders, cells show pass/fail verdicts
 - Dataset versioning via immutable revisions — experiments pin to a snapshot, so results are reproducible
 
+## Workflow
+
+### User Workflow
+
+```mermaid
+flowchart LR
+    A["📁 Create Dataset\nDefine attributes\nAdd items / import CSV"]
+    B["📝 Define Graders\nWrite natural-language\npass/fail rubrics"]
+    C["🚀 Run Experiment\nPick dataset + graders\n+ model"]
+    D["📊 Review Results\nDense table · charts\nCSV export"]
+
+    A --> B --> C --> D
+```
+
+### System Flow
+
+```mermaid
+flowchart TD
+    UI["Frontend\n(React + TanStack Query)"]
+    API["API\n(Hono · SSE endpoint)"]
+    Runner["Runner\n(p-queue: 2 experiments\n4 LLM calls each)"]
+    LLM["LLM Judge\n(OpenRouter)"]
+    DB["PostgreSQL\n(pinned revision)"]
+
+    UI -->|"POST /experiments/:id/run"| API
+    API --> Runner
+    Runner -->|"rubric + item attributes"| LLM
+    LLM -->|"structured verdict\n(pass/fail + reasoning)"| Runner
+    Runner -->|"save results"| DB
+    Runner -->|"emit progress events"| API
+    API -->|"real-time updates via SSE"| UI
+    UI -->|"GET results when complete"| API
+    API -->|"query"| DB
+```
+
+> Full data model and layer details in [docs/architecture.md](docs/architecture.md).
+
 ## Tech Stack
 
 | Layer      | Tech                       |
