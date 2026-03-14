@@ -109,25 +109,15 @@ You can use these rubrics as-is or adapt them for your own datasets. The seed sc
 - [Architecture](docs/architecture.md) — data model, backend layers, frontend structure
 - [Specification](docs/spec.md) — detailed behavior spec
 - [Implementation](docs/implementation.md) — API contracts and data model details
-- [Requirements](docs/requirements.md) — problem statement
 
 ## What I'd Improve
 
-**Queue system** — Replace the in-process p-queue with a proper job queue (BullMQ + Redis or SQS). The current promise-based queue loses jobs on server restart and can't distribute work across multiple API instances.
-
-**Revision storage** — The current system copies all items into every new revision. At scale (10k+ items), this creates significant storage overhead and slow writes. A log-based approach (similar to Braintrust's transaction log) would store only deltas — each mutation is an append-only log entry, and the current state is reconstructed by replaying the log. This gives you versioning, diffs, and efficient storage.
-
-**Results storage** — Move experiment results to ClickHouse (or a similar columnar store). PostgreSQL works fine for thousands of results, but evaluation platforms can generate millions of rows. ClickHouse handles analytical queries (aggregations, filtering by verdict, time-range scans) orders of magnitude faster than row-oriented databases.
-
-**Prompt management & playground** — Expand the platform to include prompt versioning and an interactive playground. Users would create prompt templates, pair them with datasets, and generate experiments directly — comparing actual LLM output against expected output. This closes the loop: instead of evaluating external outputs, the platform becomes the place where you iterate on prompts, run them, and evaluate results in one workflow.
-
-**Diff between revisions** — Show what changed between two dataset revisions (added/removed/modified items, schema changes). Currently revisions are append-only with no comparison view.
-
-**Evaluation model comparison** — Run the same experiment with different LLM judges to measure grader consistency. Show agreement rates and highlight cases where judges disagree.
-
-**Batch operations** — Support bulk item editing (paste from spreadsheet), bulk delete, and bulk re-evaluation of failed cells.
-
-**Webhook notifications** — Notify external systems (Slack, CI/CD) when experiments complete or pass rates drop below a threshold.
+- **Job queue** — Replace in-process p-queue with BullMQ + Redis. Current setup loses jobs on restart and doesn't scale horizontally.
+- **Revision storage** — Switch from full-copy revisions to a log-based approach (append-only deltas). Current model duplicates all items per revision.
+- **Results storage** — Move experiment results to a columnar store (ClickHouse) for faster analytical queries at scale.
+- **Prompt management & playground** — Add prompt versioning and an interactive playground so users can iterate on prompts, run them, and evaluate results in one workflow.
+- **Judge comparison** — Run the same experiment with different LLM judges to measure inter-grader agreement.
+- **Structured logging** — Add structured request and error logging to the API.
 
 ## License
 
