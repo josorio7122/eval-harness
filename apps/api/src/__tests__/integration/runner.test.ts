@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { type Result } from '@eval-harness/shared'
+import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
@@ -59,7 +59,7 @@ async function seedExperiment(itemCount: number, graderCount: number) {
       datasetId: dataset.id,
       datasetRevisionId: revisionId,
       graderIds,
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))

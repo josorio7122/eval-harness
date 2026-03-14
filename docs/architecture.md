@@ -26,15 +26,15 @@ Dataset (unique name)
 
 ### Entities
 
-| Entity                | Purpose                                                    | Key fields                                                                          | Constraints                                                          |
-| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`                                                                 | `name` UNIQUE                                                        |
-| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                         | No updates — every mutation creates a new revision                   |
-| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                            | `itemId` is preserved across revisions to track the same logical row |
-| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`                                                     | `name` UNIQUE                                                        |
+| Entity                | Purpose                                                    | Key fields                                                                                     | Constraints                                                          |
+| --------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`                                                                            | `name` UNIQUE                                                        |
+| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                    | No updates — every mutation creates a new revision                   |
+| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                       | `itemId` is preserved across revisions to track the same logical row |
+| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`                                                                | `name` UNIQUE                                                        |
 | `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId` | Status transitions: queued → running → complete/failed               |
-| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                             | —                                                                    |
-| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
+| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                        | —                                                                    |
+| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                           | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
 
 ### Cascade Delete Chains
 

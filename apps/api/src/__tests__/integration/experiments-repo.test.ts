@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { type Result } from '@eval-harness/shared'
+import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
 import { experimentRepository as repo } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
@@ -54,7 +54,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -72,7 +72,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -93,7 +93,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -113,7 +113,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -132,7 +132,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -160,7 +160,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -205,7 +205,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -240,7 +240,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -273,7 +273,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -304,7 +304,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
     const expB = unwrap(
@@ -313,7 +313,7 @@ describe('experiments repository (integration)', () => {
         datasetId: dataset.id,
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 

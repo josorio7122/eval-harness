@@ -205,7 +205,7 @@ These describe what the user provides and what the system surfaces — not inter
 - **GraderCreate:** When the user submits a name, description, and rubric for a new grader, that grader appears in the list immediately.
 - **GraderOpen:** When the user selects a grader from the list, they see the grader's full detail: its name, description, and rubric text.
 - **GraderEdit:** When the user edits any field of a grader (name, description, or rubric) and confirms, the updated values are reflected immediately across the list and the detail view.
-- **GraderDelete:** When the user deletes a grader, it is removed from the list immediately and is no longer accessible. All experiments referencing that grader and their results are also deleted. The user is warned and must confirm. The operation is not reversible within the session.
+- **GraderDelete:** When the user attempts to delete a grader that is referenced by one or more experiments, the deletion is blocked and the user is shown a message listing the experiments that must be deleted first. Once all referencing experiments have been removed, the grader can be deleted. The user must confirm the deletion. The operation is not reversible within the session.
 - **RubricVisibility:** The rubric is always visible in the grader's detail view in its entirety. It is not truncated or summarized — the user can read and edit the exact instruction text that will be used to judge test cases.
 
 ### Contracts
@@ -248,7 +248,7 @@ These describe what the user provides and what the system surfaces — not inter
 1. **Grader name uniqueness:** Grader names must be unique. The system rejects duplicate names with a validation message.
 2. **Rubric role:** The rubric is a sub-prompt — it contains the judging instructions for the LLM. When running an experiment, the system constructs the LLM prompt as: system message contains the rubric (judging criteria), user message contains the dataset item attributes (`input`, `expected_output`, and any custom attributes). The rubric text is freeform with no enforced placeholder conventions.
 3. **Rubric length limits:** No enforced limit on rubric length.
-4. **Deletion safety:** Deleting a grader warns the user if the grader is referenced by experiments. Deletion cascades — all experiments referencing the grader and their results are also deleted. The user must explicitly confirm.
+4. **Deletion safety:** Deleting a grader is blocked if the grader is referenced by any experiment results. The user must delete all referencing experiments first, then delete the grader. The user must explicitly confirm the grader deletion once it is unblocked.
 5. **Description optionality:** Description is optional. An empty description is treated the same as any other value — no visual distinction.
 
 ---
@@ -294,8 +294,11 @@ These describe what the user provides and what the system surfaces — not inter
 - `name` — string
 - `dataset_name` — name of the associated dataset
 - `status` — one of: "queued", "running", "complete", "failed"
-- `revision_schema_version` — the schemaVersion of the revision this experiment is pinned to
 - `modelId` — the OpenRouter model ID used as the LLM judge for this experiment
+
+**Experiment (detail view header)**
+
+- `revision_schema_version` — the schemaVersion of the revision this experiment is pinned to (displayed in the detail view header alongside `created_at`, not in the list view)
 
 **Experiment Results table**
 

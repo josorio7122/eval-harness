@@ -1,4 +1,4 @@
-export const DEFAULT_MODEL_ID = 'google/gemini-2.5-flash'
+export { DEFAULT_MODEL_ID } from '@eval-harness/shared'
 
 export const AVAILABLE_MODELS = [
   // Top-Tier Reasoning

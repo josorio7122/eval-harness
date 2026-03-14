@@ -234,27 +234,27 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 
 ### Cascade Delete Rules
 
-| Entity deleted       | Also deletes                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dataset`            | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments |
-| `DatasetRevision`    | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually)                                         |
+| Entity deleted       | Also deletes                                                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Dataset`            | All its `DatasetRevision`s and their `DatasetRevisionItem`s, all `Experiment`s referencing it, all `ExperimentResult`s of those experiments               |
+| `DatasetRevision`    | All its `DatasetRevisionItem`s (only deleted via cascade from Dataset — never deleted individually)                                                       |
 | `Grader`             | **Cannot be deleted** while any `ExperimentResult` references it (`onDelete: Restrict`). Delete all referencing experiments first, then delete the grader |
-| `Experiment`         | All its `ExperimentResult`s                                                                                                                 |
-| Attribute change     | Creates a new revision; previous revisions are unchanged                                                                                    |
-| Item add/edit/delete | Creates a new revision; previous revisions are unchanged                                                                                    |
+| `Experiment`         | All its `ExperimentResult`s                                                                                                                               |
+| Attribute change     | Creates a new revision; previous revisions are unchanged                                                                                                  |
+| Item add/edit/delete | Creates a new revision; previous revisions are unchanged                                                                                                  |
 
 ---
 
 ### System-Generated vs. User-Provided Fields
 
-| Entity                | System-generated                    | User-provided                             |
-| --------------------- | ----------------------------------- | ----------------------------------------- |
-| `Dataset`             | `id`                                | `name`                                    |
-| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`  | _(none — system-produced from mutations)_ |
-| `DatasetRevisionItem` | `id`, `itemId`                      | `values`                                  |
-| `Grader`              | `id`                                | `name`, `description`, `rubric`           |
+| Entity                | System-generated                    | User-provided                               |
+| --------------------- | ----------------------------------- | ------------------------------------------- |
+| `Dataset`             | `id`                                | `name`                                      |
+| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`  | _(none — system-produced from mutations)_   |
+| `DatasetRevisionItem` | `id`, `itemId`                      | `values`                                    |
+| `Grader`              | `id`                                | `name`, `description`, `rubric`             |
 | `Experiment`          | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds`, `modelId` |
-| `ExperimentResult`    | `id`, `verdict`, `reason`           | _(none — fully system-produced)_          |
+| `ExperimentResult`    | `id`, `verdict`, `reason`           | _(none — fully system-produced)_            |
 
 ---
 

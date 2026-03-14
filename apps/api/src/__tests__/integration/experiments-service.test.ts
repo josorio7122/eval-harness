@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { type Result } from '@eval-harness/shared'
+import { type Result, DEFAULT_MODEL_ID } from '@eval-harness/shared'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
 import { experimentRepository } from '../../experiments/repository.js'
@@ -48,7 +48,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-no-ds'),
       datasetId: '00000000-0000-0000-0000-000000000000',
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -62,7 +62,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-empty'),
       datasetId: ds.id,
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -75,7 +75,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-no-grader'),
       datasetId: ds.id,
       graderIds: ['00000000-0000-0000-0000-000000000000'],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -91,7 +91,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-success'),
       datasetId: ds.id,
       graderIds: [grader1.id, grader2.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
 
     expect(result.success).toBe(true)
@@ -120,7 +120,7 @@ describe('experiments service (integration)', () => {
         datasetId: ds.id,
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -147,7 +147,7 @@ describe('experiments service (integration)', () => {
         datasetId: ds.id,
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
-        modelId: 'google/gemini-2.5-flash',
+        modelId: DEFAULT_MODEL_ID,
       }),
     )
 
@@ -173,13 +173,13 @@ describe('experiments service (integration)', () => {
       name: uid('exp-shared-a'),
       datasetId: ds.id,
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     const resultB = await service.createExperiment({
       name: uid('exp-shared-b'),
       datasetId: ds.id,
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
 
     expect(resultA.success).toBe(true)
@@ -200,7 +200,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-pinned'),
       datasetId: ds.id,
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(resultA.success).toBe(true)
     if (!resultA.success) return
@@ -228,7 +228,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-before-edit'),
       datasetId: ds.id,
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(resultA.success).toBe(true)
     if (!resultA.success) return
@@ -240,7 +240,7 @@ describe('experiments service (integration)', () => {
       name: uid('exp-after-edit'),
       datasetId: ds.id,
       graderIds: [grader.id],
-      modelId: 'google/gemini-2.5-flash',
+      modelId: DEFAULT_MODEL_ID,
     })
     expect(resultB.success).toBe(true)
     if (!resultB.success) return

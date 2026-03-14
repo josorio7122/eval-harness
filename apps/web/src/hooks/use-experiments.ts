@@ -61,12 +61,8 @@ export function useExperiment(id: string | undefined) {
 export function useCreateExperiment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: {
-      name: string
-      datasetId: string
-      graderIds: string[]
-      modelId?: string
-    }) => api.post<Experiment>('/experiments', data),
+    mutationFn: (data: { name: string; datasetId: string; graderIds: string[]; modelId: string }) =>
+      api.post<Experiment>('/experiments', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
   })
 }
