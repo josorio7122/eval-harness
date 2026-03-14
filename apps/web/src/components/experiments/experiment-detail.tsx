@@ -9,6 +9,7 @@ import {
 } from '@/hooks/use-experiments'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ResultsTable } from './results-table'
+import { GraderChart } from './grader-chart'
 import { ExperimentHeader } from './experiment-header'
 import { ExperimentDeleteDialog } from './experiment-delete-dialog'
 
@@ -65,9 +66,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
   }
 
   if (!experiment) {
-    return (
-      <div className="p-6 text-muted-foreground">Experiment not found.</div>
-    )
+    return <div className="p-6 text-muted-foreground">Experiment not found.</div>
   }
 
   async function handleDelete() {
@@ -82,7 +81,10 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
     if (results.length === 0 || graderCount === 0) return 0
     const countsByItem = new Map<string, number>()
     for (const r of results) {
-      countsByItem.set(r.datasetRevisionItemId, (countsByItem.get(r.datasetRevisionItemId) ?? 0) + 1)
+      countsByItem.set(
+        r.datasetRevisionItemId,
+        (countsByItem.get(r.datasetRevisionItemId) ?? 0) + 1,
+      )
     }
     let done = 0
     for (const count of countsByItem.values()) {
@@ -143,6 +145,13 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
         </div>
       )}
 
+      {/* Chart — above table when results exist */}
+      {(isComplete || hasResults) && (
+        <div className="px-6 py-4 border-b border-border flex-shrink-0">
+          <GraderChart experiment={experiment} />
+        </div>
+      )}
+
       {/* Results table — when running (partial) or complete */}
       {isRunning || isComplete || hasResults ? (
         <ResultsTable experiment={experiment} />
@@ -158,9 +167,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
             ) : (
               <>
                 <p className="text-[13px] text-muted-foreground">Ready to run</p>
-                <p className="text-xs text-muted-foreground/70">
-                  Press Run to start evaluating.
-                </p>
+                <p className="text-xs text-muted-foreground/70">Press Run to start evaluating.</p>
               </>
             )}
           </div>

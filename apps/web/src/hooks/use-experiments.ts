@@ -33,6 +33,7 @@ export interface Experiment {
   revision?: {
     schemaVersion: number
     createdAt: string
+    attributes?: string[]
     items?: Array<{ id: string; values: Record<string, string> }>
   }
 }
