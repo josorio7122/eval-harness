@@ -10,7 +10,7 @@ describe('buildSystemPrompt', () => {
   it('includes the role declaration at the start', () => {
     const prompt = buildSystemPrompt('any rubric')
     expect(prompt).toMatch(
-      /^You are an expert evaluator tasked with assessing whether a response meets defined quality criteria\./,
+      /^You are an expert evaluator assessing the quality of a customer support response\./,
     )
   })
 

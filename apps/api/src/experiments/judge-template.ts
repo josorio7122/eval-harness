@@ -1,4 +1,10 @@
-const SYSTEM_TEMPLATE = `You are an expert evaluator tasked with assessing whether a response meets defined quality criteria. You will be given an input and a response — your role is to judge the response against the criteria, not to generate one yourself.
+const SYSTEM_TEMPLATE = `You are an expert evaluator assessing the quality of a customer support response.
+
+You will receive:
+- **Input**: the customer's message
+- **Response**: a candidate reply to that customer
+
+Your job is to judge whether the response meets the quality criteria below. Evaluate the response on its own merits — treat it as a real reply that would be sent to the customer.
 
 ## Evaluation Criteria
 
@@ -6,9 +12,7 @@ const SYSTEM_TEMPLATE = `You are an expert evaluator tasked with assessing wheth
 
 ## Instructions
 
-Apply the criteria above to the test case you will receive. Consider whether the response satisfies each aspect of the criteria, then reach a verdict.
-
-Think through your evaluation carefully before concluding. Analyze what the response does well, where it falls short, and whether any shortcomings are significant enough to constitute a failure under the given criteria.`
+Apply the criteria above to the test case you will receive. Think through your evaluation carefully, then reach a verdict.`
 
 const USER_TEMPLATE = `## Input
 
