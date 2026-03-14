@@ -1,5 +1,9 @@
 # Architecture Reference
 
+## System Overview
+
+Mini-skills is an LLM evaluation harness that lets you measure how well a language model performs against a dataset of input/output pairs. You define **datasets** (versioned collections of items), **graders** (rubric-based judge prompts), and **experiments** (a pairing of a dataset revision + model + graders). When you run an experiment, the harness sends each item to an LLM judge for every attached grader, collects structured pass/fail verdicts, and surfaces the results in a live-updating results table. Every dataset mutation creates an immutable revision so experiments always reference a stable snapshot, and experiments can be re-run against the latest revision at any time.
+
 ## 1. Data Model
 
 ### Entity Relationship Diagram
@@ -30,7 +34,7 @@ Dataset (unique name)
 | `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`                                                     | `name` UNIQUE                                                        |
 | `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId` | Status transitions: queued → running → complete/failed               |
 | `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                             | —                                                                    |
-| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String)                                               | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
+| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`             |
 
 ### Cascade Delete Chains
 
@@ -44,8 +48,8 @@ DELETE Dataset
       → ExperimentResult (Cascade)
 
 DELETE Grader
-  → ExperimentGrader (Cascade)
-  → ExperimentResult (Restrict)   ← grader cannot be deleted while results reference it
+  → ExperimentResult (Restrict) ← blocks if results exist
+  → ExperimentGrader (Cascade)  ← only reached if no results
 
 DELETE Experiment
   → ExperimentGrader (Cascade)
@@ -109,7 +113,14 @@ async function tryCatch<T>(fn: () => Promise<Result<T>>): Promise<Result<T>> {
   try {
     return await fn()
   } catch (e) {
-    return fail(e instanceof Error ? e.message : 'Unknown error')
+    if (e instanceof Error) {
+      // Prisma not-found errors (findUniqueOrThrow / findFirstOrThrow)
+      if (e.name === 'NotFoundError' || (e as { code?: string }).code === 'P2025') {
+        return fail('Record not found')
+      }
+      return fail(e.message)
+    }
+    return fail('Unknown error')
   }
 }
 ```
@@ -141,13 +152,13 @@ Two-level queue using `p-queue`:
 
 ```
 experimentQueue  (concurrency: 2)   — limits parallel experiments
-  └── evalQueue  (concurrency: 4)   — limits parallel LLM calls per experiment
+  └── evalQueue  (concurrency: 4)   — created fresh per experiment run; limits parallel LLM calls
 ```
 
 Flow:
 
 1. `runner.enqueue(experimentId, items, graders)` adds to `experimentQueue`.
-2. When the experiment slot opens: status → `running`, emit `progress` events per cell.
+2. When the experiment slot opens: status → `running`, a new `evalQueue` is created for this run, emit `progress` events per cell.
 3. All item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls).
 4. On completion: status → `complete` (or `failed` if all cells errored), emit `completed`/`error` event.
 5. Progress events are emitted on `experimentEvents` (a Node.js `EventEmitter`) keyed by experiment ID.
@@ -183,6 +194,8 @@ Two templates with `{variable}` placeholders replaced via `String.prototype.repl
 
 Required item attributes: `input`, `expected_output`. Any additional attributes are rendered as a `## Additional Context` section appended to the user message.
 
+> **Note:** The `expected_output` attribute is rendered in the prompt under the heading **"Response"** — not as "expected_output". This is intentional: the judge sees it as the candidate response to evaluate, without framing that reveals the test structure.
+
 ### SSE (Server-Sent Events)
 
 `GET /experiments/:id/events` — Hono `streamSSE` endpoint.
@@ -197,6 +210,8 @@ Event types emitted over the stream:
 | `error`     | `{ error }`                                      |
 
 The SSE handler attaches a listener to `experimentEvents` (the shared `EventEmitter`). It removes the listener and closes the stream on `completed`, `error`, or client disconnect (`stream.onAbort`).
+
+**CSV export:** `GET /experiments/:id/csv/export` streams the full results table as a CSV file (one row per item × grader cell), suitable for offline analysis.
 
 ---
 
@@ -249,6 +264,8 @@ App
             │   └── ResultsTableRow
             │       └── VerdictCell
             ├── GraderSelector
+            ├── ModelSelector
+            ├── StatusBadge
             └── Dialogs: CreateExperimentDialog, ExperimentDeleteDialog
 ```
 
@@ -291,7 +308,8 @@ Query hooks per domain (`hooks/use-*.ts`):
 
 - Opens an `EventSource` only when `status === 'running'`.
 - On `progress`: updates the query cache for `['experiments', id]` by appending the new `ExperimentResult` (deduplicates by `id`).
-- On `completed`/`error`: invalidates both `['experiments', id]` and `['experiments']` to trigger a fresh fetch, then closes the `EventSource`.
+- On `error`: invalidates only `['experiments', id]` (not the list).
+- On `completed`: invalidates both `['experiments', id]` and `['experiments']` to trigger a fresh fetch, then closes the `EventSource`.
 - On unmount or status change away from `running`: closes the `EventSource`.
-- Falls back to polling (`refetchInterval: 2000ms`) when `status` is `queued` or `running`, acting as a safety net if SSE is unavailable.
+- Falls back to polling (`refetchInterval: 2000ms`) when `status` is `queued` or `running` (both pre-start and in-progress), acting as a safety net if SSE is unavailable.
 - Returns `{ cellsCompleted, totalCells }` for progress display.
