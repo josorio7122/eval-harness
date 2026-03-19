@@ -187,6 +187,27 @@ export function createPromptRepository(prisma: PrismaClient) {
       })
     },
 
+    findLatestVersion(promptId: string) {
+      return tryCatch(async () => {
+        await prisma.prompt.findFirstOrThrow({ where: { id: promptId, deletedAt: null } })
+        const version = await prisma.promptVersion.findFirstOrThrow({
+          where: { promptId },
+          orderBy: { version: 'desc' },
+          select: {
+            id: true,
+            promptId: true,
+            version: true,
+            systemPrompt: true,
+            userPrompt: true,
+            modelId: true,
+            modelParams: true,
+            createdAt: true,
+          },
+        })
+        return ok(version)
+      })
+    },
+
     remove(id: string) {
       return tryCatch(async () => {
         await prisma.prompt.findFirstOrThrow({ where: { id, deletedAt: null } })

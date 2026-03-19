@@ -7,4 +7,5 @@ export const createExperimentSchema = z.object({
     .array(z.string().uuid('Invalid grader ID'))
     .min(1, 'At least one grader is required'),
   modelId: z.string().min(1),
+  promptId: z.string().uuid('Invalid prompt ID'),
 })

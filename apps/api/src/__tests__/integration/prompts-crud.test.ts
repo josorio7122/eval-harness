@@ -230,6 +230,43 @@ describe('prompts repository (integration)', () => {
     expect(reused.id).not.toBe(original.id)
     expect(reused.name).toBe(basePrompt.name)
   })
+
+  it('findLatestVersion returns the latest version for a prompt', async () => {
+    const created = unwrap(await repo.create(basePrompt))
+    unwrap(
+      await repo.createVersion(created.id, {
+        systemPrompt: 'System v2',
+        userPrompt: 'User v2',
+        modelId: 'openai/gpt-4o',
+      }),
+    )
+    unwrap(
+      await repo.createVersion(created.id, {
+        systemPrompt: 'System v3',
+        userPrompt: 'User v3',
+        modelId: 'openai/gpt-4o',
+      }),
+    )
+
+    const latest = unwrap(await repo.findLatestVersion(created.id))
+    expect(latest.version).toBe(3)
+    expect(latest.systemPrompt).toBe('System v3')
+    expect(latest.userPrompt).toBe('User v3')
+    expect(latest.promptId).toBe(created.id)
+  })
+
+  it('findLatestVersion fails when prompt not found', async () => {
+    const result = await repo.findLatestVersion('00000000-0000-0000-0000-000000000000')
+    expect(result.success).toBe(false)
+  })
+
+  it('findLatestVersion fails when prompt is soft-deleted', async () => {
+    const created = unwrap(await repo.create(basePrompt))
+    unwrap(await repo.remove(created.id))
+
+    const result = await repo.findLatestVersion(created.id)
+    expect(result.success).toBe(false)
+  })
 })
 
 // ─── Service tests ────────────────────────────────────────────────────────────

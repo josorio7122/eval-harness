@@ -5,6 +5,10 @@ const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository as repo } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
+import { prisma } from '../../lib/prisma.js'
+import { createPromptRepository } from '../../prompts/repository.js'
+
+const promptRepo = createPromptRepository(prisma)
 
 /** Extract data from Result, fail test if not successful */
 function unwrap<T>(result: Result<T>): T {
@@ -14,6 +18,19 @@ function unwrap<T>(result: Result<T>): T {
 }
 
 let seedCounter = 0
+
+async function seedPromptVersion() {
+  const n = seedCounter
+  const prompt = unwrap(
+    await promptRepo.create({
+      name: `exp-repo-prompt-${n}-${Date.now()}`,
+      systemPrompt: 'You are helpful.',
+      userPrompt: 'Answer: {{input}}',
+      modelId: MODEL_ID,
+    }),
+  )
+  return prompt.versions[0]
+}
 
 async function seedData() {
   const n = ++seedCounter
@@ -43,12 +60,15 @@ async function seedData() {
       rubric: 'rubric2',
     }),
   )
-  return { dataset, latestRevision, revisionItems, grader1, grader2 }
+
+  const promptVersion = await seedPromptVersion()
+
+  return { dataset, latestRevision, revisionItems, grader1, grader2, promptVersion }
 }
 
 describe('experiments repository (integration)', () => {
   it('create with graderIds and revisionId → junction rows', async () => {
-    const { dataset, latestRevision, grader1, grader2 } = await seedData()
+    const { dataset, latestRevision, grader1, grader2, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -57,6 +77,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -66,7 +87,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('findById includes revision.items + graders.grader', async () => {
-    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -75,6 +96,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -87,7 +109,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('findAll includes dataset name + _count.results', async () => {
-    const { dataset, latestRevision, grader1 } = await seedData()
+    const { dataset, latestRevision, grader1, promptVersion } = await seedData()
 
     unwrap(
       await repo.create({
@@ -96,6 +118,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -107,7 +130,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('updateStatus transition', async () => {
-    const { dataset, latestRevision, grader1 } = await seedData()
+    const { dataset, latestRevision, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -116,6 +139,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -126,7 +150,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('createResult → findResultsByExperimentId', async () => {
-    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -135,6 +159,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -154,7 +179,8 @@ describe('experiments repository (integration)', () => {
   })
 
   it('countResultsByExperimentId accuracy', async () => {
-    const { dataset, latestRevision, revisionItems, grader1, grader2 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, grader2, promptVersion } =
+      await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -163,6 +189,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id, grader2.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -199,7 +226,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('findResultsWithDetails includes revision item + grader', async () => {
-    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -208,6 +235,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -234,7 +262,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('duplicate createResult raises error (unique constraint)', async () => {
-    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -243,6 +271,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -267,7 +296,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('remove (soft delete) — findById returns fail, results still exist in DB', async () => {
-    const { dataset, latestRevision, revisionItems, grader1 } = await seedData()
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -276,6 +305,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -295,7 +325,7 @@ describe('experiments repository (integration)', () => {
   })
 
   it('soft-deleted experiment does not appear in findAll', async () => {
-    const { dataset, latestRevision, grader1 } = await seedData()
+    const { dataset, latestRevision, grader1, promptVersion } = await seedData()
 
     const experiment = unwrap(
       await repo.create({
@@ -304,6 +334,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
@@ -316,7 +347,7 @@ describe('experiments repository (integration)', () => {
 
   // B17 — shared revision
   it('two experiments without intervening edits share the same revisionId', async () => {
-    const { dataset, latestRevision, grader1 } = await seedData()
+    const { dataset, latestRevision, grader1, promptVersion } = await seedData()
 
     const expA = unwrap(
       await repo.create({
@@ -325,6 +356,7 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
     const expB = unwrap(
@@ -334,9 +366,180 @@ describe('experiments repository (integration)', () => {
         datasetRevisionId: latestRevision.id,
         graderIds: [grader1.id],
         modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
       }),
     )
 
     expect(expA.datasetRevisionId).toBe(expB.datasetRevisionId)
+  })
+
+  it('create stores promptVersionId correctly', async () => {
+    const { dataset, latestRevision, grader1, promptVersion } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-prompt-version-id',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
+      }),
+    )
+
+    expect(experiment.promptVersionId).toBe(promptVersion.id)
+  })
+
+  it('findById returns promptVersion with version, systemPrompt, userPrompt, modelId, modelParams, and prompt.name', async () => {
+    const { dataset, latestRevision, grader1, promptVersion } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-prompt-version-details',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
+      }),
+    )
+
+    const found = unwrap(await repo.findById(experiment.id))
+    expect(found.promptVersionId).toBe(promptVersion.id)
+    expect(found.promptVersion).toBeDefined()
+    expect(found.promptVersion.version).toBe(promptVersion.version)
+    expect(found.promptVersion.systemPrompt).toBe('You are helpful.')
+    expect(found.promptVersion.userPrompt).toBe('Answer: {{input}}')
+    expect(found.promptVersion.modelId).toBe(MODEL_ID)
+    expect(found.promptVersion.modelParams).toBeDefined()
+    expect(found.promptVersion.prompt).toBeDefined()
+    expect(typeof found.promptVersion.prompt.name).toBe('string')
+  })
+
+  it('createOutput stores an ExperimentOutput record', async () => {
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-output-store',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
+      }),
+    )
+
+    const output = unwrap(
+      await repo.createOutput({
+        experimentId: experiment.id,
+        datasetRevisionItemId: revisionItems[0].id,
+        output: 'This is the model output',
+        error: null,
+      }),
+    )
+
+    expect(output.id).toBeTruthy()
+    expect(output.experimentId).toBe(experiment.id)
+    expect(output.datasetRevisionItemId).toBe(revisionItems[0].id)
+    expect(output.output).toBe('This is the model output')
+    expect(output.error).toBeNull()
+  })
+
+  it('createOutput with error stores error field', async () => {
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-output-error',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
+      }),
+    )
+
+    const output = unwrap(
+      await repo.createOutput({
+        experimentId: experiment.id,
+        datasetRevisionItemId: revisionItems[0].id,
+        output: '',
+        error: 'Rate limit exceeded',
+      }),
+    )
+
+    expect(output.error).toBe('Rate limit exceeded')
+    expect(output.output).toBe('')
+  })
+
+  it('findOutputsByExperimentId returns all outputs for an experiment', async () => {
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-output-findall',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
+      }),
+    )
+
+    unwrap(
+      await repo.createOutput({
+        experimentId: experiment.id,
+        datasetRevisionItemId: revisionItems[0].id,
+        output: 'output-1',
+        error: null,
+      }),
+    )
+    unwrap(
+      await repo.createOutput({
+        experimentId: experiment.id,
+        datasetRevisionItemId: revisionItems[1].id,
+        output: 'output-2',
+        error: null,
+      }),
+    )
+
+    const outputs = unwrap(await repo.findOutputsByExperimentId(experiment.id))
+    expect(outputs).toHaveLength(2)
+    const outputTexts = outputs.map((o) => o.output).sort()
+    expect(outputTexts).toEqual(['output-1', 'output-2'])
+  })
+
+  it('createOutput rejects duplicate (experimentId, datasetRevisionItemId)', async () => {
+    const { dataset, latestRevision, revisionItems, grader1, promptVersion } = await seedData()
+
+    const experiment = unwrap(
+      await repo.create({
+        name: 'exp-output-duplicate',
+        datasetId: dataset.id,
+        datasetRevisionId: latestRevision.id,
+        graderIds: [grader1.id],
+        modelId: MODEL_ID,
+        promptVersionId: promptVersion.id,
+      }),
+    )
+
+    unwrap(
+      await repo.createOutput({
+        experimentId: experiment.id,
+        datasetRevisionItemId: revisionItems[0].id,
+        output: 'first',
+        error: null,
+      }),
+    )
+
+    const duplicate = await repo.createOutput({
+      experimentId: experiment.id,
+      datasetRevisionItemId: revisionItems[0].id,
+      output: 'second',
+      error: null,
+    })
+
+    expect(duplicate.success).toBe(false)
   })
 })

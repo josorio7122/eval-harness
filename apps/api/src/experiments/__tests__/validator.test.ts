@@ -3,6 +3,7 @@ import { createExperimentSchema } from '../validator.js'
 
 const VALID_UUID = '123e4567-e89b-42d3-a456-426614174000'
 const VALID_UUID_2 = '123e4567-e89b-42d3-a456-426614174001'
+const VALID_UUID_3 = '123e4567-e89b-42d3-a456-426614174002'
 
 describe('createExperimentSchema', () => {
   it('accepts valid experiment', () => {
@@ -11,6 +12,7 @@ describe('createExperimentSchema', () => {
       datasetId: VALID_UUID,
       graderIds: [VALID_UUID_2],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID_3,
     })
     expect(result.success).toBe(true)
   })
@@ -66,6 +68,7 @@ describe('createExperimentSchema', () => {
       datasetId: VALID_UUID,
       graderIds: [VALID_UUID, VALID_UUID_2],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID_3,
     })
     expect(result.success).toBe(true)
   })
@@ -76,6 +79,7 @@ describe('createExperimentSchema', () => {
       datasetId: VALID_UUID,
       graderIds: [VALID_UUID_2],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID_3,
     })
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.name).toBe('My Experiment')
@@ -96,6 +100,7 @@ describe('createExperimentSchema', () => {
       datasetId: VALID_UUID,
       graderIds: [VALID_UUID_2],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID_3,
     })
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.modelId).toBe('openai/gpt-4o')
@@ -109,5 +114,38 @@ describe('createExperimentSchema', () => {
       modelId: '',
     })
     expect(result.success).toBe(false)
+  })
+
+  it('rejects when promptId is missing', () => {
+    const result = createExperimentSchema.safeParse({
+      name: 'My Experiment',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID_2],
+      modelId: 'openai/gpt-4o',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects invalid promptId UUID format', () => {
+    const result = createExperimentSchema.safeParse({
+      name: 'My Experiment',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID_2],
+      modelId: 'openai/gpt-4o',
+      promptId: 'not-a-uuid',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts valid promptId with all other fields', () => {
+    const result = createExperimentSchema.safeParse({
+      name: 'My Experiment',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID_2],
+      modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID_3,
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.promptId).toBe(VALID_UUID_3)
   })
 })

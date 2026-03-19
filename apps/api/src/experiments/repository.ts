@@ -15,9 +15,17 @@ export const experimentRepository = {
           status: true,
           modelId: true,
           datasetId: true,
+          promptVersionId: true,
           dataset: { select: { name: true } },
           revision: { select: { schemaVersion: true, createdAt: true } },
           graders: { select: { graderId: true } },
+          promptVersion: {
+            select: {
+              version: true,
+              modelId: true,
+              prompt: { select: { name: true } },
+            },
+          },
           _count: { select: { results: true } },
         },
       })
@@ -36,6 +44,7 @@ export const experimentRepository = {
           modelId: true,
           datasetId: true,
           datasetRevisionId: true,
+          promptVersionId: true,
           dataset: { select: { id: true, name: true } },
           revision: {
             select: {
@@ -53,6 +62,25 @@ export const experimentRepository = {
             select: {
               graderId: true,
               grader: { select: { id: true, name: true, rubric: true } },
+            },
+          },
+          promptVersion: {
+            select: {
+              id: true,
+              version: true,
+              systemPrompt: true,
+              userPrompt: true,
+              modelId: true,
+              modelParams: true,
+              prompt: { select: { id: true, name: true } },
+            },
+          },
+          outputs: {
+            select: {
+              id: true,
+              datasetRevisionItemId: true,
+              output: true,
+              error: true,
             },
           },
           results: {
@@ -76,6 +104,7 @@ export const experimentRepository = {
     datasetRevisionId: string
     graderIds: string[]
     modelId: string
+    promptVersionId: string
   }) {
     return tryCatch(async () => {
       const experiment = await prisma.experiment.create({
@@ -84,6 +113,7 @@ export const experimentRepository = {
           datasetId: data.datasetId,
           datasetRevisionId: data.datasetRevisionId,
           modelId: data.modelId,
+          promptVersionId: data.promptVersionId,
           graders: {
             create: data.graderIds.map((graderId) => ({ graderId })),
           },
@@ -150,6 +180,33 @@ export const experimentRepository = {
         },
       })
       return ok(results)
+    })
+  },
+
+  createOutput(data: {
+    experimentId: string
+    datasetRevisionItemId: string
+    output: string
+    error: string | null
+  }) {
+    return tryCatch(async () => {
+      const record = await prisma.experimentOutput.create({ data })
+      return ok(record)
+    })
+  },
+
+  findOutputsByExperimentId(experimentId: string) {
+    return tryCatch(async () => {
+      const outputs = await prisma.experimentOutput.findMany({
+        where: { experimentId },
+        select: {
+          id: true,
+          datasetRevisionItemId: true,
+          output: true,
+          error: true,
+        },
+      })
+      return ok(outputs)
     })
   },
 }
