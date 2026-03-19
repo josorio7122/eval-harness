@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useCreateExperiment } from '@/hooks/use-experiments'
 import { useDatasets } from '@/hooks/use-datasets'
 import { useGraders } from '@/hooks/use-graders'
+import { usePrompts } from '@/hooks/use-prompts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,12 +34,14 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
   const [datasetId, setDatasetId] = useState('')
   const [modelId, setModelId] = useState('')
   const [graderIds, setGraderIds] = useState<string[]>([])
+  const [promptId, setPromptId] = useState('')
   const nameRef = useRef<HTMLInputElement>(null)
 
   const [prevOpen, setPrevOpen] = useState(open)
   const createExperiment = useCreateExperiment()
   const { data: datasets } = useDatasets()
   const { data: graders } = useGraders()
+  const { data: prompts } = usePrompts()
 
   // Reset form when dialog opens (derived-state pattern)
   if (open && !prevOpen) {
@@ -47,6 +50,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     setDatasetId('')
     setModelId('')
     setGraderIds([])
+    setPromptId('')
   } else if (!open && prevOpen) {
     setPrevOpen(false)
   }
@@ -65,13 +69,14 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !datasetId || graderIds.length === 0) return
+    if (!name.trim() || !datasetId || graderIds.length === 0 || !promptId) return
     try {
       const result = await createExperiment.mutateAsync({
         name: name.trim(),
         datasetId,
         graderIds,
         modelId,
+        promptId,
       })
       const newId = (result as { id?: string }).id ?? ''
       onCreated?.(newId)
@@ -81,7 +86,7 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
     }
   }
 
-  const canSubmit = name.trim() && datasetId && graderIds.length > 0 && modelId
+  const canSubmit = name.trim() && datasetId && graderIds.length > 0 && modelId && promptId
 
   return (
     <Dialog
@@ -120,6 +125,32 @@ export function CreateExperimentDialog({ open, onClose, onCreated }: CreateExper
               Model <span className="text-destructive">*</span>
             </Label>
             <ModelSelector value={modelId} onChange={setModelId} />
+          </div>
+
+          {/* Prompt */}
+          <div className="flex flex-col gap-1.5">
+            <Label>
+              Prompt <span className="text-destructive">*</span>
+            </Label>
+            <Select
+              value={promptId}
+              onValueChange={(v) => {
+                if (v) setPromptId(v)
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select a prompt…">
+                  {promptId && prompts?.find((p) => p.id === promptId)?.name}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {prompts?.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Dataset */}

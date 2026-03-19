@@ -17,11 +17,19 @@ export interface ExperimentResult {
   reason: string
 }
 
+export interface ExperimentOutput {
+  id: string
+  datasetRevisionItemId: string
+  output: string
+  error: string | null
+}
+
 export interface Experiment {
   id: string
   name: string
   datasetId: string
   modelId: string
+  promptVersionId: string
   status: 'queued' | 'running' | 'complete' | 'failed'
   dataset?: {
     id: string
@@ -30,12 +38,22 @@ export interface Experiment {
   }
   graders?: ExperimentGrader[]
   results?: ExperimentResult[]
+  outputs?: ExperimentOutput[]
   _count?: { results: number }
   revision?: {
     schemaVersion: number
     createdAt: string
     attributes?: string[]
     items?: Array<{ id: string; values: Record<string, string> }>
+  }
+  promptVersion?: {
+    id: string
+    version: number
+    systemPrompt: string
+    userPrompt: string
+    modelId: string
+    modelParams: Record<string, unknown>
+    prompt: { id: string; name: string }
   }
 }
 
@@ -61,8 +79,13 @@ export function useExperiment(id: string | undefined) {
 export function useCreateExperiment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { name: string; datasetId: string; graderIds: string[]; modelId: string }) =>
-      api.post<Experiment>('/experiments', data),
+    mutationFn: (data: {
+      name: string
+      datasetId: string
+      graderIds: string[]
+      modelId: string
+      promptId: string
+    }) => api.post<Experiment>('/experiments', data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['experiments'] }),
   })
 }

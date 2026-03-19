@@ -6,7 +6,7 @@ import {
   TableHead,
   TableCell,
 } from '@/components/ui/table'
-import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
+import type { Experiment, ExperimentOutput, ExperimentResult } from '@/hooks/use-experiments'
 import { SectionLabel } from '@/components/shared/section-label'
 import { ResultsFilterBar } from './results-filter-bar'
 import { ResultsTableRow } from './results-table-row'
@@ -37,6 +37,8 @@ export function ResultsTable({ experiment, filter, onFilterChange }: ResultsTabl
   const items = experiment.revision?.items ?? []
   const results = experiment.results ?? []
   const attributes = experiment.revision?.attributes ?? []
+  const outputs: ExperimentOutput[] = experiment.outputs ?? []
+  const outputMap = new Map(outputs.map((o) => [o.datasetRevisionItemId, o]))
 
   // Sort items: fail count descending (failures float to top)
   const sortedItems = [...items].sort((a, b) => failCount(b.id, results) - failCount(a.id, results))
@@ -113,6 +115,12 @@ export function ResultsTable({ experiment, filter, onFilterChange }: ResultsTabl
                 )
               })}
 
+              {outputs.length > 0 && (
+                <TableHead className="border-b border-border whitespace-nowrap min-w-[160px] max-w-[300px] px-3 py-2.5">
+                  <SectionLabel>Output</SectionLabel>
+                </TableHead>
+              )}
+
               {graders.map((eg) => (
                 <TableHead
                   key={eg.graderId}
@@ -161,6 +169,8 @@ export function ResultsTable({ experiment, filter, onFilterChange }: ResultsTabl
                   graders={graders}
                   results={results}
                   longAttrs={longAttrs}
+                  outputMap={outputMap}
+                  hasOutputs={outputs.length > 0}
                 />
               ))
             )}

@@ -51,6 +51,11 @@ export function ExperimentHeader({
           {getModelDisplayName(experiment.modelId)}
         </Badge>
       )}
+      {experiment.promptVersion && (
+        <Badge variant="outline" className="shrink-0 font-normal">
+          {experiment.promptVersion.prompt.name} v{experiment.promptVersion.version}
+        </Badge>
+      )}
       {experiment.revision?.schemaVersion != null && (
         <Badge
           variant="outline"

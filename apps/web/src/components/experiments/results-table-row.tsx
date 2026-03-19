@@ -1,6 +1,6 @@
 import { TableRow, TableCell } from '@/components/ui/table'
 import { VerdictCell } from './verdict-cell'
-import type { ExperimentResult } from '@/hooks/use-experiments'
+import type { ExperimentOutput, ExperimentResult } from '@/hooks/use-experiments'
 
 interface ExperimentGrader {
   graderId: string
@@ -13,6 +13,8 @@ interface ResultsTableRowProps {
   graders: ExperimentGrader[]
   results: ExperimentResult[]
   longAttrs: Set<string>
+  outputMap: Map<string, ExperimentOutput>
+  hasOutputs: boolean
 }
 
 function failCount(itemId: string, results: ExperimentResult[]): number {
@@ -31,6 +33,8 @@ export function ResultsTableRow({
   graders,
   results,
   longAttrs,
+  outputMap,
+  hasOutputs,
 }: ResultsTableRowProps) {
   const itemPassCount = passCount(item.id, results)
   const itemResultCount = results.filter((r) => r.datasetRevisionItemId === item.id).length
@@ -57,6 +61,23 @@ export function ResultsTableRow({
           </TableCell>
         )
       })}
+
+      {hasOutputs && (
+        <TableCell className="border-b border-border px-3 py-2 text-xs min-w-[160px] max-w-[300px]">
+          {(() => {
+            const output = outputMap.get(item.id)
+            return (
+              <div className="truncate" title={output?.output ?? ''}>
+                {output?.error ? (
+                  <span className="text-amber-500">Error: {output.error}</span>
+                ) : (
+                  (output?.output ?? '—')
+                )}
+              </div>
+            )
+          })()}
+        </TableCell>
+      )}
 
       {graders.map((eg) => {
         const result = results.find(
