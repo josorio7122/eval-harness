@@ -323,3 +323,81 @@ These describe what the user provides and what the system surfaces — not inter
 3. **Grader cap:** No cap on graders per experiment. Unbounded selection.
 4. **Timestamps:** No timestamps for now.
 5. **Experiment statuses:** Experiments have four statuses: "queued" (created, briefly waiting for a slot), "running" (actively evaluating), "complete" (all cells evaluated), "failed" (run could not complete). Experiments are automatically enqueued on creation. Up to two experiments may run in parallel; additional experiments queue until a slot is available.
+
+---
+
+## Prompts
+
+### Behaviors
+
+- **PromptList:** When the user navigates to the prompt area, they see a list of all existing prompts, each showing its name, the model from its latest version, the total version count, and when it was last updated.
+- **PromptCreate:** When the user submits a name, system prompt, user prompt, model, and optional model parameters for a new prompt, that prompt appears in the list immediately with version 1.
+- **PromptOpen:** When the user selects a prompt from the list, they see the prompt's full detail: its name, the latest version's content (system prompt, user prompt, model, model parameters), and the complete version history.
+- **PromptRename:** When the user edits the name of a prompt and confirms, the list reflects the new name immediately. No new version is created — renaming is a metadata-only change.
+- **PromptEditContent:** When the user modifies any content field (system prompt, user prompt, model, or model parameters) and saves, the system creates a new immutable version with the full updated content. The previous version is preserved unchanged. The version number increments by 1.
+- **PromptDelete:** When the user deletes a prompt, it is soft-deleted — hidden from the list but preserved in the database. The prompt's name becomes available for reuse. The frontend confirms the action before proceeding.
+- **VersionImmutability:** Once a prompt version is created, its system prompt, user prompt, model ID, and model parameters are never modified. Editing always creates a new version.
+- **VersionHistory:** When viewing a prompt's detail, the user can see all versions ordered newest first. Each version shows its version number, model display name, and creation timestamp. Selecting a past version loads its content into the editor in read-only mode.
+- **VersionFullSnapshot:** Every version is a complete snapshot of the prompt's content. There are no partial updates — saving always submits all content fields, and the new version stores the full state.
+
+### Contracts
+
+These describe what the user provides and what the system surfaces — not internal representations.
+
+**Prompt (summary, as shown in the list)**
+
+- `name` — string, user-provided, non-empty
+- `versionCount` — integer, total number of versions
+- `latestVersion` — the most recent PromptVersion (see below)
+
+**Prompt (detail view)**
+
+- `name` — string
+- `versions` — ordered list of all versions, newest first
+
+**PromptVersion (as shown in version history and editor)**
+
+- `version` — integer, incremented per prompt (1, 2, 3…)
+- `systemPrompt` — string, the system message
+- `userPrompt` — string, the user message template
+- `modelId` — string, OpenRouter model identifier
+- `modelParams` — object with optional `temperature` (0–2), `maxTokens` (≥1), `topP` (0–1)
+- `createdAt` — timestamp of when this version was created
+
+**Create Prompt request**
+
+- `name` — string, required, non-empty
+- `systemPrompt` — string, required (empty string allowed)
+- `userPrompt` — string, required (empty string allowed)
+- `modelId` — string, required, non-empty
+- `modelParams` — object, optional; `temperature` (number, 0–2), `maxTokens` (integer, ≥1), `topP` (number, 0–1)
+
+**Update Prompt Name request**
+
+- `name` — string, required, non-empty
+
+**Create Version request**
+
+- `systemPrompt` — string, required (empty string allowed)
+- `userPrompt` — string, required (empty string allowed)
+- `modelId` — string, required, non-empty
+- `modelParams` — object, optional; same shape as create
+
+### Error Cases
+
+- **EmptyPromptName:** The user submits a prompt with an empty name → the prompt is not created and the user sees an inline validation message.
+- **DuplicatePromptName:** The user submits a prompt with a name that already exists among active prompts → the prompt is not created and the user sees an inline validation message indicating the name is already in use.
+- **EmptyModelId:** The user submits a prompt or version without selecting a model → creation is blocked and the user sees a validation message.
+- **InvalidModelParams:** The user submits model parameters outside valid ranges (temperature > 2, topP > 1, maxTokens < 1) → the request is rejected with a validation message indicating which parameter is invalid.
+- **EditNameEmpty:** The user clears the name on an existing prompt and attempts to save → the edit is rejected and the user sees an inline validation message; the previously saved name is preserved.
+- **VersionNoChanges:** The user attempts to save a new version with content identical to the latest version → the save button is disabled in the UI (no API call is made).
+
+### Resolved Decisions (Prompts)
+
+1. **Prompt name uniqueness:** Prompt names must be unique among active (non-deleted) prompts. The system rejects duplicate names with a validation message. Names can be reused after soft deletion.
+2. **Version immutability:** Prompt versions are immutable once created. No update or delete operations exist for individual versions.
+3. **Full-snapshot versioning:** Every version stores the complete prompt content (system prompt, user prompt, model ID, model parameters). There are no partial updates or diffs between versions.
+4. **Name change does not create a version:** Renaming a prompt updates only the parent metadata. It does not affect versions or create a new version.
+5. **Model parameters are optional:** If not provided, the LLM's default parameters are used. The `modelParams` field defaults to an empty object `{}`.
+6. **No prompt-experiment linking (this phase):** Prompts are a standalone entity in this phase. They are not linked to experiments or graders. Future work will integrate prompts into the experiment workflow.
+7. **Deletion safety:** Prompts are soft-deleted — hidden from lists but preserved in the database. Since prompts are not linked to other entities in this phase, no cascade concerns exist.

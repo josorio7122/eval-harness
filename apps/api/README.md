@@ -68,11 +68,11 @@ Same pattern for `graders/` and `experiments/`.
 
 ## Environment Variables
 
-| Variable           | Required                | Default | Description                  |
-| ------------------ | ----------------------- | ------- | ---------------------------- |
-| DATABASE_URL       | Yes                     | —       | PostgreSQL connection string |
-| OPENROUTER_API_KEY | For running experiments | —       | OpenRouter API key           |
-| API_PORT           | No                      | 3001    | Server port                  |
+| Variable           | Required                | Default | Description                               |
+| ------------------ | ----------------------- | ------- | ----------------------------------------- |
+| DATABASE_URL       | Yes                     | —       | PostgreSQL connection string              |
+| OPENROUTER_API_KEY | For running experiments | —       | OpenRouter API key                        |
+| API_PORT           | No                      | 3001    | Server port                               |
 | LOG_LEVEL          | No                      | info    | Pino log level (debug, info, warn, error) |
 
 ## Testing

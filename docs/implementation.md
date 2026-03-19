@@ -217,6 +217,64 @@ type ExperimentResult = {
 
 ---
 
+#### 7. `Prompt`
+
+A reusable prompt template pairing system and user prompts with a model configuration. Content lives in immutable versions.
+
+```ts
+type Prompt = {
+  id: uuid // System-generated
+  name: string // User-provided. Non-empty, unique across all active prompts
+  deletedAt: timestamp | null // Soft-delete timestamp; null when active
+}
+```
+
+**Constraints:**
+
+- `name` must be non-empty
+- `name` must be unique across all active (non-deleted) prompts. Names can be reused after soft deletion.
+
+**Relationships:**
+
+- Has many `PromptVersion`s (one-to-many, cascade delete)
+- No foreign key relationship to `Experiment` or `Grader` exists in this phase
+
+---
+
+#### 8. `PromptVersion`
+
+An immutable snapshot of a prompt's content at a point in time. Created on every content edit. Never modified after creation.
+
+```ts
+type PromptVersion = {
+  id: uuid // System-generated
+  promptId: uuid // Reference to owning Prompt
+  version: number // Auto-incremented per prompt (1, 2, 3…)
+  systemPrompt: string // The system message. Required, may be empty string.
+  userPrompt: string // The user message template. Required, may be empty string.
+  modelId: string // OpenRouter model identifier (e.g. 'anthropic/claude-sonnet-4')
+  modelParams: { temperature?: number; maxTokens?: number; topP?: number } // Defaults to {} if not provided
+  createdAt: timestamp // System-generated
+}
+```
+
+**Constraints:**
+
+- `version` starts at 1 when the prompt is created
+- `version` increments by 1 on every content edit
+- `(promptId, version)` is unique — no two versions of the same prompt share a version number
+- `systemPrompt` and `userPrompt` are required but may be empty strings
+- `modelId` must be non-empty
+- `modelParams` defaults to `{}` if not provided. Valid fields: `temperature` (0–2), `maxTokens` (integer ≥ 1), `topP` (0–1)
+- A version is immutable once created — its content is never modified
+- The prompt list view's `lastUpdated` is derived from `MAX(PromptVersion.createdAt)` for each prompt — no separate `updatedAt` field on `Prompt`
+
+**Relationships:**
+
+- Belongs to exactly one `Prompt` (many-to-one, cascade delete when prompt is deleted)
+
+---
+
 ### Relationship Diagram
 
 ```
@@ -231,6 +289,8 @@ Grader  ──< Experiment                       (many-to-many via graderIds[], 
 Experiment ──< ExperimentResult              (one-to-many, cascade delete)
 ExperimentResult >── DatasetRevisionItem     (many-to-one, reference only)
 ExperimentResult >── Grader                  (many-to-one, reference only)
+
+Prompt ──< PromptVersion                    (one-to-many, cascade delete)
 ```
 
 ---
@@ -245,19 +305,22 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 | `DatasetRevision`    | Never deleted individually — preserved even when parent dataset is soft-deleted.                                    |
 | Attribute change     | Creates a new revision; previous revisions are unchanged.                                                           |
 | Item add/edit/delete | Creates a new revision; previous revisions are unchanged.                                                           |
+| `Prompt`             | Soft-deleted (`deletedAt` set). All versions preserved. Name available for reuse.                                   |
 
 ---
 
 ### System-Generated vs. User-Provided Fields
 
-| Entity                | System-generated                    | User-provided                               |
-| --------------------- | ----------------------------------- | ------------------------------------------- |
-| `Dataset`             | `id`                                | `name`                                      |
-| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`  | _(none — system-produced from mutations)_   |
-| `DatasetRevisionItem` | `id`, `itemId`                      | `values`                                    |
-| `Grader`              | `id`                                | `name`, `description`, `rubric`             |
-| `Experiment`          | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds`, `modelId` |
-| `ExperimentResult`    | `id`, `verdict`, `reason`           | _(none — fully system-produced)_            |
+| Entity                | System-generated                    | User-provided                                          |
+| --------------------- | ----------------------------------- | ------------------------------------------------------ |
+| `Dataset`             | `id`                                | `name`                                                 |
+| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`  | _(none — system-produced from mutations)_              |
+| `DatasetRevisionItem` | `id`, `itemId`                      | `values`                                               |
+| `Grader`              | `id`                                | `name`, `description`, `rubric`                        |
+| `Experiment`          | `id`, `status`, `datasetRevisionId` | `name`, `datasetId`, `graderIds`, `modelId`            |
+| `ExperimentResult`    | `id`, `verdict`, `reason`           | _(none — fully system-produced)_                       |
+| `Prompt`              | `id`                                | `name`                                                 |
+| `PromptVersion`       | `id`, `version`, `createdAt`        | `systemPrompt`, `userPrompt`, `modelId`, `modelParams` |
 
 ---
 
@@ -274,6 +337,9 @@ ExperimentResult >── Grader                  (many-to-one, reference only)
 9. **Stable item identity:** `DatasetRevisionItem.itemId` tracks the same logical item across revisions. A new `itemId` is generated only when a brand-new item is created
 10. **Latest revision:** The current state of a dataset is always its latest revision by `createdAt DESC`. There is no separate mutable working copy
 11. **Experiment pinning:** An experiment's `datasetRevisionId` is set at creation time and never changes. Dataset mutations after creation do not affect the experiment
+12. **Version immutability:** Once a `PromptVersion` is created, its `systemPrompt`, `userPrompt`, `modelId`, and `modelParams` are never modified
+13. **Prompt name uniqueness:** Prompt names are unique across all active (non-deleted) prompts. Names can be reused after soft deletion
+14. **Version number uniqueness:** Within a prompt, `(promptId, version)` uniquely identifies exactly one `PromptVersion`. No two versions of the same prompt share a version number
 
 ---
 
@@ -326,7 +392,15 @@ experiments/
   validator.ts    # Zod schemas for create, run, etc.
 ```
 
-All three modules follow the same pattern. The experiments module has additional responsibilities (queue management, SSE streaming) but they live inside `service.ts` — the route/repository/validator boundaries stay clean.
+```
+prompts/
+  router.ts       # CRUD + version creation
+  service.ts      # Business logic, version management, returns Result<T>
+  repository.ts   # Prompt + PromptVersion persistence
+  validator.ts    # Zod schemas for create prompt, update name, create version
+```
+
+All four modules follow the same pattern. The experiments module has additional responsibilities (queue management, SSE streaming) but they live inside `service.ts` — the route/repository/validator boundaries stay clean.
 
 ### Frontend (`apps/web`)
 

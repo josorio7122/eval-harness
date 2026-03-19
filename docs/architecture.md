@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Mini-skills is an LLM evaluation harness that lets you measure how well a language model performs against a dataset of input/output pairs. You define **datasets** (versioned collections of items), **graders** (rubric-based judge prompts), and **experiments** (a pairing of a dataset revision + model + graders). When you run an experiment, the harness sends each item to an LLM judge for every attached grader, collects structured pass/fail verdicts, and surfaces the results in a live-updating results table. Every dataset mutation creates an immutable revision so experiments always reference a stable snapshot, and experiments can be re-run against the latest revision at any time.
+Mini-skills is an LLM evaluation harness that lets you measure how well a language model performs against a dataset of input/output pairs. You define **datasets** (versioned collections of items), **graders** (rubric-based judge prompts), and **experiments** (a pairing of a dataset revision + model + graders). When you run an experiment, the harness sends each item to an LLM judge for every attached grader, collects structured pass/fail verdicts, and surfaces the results in a live-updating results table. Every dataset mutation creates an immutable revision so experiments always reference a stable snapshot, and experiments can be re-run against the latest revision at any time. You can also author versioned **prompts** that pair system and user messages with a model configuration, with full version history.
 
 ## 1. Data Model
 
@@ -22,25 +22,31 @@ Dataset (unique name)
   │     ├── ExperimentGrader ◄──── Grader (unique name,       │
   │     │                               rubric)               │
   │     └── ExperimentResult ──────────────────────── Grader ─┘
+
+Prompt (unique name)
+  │
+  └── PromptVersion (immutable snapshot, version, systemPrompt, userPrompt, modelId, modelParams)
 ```
 
 _Dataset, Grader, and Experiment include a `deletedAt` field for soft delete. Soft-deleted records are excluded from all list and lookup queries._
 
 ### Entities
 
-| Entity                | Purpose                                                    | Key fields                                                                                                              | Constraints                                                                  |
-| --------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                            | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
-| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                                             | No updates — every mutation creates a new revision                           |
-| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                                                | `itemId` is preserved across revisions to track the same logical row         |
-| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`, `deletedAt` (DateTime?)                                                                | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
-| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId`, `deletedAt` (DateTime?) | Status transitions: queued → running → complete/failed                       |
-| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                                                 | —                                                                            |
-| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                                                    | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`                     |
+| Entity                | Purpose                                                    | Key fields                                                                                                                       | Constraints                                                                  |
+| --------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                                     | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                                                      | No updates — every mutation creates a new revision                           |
+| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                                                         | `itemId` is preserved across revisions to track the same logical row         |
+| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`, `deletedAt` (DateTime?)                                                                         | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId`, `deletedAt` (DateTime?)          | Status transitions: queued → running → complete/failed                       |
+| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                                                          | —                                                                            |
+| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                                                             | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`                     |
+| `Prompt`              | Reusable prompt template with model config                 | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                                     | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `PromptVersion`       | Immutable snapshot of prompt content                       | `version` (Int), `systemPrompt`, `userPrompt`, `modelId`, `modelParams` (JSON: { temperature?, maxTokens?, topP? }), `createdAt` | No updates — every edit creates a new version                                |
 
 ### Soft Delete
 
-Dataset, Grader, and Experiment use **soft delete** — setting `deletedAt` to the current timestamp instead of removing the record. Child records (revisions, items, results) are never deleted.
+Dataset, Grader, Experiment, and Prompt use **soft delete** — setting `deletedAt` to the current timestamp instead of removing the record. Child records (revisions, items, results) are never deleted.
 
 **Soft-delete a Dataset:**
 
@@ -59,6 +65,12 @@ Dataset, Grader, and Experiment use **soft delete** — setting `deletedAt` to t
 
 - Experiment hidden from the list
 - All ExperimentResults preserved in the database
+
+**Soft-delete a Prompt:**
+
+- Prompt hidden from lists
+- All PromptVersions preserved
+- Prompt name becomes available for reuse
 
 > **Foreign key safety:** `Experiment.datasetId` uses `onDelete: Restrict` — a hard delete of a Dataset (bypassing the app layer) is blocked if experiments reference it. `ExperimentResult.graderId` uses `onDelete: Restrict` — a hard delete of a Grader is blocked if results reference it.
 
@@ -97,7 +109,7 @@ Each domain has four files:
 | `service.ts`    | Business logic; factory function `createXService(repo, ...)` for DI                 |
 | `router.ts`     | HTTP layer; factory function `createXRouter(service)`; maps `Result` to HTTP status |
 
-Domains: `datasets/`, `graders/`, `experiments/`
+Domains: `datasets/`, `graders/`, `experiments/`, `prompts/`
 
 ### Result Pattern
 
@@ -231,6 +243,8 @@ The SSE handler attaches a listener to `experimentEvents` (the shared `EventEmit
 /graders/:id      → GradersPage    (:id present → GraderDetail)
 /experiments      → ExperimentsPage (no :id → ExperimentList)
 /experiments/:id  → ExperimentsPage (:id present → ExperimentDetail)
+/prompts          → PromptsPage  (no :id → PromptList)
+/prompts/:id      → PromptsPage  (:id present → PromptDetail)
 ```
 
 Pages are thin routers — they read `:id` from `useParams` and render either a list or a detail component. No logic beyond that.
@@ -255,19 +269,26 @@ App
     │   └── GraderDetail
     │       ├── GraderForm
     │       └── Dialogs: CreateGrader, GraderDelete
-    └── ExperimentsPage
-        ├── ExperimentList
-        └── ExperimentDetail
-            ├── ExperimentHeader
-            ├── GraderChart
-            ├── ResultsFilterBar
-            ├── ResultsTable
-            │   └── ResultsTableRow
-            │       └── VerdictCell
-            ├── GraderSelector
-            ├── ModelSelector
-            ├── StatusBadge
-            └── Dialogs: CreateExperimentDialog, ExperimentDeleteDialog
+    ├── ExperimentsPage
+    │   ├── ExperimentList
+    │   └── ExperimentDetail
+    │       ├── ExperimentHeader
+    │       ├── GraderChart
+    │       ├── ResultsFilterBar
+    │       ├── ResultsTable
+    │       │   └── ResultsTableRow
+    │       │       └── VerdictCell
+    │       ├── GraderSelector
+    │       ├── ModelSelector
+    │       ├── StatusBadge
+    │       └── Dialogs: CreateExperimentDialog, ExperimentDeleteDialog
+    └── PromptsPage
+        ├── PromptList
+        └── PromptDetail
+            ├── PromptHeader (inline name edit + delete action)
+            ├── PromptEditor (readOnly prop for past versions)
+            ├── PromptVersionHistory
+            └── Dialogs: CreatePromptDialog, PromptDeleteDialog
 ```
 
 **Shared components** (`components/shared/`):
@@ -280,6 +301,8 @@ App
 | `EmptyState`          | Placeholder when a list is empty                             |
 | `ListSkeleton`        | Loading skeleton for lists                                   |
 | `ConfirmDeleteDialog` | Reusable delete confirmation dialog                          |
+| `ModelSelector`       | Model dropdown grouped by provider (moved from experiments/) |
+| `ModelParams`         | Temperature, maxTokens, topP number inputs                   |
 
 ### State Management
 
@@ -294,6 +317,7 @@ Query hooks per domain (`hooks/use-*.ts`):
 | `use-datasets.ts`    | `useDatasets`, `useDataset`, `useCreateDataset`, `useAddAttribute`, `useAddItem`, `useDeleteDataset`, `useImportCsv`      |
 | `use-graders.ts`     | `useGraders`, `useGrader`, `useCreateGrader`, `useUpdateGrader`, `useDeleteGrader`                                        |
 | `use-experiments.ts` | `useExperiments`, `useExperiment`, `useCreateExperiment`, `useRerunExperiment`, `useDeleteExperiment`, `useExperimentSSE` |
+| `use-prompts.ts`     | `usePrompts`, `usePrompt`, `useCreatePrompt`, `useUpdatePromptName`, `useCreatePromptVersion`, `useDeletePrompt`          |
 
 ### Results Table
 

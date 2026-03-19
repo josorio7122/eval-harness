@@ -4,6 +4,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from './lib/logger.js'
 import { requestLogger } from './middleware/request-logger.js'
+import { prisma } from './lib/prisma.js'
 import { datasetRepository } from './datasets/repository.js'
 import { createDatasetService } from './datasets/service.js'
 import { createDatasetRouter } from './datasets/router.js'
@@ -15,6 +16,9 @@ import { createExperimentService } from './experiments/service.js'
 import { createExperimentRouter } from './experiments/router.js'
 import { createExperimentRunner } from './experiments/runner.js'
 import { evaluate } from './experiments/evaluator.js'
+import { createPromptRepository } from './prompts/repository.js'
+import { createPromptService } from './prompts/service.js'
+import { createPromptRouter } from './prompts/router.js'
 
 const app = new Hono()
 
@@ -41,9 +45,14 @@ const experimentService = createExperimentService({
 })
 const experimentRouter = createExperimentRouter(experimentService)
 
+const promptRepository = createPromptRepository(prisma)
+const promptService = createPromptService(promptRepository)
+const promptRouter = createPromptRouter(promptService)
+
 app.route('/', datasetRouter)
 app.route('/', graderRouter)
 app.route('/', experimentRouter)
+app.route('/', promptRouter)
 
 serve(
   {
