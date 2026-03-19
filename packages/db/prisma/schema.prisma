@@ -94,3 +94,25 @@ model ExperimentResult {
   @@index([datasetRevisionItemId])
   @@index([graderId])
 }
+
+model Prompt {
+  id        String          @id @default(uuid())
+  name      String
+  deletedAt DateTime?
+  versions  PromptVersion[]
+}
+
+model PromptVersion {
+  id           String   @id @default(uuid())
+  promptId     String
+  prompt       Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  version      Int
+  systemPrompt String
+  userPrompt   String
+  modelId      String
+  modelParams  Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  @@index([promptId])
+  @@unique([promptId, version])
+}
