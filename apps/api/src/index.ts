@@ -37,17 +37,18 @@ const graderRouter = createGraderRouter(graderService)
 
 const experimentRunner = createExperimentRunner(experimentRepository, evaluate)
 
+const promptRepository = createPromptRepository(prisma)
+const promptService = createPromptService(promptRepository)
+const promptRouter = createPromptRouter(promptService)
+
 const experimentService = createExperimentService({
   repo: experimentRepository,
   datasetRepo: datasetRepository,
   graderRepo: graderRepository,
+  promptRepo: promptRepository,
   runner: experimentRunner,
 })
 const experimentRouter = createExperimentRouter(experimentService)
-
-const promptRepository = createPromptRepository(prisma)
-const promptService = createPromptService(promptRepository)
-const promptRouter = createPromptRouter(promptService)
 
 app.route('/', datasetRouter)
 app.route('/', graderRouter)

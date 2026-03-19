@@ -5,7 +5,10 @@ const MODEL_ID = 'openai/gpt-4o'
 import { datasetRepository as datasetRepo } from '../../datasets/repository.js'
 import { graderRepository as graderRepo } from '../../graders/repository.js'
 import { experimentRepository as experimentRepo } from '../../experiments/repository.js'
+import { createPromptRepository } from '../../prompts/repository.js'
 import { prisma } from '../../lib/prisma.js'
+
+const promptRepo = createPromptRepository(prisma)
 
 /** Extract data from Result, fail test if not successful */
 function unwrap<T>(result: Result<T>): T {
@@ -45,7 +48,18 @@ async function seedFullScenario() {
     }),
   )
 
-  // 5. Create experiment
+  // 5. Create prompt
+  const prompt = unwrap(
+    await promptRepo.create({
+      name: `cascade-prompt-${id}`,
+      systemPrompt: 'You are a helpful assistant.',
+      userPrompt: 'Answer: {input}',
+      modelId: MODEL_ID,
+    }),
+  )
+  const promptVersionId = prompt.versions[0].id
+
+  // 6. Create experiment
   const experiment = unwrap(
     await experimentRepo.create({
       name: `cascade-experiment-${id}`,
@@ -53,10 +67,11 @@ async function seedFullScenario() {
       datasetRevisionId: latestRevision.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptVersionId,
     }),
   )
 
-  // 6. Create experiment result
+  // 7. Create experiment result
   const result = unwrap(
     await experimentRepo.createResult({
       experimentId: experiment.id,

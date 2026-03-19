@@ -5,7 +5,10 @@ const MODEL_ID = 'openai/gpt-4o'
 import { graderRepository as repo } from '../../graders/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { experimentRepository } from '../../experiments/repository.js'
+import { createPromptRepository } from '../../prompts/repository.js'
 import { prisma } from '../../lib/prisma.js'
+
+const promptRepository = createPromptRepository(prisma)
 
 /** Extract data from Result, fail test if not successful */
 function unwrap<T>(result: Result<T>): T {
@@ -168,6 +171,15 @@ describe('graders repository (integration)', () => {
       }),
     )
 
+    const prompt = unwrap(
+      await promptRepository.create({
+        name: `grader-soft-del-prompt-${Date.now()}`,
+        systemPrompt: 'You are a helpful assistant.',
+        userPrompt: 'Answer: {input}',
+        modelId: MODEL_ID,
+      }),
+    )
+
     const experiment = unwrap(
       await experimentRepository.create({
         name: 'grader-soft-del-experiment',
@@ -175,6 +187,7 @@ describe('graders repository (integration)', () => {
         datasetRevisionId: revision.id,
         graderIds: [grader.id],
         modelId: MODEL_ID,
+        promptVersionId: prompt.versions[0].id,
       }),
     )
 

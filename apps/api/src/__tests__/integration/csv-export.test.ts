@@ -5,8 +5,10 @@ const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
+import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
 import { createExperimentService } from '../../experiments/service.js'
+import { prisma } from '../../lib/prisma.js'
 
 /** Extract data from Result, fail test if not successful */
 function unwrap<T>(result: Result<T>): T {
@@ -17,14 +19,28 @@ function unwrap<T>(result: Result<T>): T {
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
 
+const promptRepository = createPromptRepository(prisma)
+
 let seedCounter = 0
+
+async function seedPrompt() {
+  return unwrap(
+    await promptRepository.create({
+      name: `csv-prompt-${++seedCounter}`,
+      systemPrompt: 'You are a helpful assistant.',
+      userPrompt: 'Answer the following: {input}',
+      modelId: MODEL_ID,
+    }),
+  )
+}
 
 async function seedAndRun(params: {
   itemValues: Array<Record<string, string>>
   graderDefs: Array<{ name: string; rubric: string }>
   mockEvaluate: EvaluateFn
+  promptVersionId: string
 }) {
-  const { itemValues, graderDefs, mockEvaluate } = params
+  const { itemValues, graderDefs, mockEvaluate, promptVersionId } = params
   const n = ++seedCounter
   const dataset = unwrap(await datasetRepository.create(`csv-dataset-${n}`))
 
@@ -63,6 +79,7 @@ async function seedAndRun(params: {
       datasetRevisionId: revisionId,
       graderIds,
       modelId: MODEL_ID,
+      promptVersionId,
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
@@ -81,22 +98,27 @@ async function seedAndRun(params: {
 describe('CSV export (integration)', () => {
   let mockEvaluate: EvaluateFn
   let service: ReturnType<typeof createExperimentService>
+  let promptVersionId: string
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockEvaluate = vi.fn<EvaluateFn>()
     vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'pass', reason: 'looks good' })
+    const prompt = await seedPrompt()
+    promptVersionId = prompt.versions[0].id
     service = createExperimentService({
       repo: experimentRepository,
       datasetRepo: datasetRepository,
       graderRepo: graderRepository,
+      promptRepo: promptRepository,
     })
   })
 
-  it('export has correct headers: attribute cols + graderName_verdict + graderName_reason', async () => {
+  it('export has correct headers: attribute cols + output + graderName_verdict + graderName_reason', async () => {
     const { experiment, graders } = await seedAndRun({
       itemValues: [{ input: 'q1', expected_output: 'a1' }],
       graderDefs: [{ name: 'accuracy', rubric: 'be accurate' }],
       mockEvaluate,
+      promptVersionId,
     })
 
     // graders[0].id gives us the grader id but we need the name; fetch from DB
@@ -109,8 +131,13 @@ describe('CSV export (integration)', () => {
     const header = lines[0]
     expect(header).toContain('input')
     expect(header).toContain('expected_output')
+    expect(header).toContain('output')
     expect(header).toContain(`${graderName}_verdict`)
     expect(header).toContain(`${graderName}_reason`)
+    // output column appears before grader columns
+    const outputIdx = header.split(',').indexOf('output')
+    const verdictIdx = header.split(',').indexOf(`${graderName}_verdict`)
+    expect(outputIdx).toBeLessThan(verdictIdx)
   })
 
   it('export has correct row count: one row per dataset item', async () => {
@@ -122,6 +149,7 @@ describe('CSV export (integration)', () => {
       ],
       graderDefs: [{ name: 'checker', rubric: 'check it' }],
       mockEvaluate,
+      promptVersionId,
     })
 
     const result = await service.exportCsv(experiment.id)
@@ -136,12 +164,14 @@ describe('CSV export (integration)', () => {
       repo: experimentRepository,
       datasetRepo: datasetRepository,
       graderRepo: graderRepository,
+      promptRepo: promptRepository,
     })
 
     const { experiment, graders } = await seedAndRun({
       itemValues: [{ input: 'what is 2+2', expected_output: '4' }],
       graderDefs: [{ name: 'math-grader', rubric: 'check math' }],
       mockEvaluate,
+      promptVersionId,
     })
 
     const graderRecord = unwrap(await graderRepository.findById(graders[0].id))
@@ -169,12 +199,14 @@ describe('CSV export (integration)', () => {
       repo: experimentRepository,
       datasetRepo: datasetRepository,
       graderRepo: graderRepository,
+      promptRepo: promptRepository,
     })
 
     const { experiment } = await seedAndRun({
       itemValues: [{ input: 'hello, world', expected_output: 'greet, response' }],
       graderDefs: [{ name: 'csv-grader', rubric: 'check csv' }],
       mockEvaluate,
+      promptVersionId,
     })
 
     const result = await service.exportCsv(experiment.id)
@@ -205,6 +237,7 @@ describe('CSV export (integration)', () => {
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
         modelId: MODEL_ID,
+        promptVersionId,
       }),
     )
     // Status is 'queued' (default), not 'complete'
@@ -213,5 +246,30 @@ describe('CSV export (integration)', () => {
     expect(result.success).toBe(false)
     if (result.success) throw new Error('expected failure')
     expect(result.error).toMatch(/not finished running/i)
+  })
+
+  it('export includes output column with stored outputs', async () => {
+    const { experiment, items } = await seedAndRun({
+      itemValues: [{ input: 'what is 1+1', expected_output: '2' }],
+      graderDefs: [{ name: 'output-grader', rubric: 'check output' }],
+      mockEvaluate,
+      promptVersionId,
+    })
+
+    // Manually store an output for the item
+    unwrap(
+      await experimentRepository.createOutput({
+        experimentId: experiment.id,
+        datasetRevisionItemId: items[0].id,
+        output: 'The answer is 2',
+        error: null,
+      }),
+    )
+
+    const result = await service.exportCsv(experiment.id)
+    const csv = unwrap(result)
+    const lines = csv.split('\n')
+    expect(lines[0]).toContain('output')
+    expect(lines[1]).toContain('The answer is 2')
   })
 })

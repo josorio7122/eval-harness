@@ -7,6 +7,7 @@ import { createExperimentService } from '../service.js'
 const VALID_UUID = '123e4567-e89b-42d3-a456-426614174000'
 const VALID_UUID_2 = '123e4567-e89b-42d3-a456-426614174001'
 const VALID_UUID_3 = '123e4567-e89b-42d3-a456-426614174002'
+const PROMPT_UUID = '123e4567-e89b-42d3-a456-426614174003'
 
 const mockRepo = {
   findAll: vi.fn(),
@@ -18,6 +19,8 @@ const mockRepo = {
   findResultsByExperimentId: vi.fn(),
   countResultsByExperimentId: vi.fn(),
   findResultsWithDetails: vi.fn(),
+  createOutput: vi.fn(),
+  findOutputsByExperimentId: vi.fn(),
 }
 
 const mockRunner = {
@@ -53,10 +56,22 @@ const mockGraderRepo = {
   remove: vi.fn(),
 }
 
+const mockPromptRepo = {
+  findAll: vi.fn(),
+  findById: vi.fn(),
+  findByName: vi.fn(),
+  create: vi.fn(),
+  updateName: vi.fn(),
+  createVersion: vi.fn(),
+  findLatestVersion: vi.fn(),
+  remove: vi.fn(),
+}
+
 const service = createExperimentService({
   repo: mockRepo,
   datasetRepo: mockDatasetRepo,
   graderRepo: mockGraderRepo,
+  promptRepo: mockPromptRepo,
   runner: mockRunner,
 })
 
@@ -108,13 +123,22 @@ describe('getExperiment', () => {
 })
 
 describe('createExperiment', () => {
-  it('creates successfully with datasetRevisionId', async () => {
+  it('creates successfully with datasetRevisionId and promptVersionId', async () => {
     const dataset = {
       id: VALID_UUID_2,
       name: 'ds1',
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
     mockDatasetRepo.countItems.mockResolvedValue(ok(1))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-1' }]))
@@ -128,6 +152,14 @@ describe('createExperiment', () => {
         modelId: MODEL_ID,
         revision: { items: [{ id: 'item1', values: { input: 'q', expected_output: 'a' } }] },
         graders: [{ graderId: VALID_UUID_3, grader: { id: VALID_UUID_3, rubric: 'rubric' } }],
+        promptVersion: {
+          id: 'pv-1',
+          systemPrompt: 'sys',
+          userPrompt: 'Answer: {input}',
+          modelId: 'test/m',
+          modelParams: {},
+          prompt: { id: PROMPT_UUID },
+        },
       }),
     )
     mockRunner.enqueue.mockResolvedValue(undefined)
@@ -137,6 +169,7 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
     })
     expect(result).toEqual({ success: true, data: created })
     expect(mockRepo.create).toHaveBeenCalledWith({
@@ -145,6 +178,7 @@ describe('createExperiment', () => {
       datasetRevisionId: 'rev-1',
       graderIds: [VALID_UUID_3],
       modelId: MODEL_ID,
+      promptVersionId: 'pv-1',
     })
     // flush the void enqueueExperiment promise
     await Promise.resolve()
@@ -153,6 +187,12 @@ describe('createExperiment', () => {
       datasetItems: [{ id: 'item1', values: { input: 'q', expected_output: 'a' } }],
       graders: [{ id: VALID_UUID_3, rubric: 'rubric' }],
       modelId: MODEL_ID,
+      promptVersion: {
+        systemPrompt: 'sys',
+        userPrompt: 'Answer: {input}',
+        modelId: 'test/m',
+        modelParams: {},
+      },
     })
   })
 
@@ -163,6 +203,15 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
     mockDatasetRepo.countItems.mockResolvedValue(ok(1))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-1' }]))
@@ -178,19 +227,102 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: 'openai/gpt-4o',
+      promptId: PROMPT_UUID,
     })
     expect(mockRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ modelId: 'openai/gpt-4o' }),
     )
   })
 
+  it('fails when prompt not found', async () => {
+    mockPromptRepo.findLatestVersion.mockResolvedValue(fail('Prompt not found'))
+    const result = await service.createExperiment({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+      modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
+    })
+    expect(result).toEqual({ success: false, error: 'Prompt not found' })
+  })
+
+  it('fails when prompt template missing {input} placeholder', async () => {
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer the question please',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
+    const result = await service.createExperiment({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+      modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
+    })
+    expect(result).toEqual({
+      success: false,
+      error: 'Prompt template must include {input} placeholder',
+    })
+  })
+
+  it('passes promptVersionId to repo.create', async () => {
+    const dataset = {
+      id: VALID_UUID_2,
+      name: 'ds1',
+      attributes: ['input', 'expected_output'],
+      items: [{ id: 'item1' }],
+    }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-42',
+        userPrompt: 'Solve: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
+    mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
+    mockDatasetRepo.countItems.mockResolvedValue(ok(1))
+    mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-1' }]))
+    mockGraderRepo.findById.mockResolvedValue(ok({ id: VALID_UUID_3, name: 'g1' }))
+    mockRepo.create.mockResolvedValue(
+      ok({ id: VALID_UUID, name: 'exp1', status: 'queued', datasetId: VALID_UUID_2 }),
+    )
+    mockRepo.findById.mockResolvedValue(fail('not found'))
+
+    await service.createExperiment({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+      modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
+    })
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ promptVersionId: 'pv-42' }),
+    )
+  })
+
   it('fails when dataset not found', async () => {
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockDatasetRepo.findById.mockResolvedValue(fail('Dataset not found'))
     const result = await service.createExperiment({
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset not found' })
   })
@@ -202,6 +334,15 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [],
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
     mockDatasetRepo.countItems.mockResolvedValue(ok(0))
     const result = await service.createExperiment({
@@ -209,6 +350,7 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset has no items' })
   })
@@ -220,6 +362,15 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
     mockDatasetRepo.countItems.mockResolvedValue(ok(1))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([]))
@@ -229,6 +380,7 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
     })
     expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
   })
@@ -240,6 +392,15 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-1',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockDatasetRepo.findById.mockResolvedValue(ok(dataset))
     mockDatasetRepo.countItems.mockResolvedValue(ok(1))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-1' }]))
@@ -249,6 +410,7 @@ describe('createExperiment', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
     })
     expect(result).toEqual({ success: false, error: 'Grader not found' })
   })
@@ -277,7 +439,25 @@ describe('rerunExperiment', () => {
       datasetId: VALID_UUID_2,
       modelId: 'google/gemini-2.5-flash',
       graders: [{ graderId: VALID_UUID_3 }],
+      promptVersion: {
+        prompt: { id: 'prompt-1' },
+        id: 'pv-1',
+        version: 1,
+        systemPrompt: 'sys',
+        userPrompt: 'Answer: {input}',
+        modelId: 'test/m',
+        modelParams: {},
+      },
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-2',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     // First call: rerunExperiment fetches the original; second call: enqueueExperiment, return fail so it exits cleanly
     mockRepo.findById.mockResolvedValueOnce(ok(original)).mockResolvedValueOnce(fail('not found'))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-latest' }]))
@@ -299,6 +479,7 @@ describe('rerunExperiment', () => {
       datasetRevisionId: 'rev-latest',
       graderIds: [VALID_UUID_3],
       modelId: 'google/gemini-2.5-flash',
+      promptVersionId: 'pv-2',
     })
   })
 
@@ -310,7 +491,25 @@ describe('rerunExperiment', () => {
       datasetId: VALID_UUID_2,
       modelId: 'anthropic/claude-3-5-sonnet',
       graders: [{ graderId: VALID_UUID_3 }],
+      promptVersion: {
+        prompt: { id: 'prompt-1' },
+        id: 'pv-1',
+        version: 1,
+        systemPrompt: 'sys',
+        userPrompt: 'Answer: {input}',
+        modelId: 'test/m',
+        modelParams: {},
+      },
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-2',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockRepo.findById.mockResolvedValueOnce(ok(original)).mockResolvedValueOnce(fail('not found'))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-latest' }]))
     mockRepo.create.mockResolvedValue(
@@ -321,6 +520,47 @@ describe('rerunExperiment', () => {
     await service.rerunExperiment(VALID_UUID)
     expect(mockRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({ modelId: 'anthropic/claude-3-5-sonnet' }),
+    )
+  })
+
+  it('pins latest version of original prompt', async () => {
+    const original = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'done',
+      datasetId: VALID_UUID_2,
+      modelId: 'google/gemini-2.5-flash',
+      graders: [{ graderId: VALID_UUID_3 }],
+      promptVersion: {
+        prompt: { id: 'prompt-original' },
+        id: 'pv-1',
+        version: 1,
+        systemPrompt: 'sys',
+        userPrompt: 'Answer: {input}',
+        modelId: 'test/m',
+        modelParams: {},
+      },
+    }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-99',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys v2',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
+    mockRepo.findById.mockResolvedValueOnce(ok(original)).mockResolvedValueOnce(fail('not found'))
+    mockDatasetRepo.findRevisions.mockResolvedValue(ok([{ id: 'rev-latest' }]))
+    mockRepo.create.mockResolvedValue(
+      ok({ id: VALID_UUID_2, name: 'exp1 (re-run)', status: 'queued', datasetId: VALID_UUID_2 }),
+    )
+
+    await service.rerunExperiment(VALID_UUID)
+
+    expect(mockPromptRepo.findLatestVersion).toHaveBeenCalledWith('prompt-original')
+    expect(mockRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ promptVersionId: 'pv-99' }),
     )
   })
 
@@ -338,7 +578,25 @@ describe('rerunExperiment', () => {
       datasetId: VALID_UUID_2,
       modelId: 'google/gemini-2.5-flash',
       graders: [{ graderId: VALID_UUID_3 }],
+      promptVersion: {
+        prompt: { id: 'prompt-1' },
+        id: 'pv-1',
+        version: 1,
+        systemPrompt: 'sys',
+        userPrompt: 'Answer: {input}',
+        modelId: 'test/m',
+        modelParams: {},
+      },
     }
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-2',
+        userPrompt: 'Answer: {input}',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
     mockRepo.findById.mockResolvedValue(ok(original))
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([]))
     const result = await service.rerunExperiment(VALID_UUID)
@@ -372,15 +630,18 @@ describe('exportCsv', () => {
         },
       ]),
     )
+    mockRepo.findOutputsByExperimentId.mockResolvedValue(ok([]))
 
     const result = await service.exportCsv(VALID_UUID)
     expect(result.success).toBe(true)
     if (!result.success) return
     const lines = result.data.trim().split('\n')
-    // Header: dataset attributes + {graderName}_verdict + {graderName}_reason
-    expect(lines[0]).toBe('input,expected_output,accuracy-grader_verdict,accuracy-grader_reason')
+    // Header: dataset attributes + output + {graderName}_verdict + {graderName}_reason
+    expect(lines[0]).toBe(
+      'input,expected_output,output,accuracy-grader_verdict,accuracy-grader_reason',
+    )
     // One data row per item
-    expect(lines[1]).toBe('hello,world,pass,Looks good')
+    expect(lines[1]).toBe('hello,world,,pass,Looks good')
     expect(lines).toHaveLength(2)
   })
 
@@ -419,15 +680,16 @@ describe('exportCsv', () => {
         },
       ]),
     )
+    mockRepo.findOutputsByExperimentId.mockResolvedValue(ok([]))
 
     const result = await service.exportCsv(VALID_UUID)
     expect(result.success).toBe(true)
     if (!result.success) return
     const lines = result.data.trim().split('\n')
     expect(lines[0]).toBe(
-      'input,expected_output,grader-a_verdict,grader-a_reason,grader-b_verdict,grader-b_reason',
+      'input,expected_output,output,grader-a_verdict,grader-a_reason,grader-b_verdict,grader-b_reason',
     )
-    expect(lines[1]).toBe('hi,hello,pass,good,fail,bad tone')
+    expect(lines[1]).toBe('hi,hello,,pass,good,fail,bad tone')
     expect(lines).toHaveLength(2)
   })
 
@@ -492,13 +754,16 @@ describe('exportCsv', () => {
         },
       ]),
     )
+    mockRepo.findOutputsByExperimentId.mockResolvedValue(ok([]))
 
     const result = await service.exportCsv(VALID_UUID)
     expect(result.success).toBe(true)
     if (!result.success) return
     const lines = result.data.trim().split('\n')
-    expect(lines[0]).toBe('input,expected_output,accuracy-grader_verdict,accuracy-grader_reason')
-    expect(lines[1]).toBe('hello,world,error,API error')
+    expect(lines[0]).toBe(
+      'input,expected_output,output,accuracy-grader_verdict,accuracy-grader_reason',
+    )
+    expect(lines[1]).toBe('hello,world,,error,API error')
     expect(lines).toHaveLength(2)
   })
 
@@ -543,6 +808,7 @@ describe('exportCsv', () => {
         },
       ]),
     )
+    mockRepo.findOutputsByExperimentId.mockResolvedValue(ok([]))
 
     const result = await service.exportCsv(VALID_UUID)
     expect(result.success).toBe(true)
@@ -550,5 +816,96 @@ describe('exportCsv', () => {
     const lines = result.data.trim().split('\n')
     expect(lines[1]).toContain('"hello, world"')
     expect(lines[1]).toContain('"Has, comma and ""quotes"""')
+  })
+
+  it('includes output column with actual output values', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      revision: { attributes: ['input', 'expected_output'], items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(ok(experiment))
+    mockRepo.findResultsWithDetails.mockResolvedValue(
+      ok([
+        {
+          id: 'r1',
+          experimentId: VALID_UUID,
+          datasetRevisionItemId: 'item-1',
+          graderId: VALID_UUID_3,
+          verdict: 'pass',
+          reason: 'good',
+          datasetRevisionItem: { values: { input: 'hello', expected_output: 'world' } },
+          grader: { name: 'grader-x' },
+        },
+      ]),
+    )
+    mockRepo.findOutputsByExperimentId.mockResolvedValue(
+      ok([
+        {
+          id: 'out-1',
+          datasetRevisionItemId: 'item-1',
+          output: 'The model said world',
+          error: null,
+        },
+      ]),
+    )
+
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const lines = result.data.trim().split('\n')
+    expect(lines[0]).toBe('input,expected_output,output,grader-x_verdict,grader-x_reason')
+    expect(lines[1]).toContain('The model said world')
+  })
+
+  it('shows "error" in output column when output has error', async () => {
+    const experiment = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'complete',
+      datasetId: VALID_UUID_2,
+      revision: { attributes: ['input', 'expected_output'], items: [] },
+      graders: [],
+      results: [],
+    }
+    mockRepo.findById.mockResolvedValue(ok(experiment))
+    mockRepo.findResultsWithDetails.mockResolvedValue(
+      ok([
+        {
+          id: 'r1',
+          experimentId: VALID_UUID,
+          datasetRevisionItemId: 'item-1',
+          graderId: VALID_UUID_3,
+          verdict: 'error',
+          reason: 'API failed',
+          datasetRevisionItem: { values: { input: 'hello', expected_output: 'world' } },
+          grader: { name: 'grader-x' },
+        },
+      ]),
+    )
+    mockRepo.findOutputsByExperimentId.mockResolvedValue(
+      ok([
+        {
+          id: 'out-1',
+          datasetRevisionItemId: 'item-1',
+          output: '',
+          error: 'API timeout',
+        },
+      ]),
+    )
+
+    const result = await service.exportCsv(VALID_UUID)
+    expect(result.success).toBe(true)
+    if (!result.success) return
+    const lines = result.data.trim().split('\n')
+    const cols = lines[0].split(',')
+    const outputIdx = cols.indexOf('output')
+    expect(outputIdx).toBeGreaterThan(-1)
+    const dataCols = lines[1].split(',')
+    expect(dataCols[outputIdx]).toBe('error')
   })
 })

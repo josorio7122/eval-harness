@@ -5,7 +5,9 @@ const MODEL_ID = 'openai/gpt-4o'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
 import { experimentRepository } from '../../experiments/repository.js'
+import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentService } from '../../experiments/service.js'
+import { prisma } from '../../lib/prisma.js'
 
 /** Extract data from Result, fail test if not successful */
 function unwrap<T>(result: Result<T>): T {
@@ -20,11 +22,14 @@ function idOf(data: unknown): string {
   return (data as { id: string }).id
 }
 
+const promptRepository = createPromptRepository(prisma)
+
 const mockRunner = { enqueue: vi.fn().mockResolvedValue(undefined) }
 const service = createExperimentService({
   repo: experimentRepository,
   datasetRepo: datasetRepository,
   graderRepo: graderRepository,
+  promptRepo: promptRepository,
   runner: mockRunner as ReturnType<
     typeof import('../../experiments/runner.js').createExperimentRunner
   >,
@@ -51,14 +56,27 @@ async function seedGrader() {
   )
 }
 
+async function seedPrompt() {
+  return unwrap(
+    await promptRepository.create({
+      name: uid('exp-svc-prompt'),
+      systemPrompt: 'You are a helpful assistant.',
+      userPrompt: 'Answer the following: {input}',
+      modelId: MODEL_ID,
+    }),
+  )
+}
+
 describe('experiments service (integration)', () => {
   it('createExperiment with non-existent dataset returns fail', async () => {
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
     const result = await service.createExperiment({
       name: uid('exp-no-ds'),
       datasetId: '00000000-0000-0000-0000-000000000000',
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -68,11 +86,13 @@ describe('experiments service (integration)', () => {
   it('createExperiment with empty dataset returns fail', async () => {
     const ds = unwrap(await datasetRepository.create(uid('exp-empty-ds')))
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
     const result = await service.createExperiment({
       name: uid('exp-empty'),
       datasetId: ds.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -81,27 +101,46 @@ describe('experiments service (integration)', () => {
 
   it('createExperiment with non-existent grader returns fail', async () => {
     const ds = await seedDatasetWithItems()
+    const prompt = await seedPrompt()
     const result = await service.createExperiment({
       name: uid('exp-no-grader'),
       datasetId: ds.id,
       graderIds: ['00000000-0000-0000-0000-000000000000'],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error).toBe('Grader not found')
   })
 
+  it('createExperiment fails when prompt not found', async () => {
+    const ds = await seedDatasetWithItems()
+    const grader = await seedGrader()
+    const result = await service.createExperiment({
+      name: uid('exp-no-prompt'),
+      datasetId: ds.id,
+      graderIds: [grader.id],
+      modelId: MODEL_ID,
+      promptId: '00000000-0000-0000-0000-000000000000',
+    })
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error).toBe('Prompt not found')
+  })
+
   it('createExperiment success creates experiment with datasetRevisionId', async () => {
     const ds = await seedDatasetWithItems()
     const grader1 = await seedGrader()
     const grader2 = await seedGrader()
+    const prompt = await seedPrompt()
 
     const result = await service.createExperiment({
       name: uid('exp-success'),
       datasetId: ds.id,
       graderIds: [grader1.id, grader2.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
 
     expect(result.success).toBe(true)
@@ -121,9 +160,11 @@ describe('experiments service (integration)', () => {
   it('rerunExperiment creates a new experiment referencing latest revision', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
 
     // Get revision for direct create
     const revisions = unwrap(await datasetRepository.findRevisions(ds.id))
+    const promptVersionId = prompt.versions[0].id
     const original = unwrap(
       await experimentRepository.create({
         name: uid('exp-rerun-orig'),
@@ -131,6 +172,7 @@ describe('experiments service (integration)', () => {
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
         modelId: MODEL_ID,
+        promptVersionId,
       }),
     )
 
@@ -149,6 +191,7 @@ describe('experiments service (integration)', () => {
   it('deleteExperiment soft-deletes the experiment but leaves dataset and grader intact', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
 
     const revisions = unwrap(await datasetRepository.findRevisions(ds.id))
     const experiment = unwrap(
@@ -158,6 +201,7 @@ describe('experiments service (integration)', () => {
         datasetRevisionId: revisions[0].id,
         graderIds: [grader.id],
         modelId: MODEL_ID,
+        promptVersionId: prompt.versions[0].id,
       }),
     )
 
@@ -179,18 +223,21 @@ describe('experiments service (integration)', () => {
   it('two experiments on unchanged dataset share the same revision', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
 
     const resultA = await service.createExperiment({
       name: uid('exp-shared-a'),
       datasetId: ds.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     const resultB = await service.createExperiment({
       name: uid('exp-shared-b'),
       datasetId: ds.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
 
     expect(resultA.success).toBe(true)
@@ -206,12 +253,14 @@ describe('experiments service (integration)', () => {
   it('experiment revisionId unchanged after dataset edit', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
 
     const resultA = await service.createExperiment({
       name: uid('exp-pinned'),
       datasetId: ds.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     expect(resultA.success).toBe(true)
     if (!resultA.success) return
@@ -232,12 +281,14 @@ describe('experiments service (integration)', () => {
   it('experiments created before and after edit have different revisions', async () => {
     const ds = await seedDatasetWithItems()
     const grader = await seedGrader()
+    const prompt = await seedPrompt()
 
     const resultA = await service.createExperiment({
       name: uid('exp-before-edit'),
       datasetId: ds.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     expect(resultA.success).toBe(true)
     if (!resultA.success) return
@@ -250,6 +301,7 @@ describe('experiments service (integration)', () => {
       datasetId: ds.id,
       graderIds: [grader.id],
       modelId: MODEL_ID,
+      promptId: prompt.id,
     })
     expect(resultB.success).toBe(true)
     if (!resultB.success) return

@@ -5,7 +5,11 @@ const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
+import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
+import { prisma } from '../../lib/prisma.js'
+
+const promptRepository = createPromptRepository(prisma)
 
 /** Extract data from Result, fail test if not successful */
 function unwrap<T>(result: Result<T>): T {
@@ -55,6 +59,16 @@ async function seedExperiment(itemCount: number, graderCount: number) {
   }
 
   const graderIds = graders.map((g) => g.id)
+
+  const prompt = unwrap(
+    await promptRepository.create({
+      name: `runner-prompt-${n}`,
+      systemPrompt: 'You are a helpful assistant.',
+      userPrompt: 'Answer: {input}',
+      modelId: MODEL_ID,
+    }),
+  )
+
   const experiment = unwrap(
     await experimentRepository.create({
       name: `runner-exp-${n}`,
@@ -62,6 +76,7 @@ async function seedExperiment(itemCount: number, graderCount: number) {
       datasetRevisionId: revisionId,
       graderIds,
       modelId: MODEL_ID,
+      promptVersionId: prompt.versions[0].id,
     }),
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))

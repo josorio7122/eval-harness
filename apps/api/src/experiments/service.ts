@@ -4,6 +4,7 @@ import { logger } from '../lib/logger.js'
 import { experimentRepository } from './repository.js'
 import { datasetRepository } from '../datasets/repository.js'
 import { graderRepository } from '../graders/repository.js'
+import type { createPromptRepository } from '../prompts/repository.js'
 import type { createExperimentRunner } from './runner.js'
 import type { DetailedResult } from './utils.js'
 
@@ -13,9 +14,10 @@ export function createExperimentService(deps: {
   repo: typeof experimentRepository
   datasetRepo: typeof datasetRepository
   graderRepo: typeof graderRepository
+  promptRepo: ReturnType<typeof createPromptRepository>
   runner?: Runner
 }) {
-  const { repo, datasetRepo, graderRepo, runner } = deps
+  const { repo, datasetRepo, graderRepo, promptRepo, runner } = deps
 
   /** Fire-and-forget: enqueue a created experiment on the runner. */
   async function enqueueExperiment(experimentId: string) {
@@ -38,12 +40,22 @@ export function createExperimentService(deps: {
     }))
 
     if (items.length > 0) {
-      void runner.enqueue({
+      const enqueuePayload = {
         experimentId,
         datasetItems: items,
         graders: graderList,
         modelId: exp.modelId,
-      })
+        promptVersion: exp.promptVersion
+          ? {
+              systemPrompt: exp.promptVersion.systemPrompt,
+              userPrompt: exp.promptVersion.userPrompt,
+              modelId: exp.promptVersion.modelId,
+              modelParams: exp.promptVersion.modelParams as Record<string, unknown>,
+            }
+          : null,
+      }
+      // CAST: runner type will be updated in Phase 4 to accept promptVersion
+      void runner.enqueue(enqueuePayload as Parameters<typeof runner.enqueue>[0])
     }
   }
 
@@ -57,8 +69,19 @@ export function createExperimentService(deps: {
       datasetId: string
       graderIds: string[]
       modelId: string
+      promptId: string
     }) {
       return tryCatch(async () => {
+        const latestVersionResult = await promptRepo.findLatestVersion(input.promptId)
+        if (!latestVersionResult.success) return fail('Prompt not found')
+        const latestVersion = latestVersionResult.data
+
+        if (!latestVersion.userPrompt.includes('{input}')) {
+          return fail('Prompt template must include {input} placeholder')
+        }
+
+        const promptVersionId = latestVersion.id
+
         const datasetResult = await datasetRepo.findById(input.datasetId)
         if (!datasetResult.success) return fail('Dataset not found')
 
@@ -77,8 +100,12 @@ export function createExperimentService(deps: {
         const datasetRevisionId = revisionsResult.data[0].id
 
         const createResult = await repo.create({
-          ...input,
+          name: input.name,
+          datasetId: input.datasetId,
           datasetRevisionId,
+          graderIds: input.graderIds,
+          modelId: input.modelId,
+          promptVersionId,
         })
         if (createResult.success) {
           void enqueueExperiment(createResult.data.id)
@@ -95,6 +122,14 @@ export function createExperimentService(deps: {
         if (!expResult.success) return expResult
         const experiment = expResult.data
 
+        const promptId = experiment.promptVersion?.prompt.id
+        let promptVersionId: string | undefined
+        if (promptId) {
+          const latestVersionResult = await promptRepo.findLatestVersion(promptId)
+          if (!latestVersionResult.success) return fail('Prompt not found')
+          promptVersionId = latestVersionResult.data.id
+        }
+
         const revisionsResult = await datasetRepo.findRevisions(experiment.datasetId)
         if (!revisionsResult.success) return revisionsResult
         if (revisionsResult.data.length === 0) return fail('Dataset has no revisions')
@@ -107,6 +142,7 @@ export function createExperimentService(deps: {
           datasetRevisionId,
           graderIds,
           modelId: experiment.modelId,
+          promptVersionId: promptVersionId ?? '',
         })
         if (createResult.success) {
           void enqueueExperiment(createResult.data.id)
@@ -128,6 +164,14 @@ export function createExperimentService(deps: {
         const resultsResult = await repo.findResultsWithDetails(id)
         if (!resultsResult.success) return resultsResult
         if (resultsResult.data.length === 0) return fail('No results to export')
+
+        const outputsResult = await repo.findOutputsByExperimentId(id)
+        const outputMap = new Map<string, string>()
+        if (outputsResult.success) {
+          for (const o of outputsResult.data) {
+            outputMap.set(o.datasetRevisionItemId, o.error ? 'error' : o.output)
+          }
+        }
 
         const typedResults: DetailedResult[] = resultsResult.data.map((r) => ({
           ...r,
@@ -173,9 +217,9 @@ export function createExperimentService(deps: {
           'expected_output',
         ]
 
-        // Build column list
+        // Build column list: dataset attributes + output + grader columns
         const graderCols = graderNames.flatMap((g) => [`${g}_verdict`, `${g}_reason`])
-        const columns = [...datasetAttributes, ...graderCols]
+        const columns = [...datasetAttributes, 'output', ...graderCols]
 
         // Build records
         const records = itemIds.map((itemId) => {
@@ -184,6 +228,7 @@ export function createExperimentService(deps: {
           for (const attr of datasetAttributes) {
             row[attr] = values[attr] ?? ''
           }
+          row['output'] = outputMap.get(itemId) ?? ''
           for (const graderName of graderNames) {
             const r = resultIndex.get(`${itemId}::${graderName}`)
             row[`${graderName}_verdict`] = r?.verdict ?? ''
