@@ -96,15 +96,15 @@ model ExperimentResult {
 }
 
 model Prompt {
-  id        String          @id @default(uuid())
+  id        String          @id @default(uuid()) @db.Uuid
   name      String
   deletedAt DateTime?
   versions  PromptVersion[]
 }
 
 model PromptVersion {
-  id           String   @id @default(uuid())
-  promptId     String
+  id           String   @id @default(uuid()) @db.Uuid
+  promptId     String   @db.Uuid
   prompt       Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
   version      Int
   systemPrompt String

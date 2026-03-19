@@ -107,7 +107,7 @@ export function createPromptRepository(prisma: PrismaClient) {
         const prompt = await prisma.$transaction(async (tx) => {
           const created = await tx.prompt.create({
             data: { name: input.name },
-            select: { id: true, name: true, deletedAt: true },
+            select: { id: true, name: true },
           })
 
           const version = await tx.promptVersion.create({

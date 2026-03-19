@@ -7,8 +7,7 @@ import {
   useDeletePrompt,
   useUpdatePromptName,
 } from '@/hooks/use-prompts'
-import { PageHeader } from '@/components/shared/page-header'
-import { Input } from '@/components/ui/input'
+import { PromptHeader } from './prompt-header'
 import { PromptEditor } from './prompt-editor'
 import { PromptVersionHistory } from './prompt-version-history'
 import { PromptDeleteDialog } from './prompt-delete-dialog'
@@ -31,6 +30,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
   const updatePromptName = useUpdatePromptName()
 
   const [name, setName] = useState('')
+  const [nameError, setNameError] = useState<string | null>(null)
   const [syncedNameId, setSyncedNameId] = useState<string | undefined>(undefined)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [userPrompt, setUserPrompt] = useState('')
@@ -78,7 +78,9 @@ export function PromptDetail({ id }: PromptDetailProps) {
       next.systemPrompt !== latest.systemPrompt ||
       next.userPrompt !== latest.userPrompt ||
       next.modelId !== latest.modelId ||
-      JSON.stringify(next.modelParams) !== JSON.stringify(latest.modelParams ?? {})
+      next.modelParams?.temperature !== latest.modelParams?.temperature ||
+      next.modelParams?.maxTokens !== latest.modelParams?.maxTokens ||
+      next.modelParams?.topP !== latest.modelParams?.topP
     setIsDirty(changed)
   }
 
@@ -110,7 +112,12 @@ export function PromptDetail({ id }: PromptDetailProps) {
   async function handleRenameSave() {
     if (!prompt) return
     const trimmed = name.trim()
-    if (!trimmed || trimmed === prompt.name) return
+    if (!trimmed) {
+      setName(prompt.name)
+      setNameError('Name is required')
+      return
+    }
+    if (trimmed === prompt.name) return
     await updatePromptName.mutateAsync({ id: prompt.id, name: trimmed })
   }
 
@@ -163,14 +170,16 @@ export function PromptDetail({ id }: PromptDetailProps) {
 
   return (
     <div className="flex flex-col h-full overflow-auto">
-      <PageHeader onBack={() => navigate('/prompts')} className="flex-shrink-0">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={handleRenameSave}
-          className="text-base font-semibold border-none bg-transparent p-0 h-auto focus-visible:ring-0 shadow-none"
-        />
-      </PageHeader>
+      <PromptHeader
+        name={name}
+        onNameChange={(v) => {
+          setName(v)
+          setNameError(null)
+        }}
+        onNameSave={handleRenameSave}
+        onDeleteClick={() => setDeleteDialogOpen(true)}
+        nameError={nameError}
+      />
 
       <div className="flex-1 overflow-auto">
         <PromptEditor
