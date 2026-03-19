@@ -268,8 +268,8 @@ build_results_sql() {
 echo "Creating experiment 'Baseline GPT-4o Run' (openai/gpt-4o)..."
 
 EXP1_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
-  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\")
-   VALUES (gen_random_uuid(), 'Baseline GPT-4o Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'openai/gpt-4o')
+  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptId\")
+   VALUES (gen_random_uuid(), 'Baseline GPT-4o Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'openai/gpt-4o', '$PROMPT1_ID')
    RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
@@ -306,8 +306,8 @@ echo "  ✓ Experiment 1 created: $EXP1_ID"
 echo "Creating experiment 'Gemini Flash Run' (google/gemini-2.5-flash)..."
 
 EXP2_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
-  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\")
-   VALUES (gen_random_uuid(), 'Gemini Flash Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'google/gemini-2.5-flash')
+  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptId\")
+   VALUES (gen_random_uuid(), 'Gemini Flash Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'google/gemini-2.5-flash', '$PROMPT2_ID')
    RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
@@ -344,8 +344,8 @@ echo "  ✓ Experiment 2 created: $EXP2_ID"
 echo "Creating experiment 'Claude Haiku Run' (anthropic/claude-haiku-4.5)..."
 
 EXP3_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
-  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\")
-   VALUES (gen_random_uuid(), 'Claude Haiku Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'anthropic/claude-haiku-4.5')
+  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptId\")
+   VALUES (gen_random_uuid(), 'Claude Haiku Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'anthropic/claude-haiku-4.5', '$PROMPT1_ID')
    RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 docker exec eval-harness-db psql -U eval -d eval_harness -q -c \

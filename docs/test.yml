@@ -299,22 +299,22 @@ graders:
 experiments:
 
   create:
-    description: "Create an experiment (automatically enqueued for evaluation)"
+    description: "Create an experiment with a prompt (automatically enqueued for evaluation)"
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
-        -d '{"name": "eval-run-1", "datasetId": ":datasetId", "graderIds": [":graderId"]}'
+        -d '{"name": "eval-run-1", "datasetId": ":datasetId", "graderIds": [":graderId"], "modelId": "openai/gpt-4o", "promptId": ":promptId"}'
     expected_status: 201
     expected_body: |
       { "id": "...", "name": "eval-run-1", "datasetId": ":datasetId", "datasetRevisionId": "...", "status": "queued" }
-    notes: "The experiment is pinned to the dataset's latest revision at creation time. The runner is enqueued automatically — no separate run step is needed."
+    notes: "The experiment is pinned to the dataset's latest revision at creation time. promptId is required. The runner is enqueued automatically — no separate run step is needed."
 
   create_no_graders:
     description: "Reject experiment with empty graderIds array"
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
-        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": []}'
+        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": [], "promptId": ":promptId"}'
     expected_status: 400
 
   create_invalid_dataset:
@@ -322,8 +322,26 @@ experiments:
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
-        -d '{"name": "bad-exp", "datasetId": "00000000-0000-0000-0000-000000000000", "graderIds": [":graderId"]}'
+        -d '{"name": "bad-exp", "datasetId": "00000000-0000-0000-0000-000000000000", "graderIds": [":graderId"], "promptId": ":promptId"}'
     expected_status: 400
+
+  create_without_prompt:
+    description: "Reject experiment missing promptId (validation error)"
+    command: |
+      curl -X POST http://localhost:3001/experiments \
+        -H "Content-Type: application/json" \
+        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": [":graderId"], "modelId": "openai/gpt-4o"}'
+    expected_status: 400
+    notes: "promptId is required. Omitting it returns 400."
+
+  create_invalid_prompt:
+    description: "Reject experiment with non-existent promptId"
+    command: |
+      curl -X POST http://localhost:3001/experiments \
+        -H "Content-Type: application/json" \
+        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": [":graderId"], "modelId": "openai/gpt-4o", "promptId": "00000000-0000-0000-0000-000000000000"}'
+    expected_status: 400
+    expected_body: '{ "error": "Prompt not found" }'
 
   list:
     description: "List all experiments"
