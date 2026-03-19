@@ -10,7 +10,7 @@ export const createPromptSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   systemPrompt: z.string(),
   userPrompt: z.string(),
-  modelId: z.string().min(1, 'Model ID is required'),
+  modelId: z.string().trim().min(1, 'Model ID is required'),
   modelParams: modelParamsSchema.optional(),
 })
 
@@ -21,6 +21,6 @@ export const updatePromptSchema = z.object({
 export const createVersionSchema = z.object({
   systemPrompt: z.string(),
   userPrompt: z.string(),
-  modelId: z.string().min(1, 'Model ID is required'),
+  modelId: z.string().trim().min(1, 'Model ID is required'),
   modelParams: modelParamsSchema.optional(),
 })

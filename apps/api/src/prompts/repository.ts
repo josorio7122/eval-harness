@@ -31,7 +31,6 @@ export function createPromptRepository(prisma: PrismaClient) {
           select: {
             id: true,
             name: true,
-            deletedAt: true,
             versions: {
               select: {
                 id: true,
@@ -56,7 +55,6 @@ export function createPromptRepository(prisma: PrismaClient) {
           .map((p) => ({
             id: p.id,
             name: p.name,
-            deletedAt: p.deletedAt,
             versionCount: p._count.versions,
             latestVersion: p.versions[0] ?? null,
           }))
@@ -77,7 +75,6 @@ export function createPromptRepository(prisma: PrismaClient) {
           select: {
             id: true,
             name: true,
-            deletedAt: true,
             versions: {
               select: {
                 id: true,
