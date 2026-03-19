@@ -119,3 +119,42 @@ const dataset = await prisma.dataset.findUnique({
 ```
 
 Exception: when you genuinely need every field on the model and all fields on the relation (rare). In that case, add a `// SELECT-EXCEPTION:` comment explaining why `include` is justified.
+
+### TDD — Non-Negotiable
+
+Every feature, fix, and refactor follows this exact sequence. No exceptions.
+
+1. **Write the failing test** — define the expected behavior in a test before touching implementation files. Tests are derived from `docs/spec.md` — the spec is the source of truth for what to test.
+2. **Run it to confirm it fails** — you MUST see the red output before proceeding. Paste or summarize the failure output to prove it ran.
+3. **Write the minimum code to make it pass** — no speculative logic, no extras
+4. **Run tests to confirm they pass** — green before moving on. Paste or summarize the passing output.
+5. **Commit** — test + implementation together
+
+**The red-green proof is mandatory.** When dispatching executors:
+- Write tests first (derived from spec)
+- Run them and show they fail (red)
+- Write implementation
+- Run them and show they pass (green)
+- Never combine "write tests + write implementation + run once" — that is not TDD, it's test-after
+
+**Integration tests** live in `apps/api/src/__tests__/integration/` and run via:
+```bash
+pnpm --filter api exec vitest run --config vitest.integration.config.ts <test-file>
+```
+
+The default `pnpm run test` excludes integration tests (they need a running DB). Always run them explicitly.
+
+### API Smoke Tests — Non-Negotiable
+
+The project has `docs/test.yml` documenting every API endpoint with curl commands. Every new or modified endpoint MUST be verified with actual curl commands against a running server.
+
+1. **Write the curl tests in `test.yml` first** — before implementation, define the endpoints, expected status codes, and expected response shapes
+2. **Run them to confirm they fail** — start the server (`pnpm run dev`), execute the curls. They should return 404 or wrong responses.
+3. **Implement the API**
+4. **Run them again to confirm they pass** — every curl must return the expected status code and response shape
+5. **Never skip this step** — integration tests against Hono's test client are not a substitute for actual HTTP verification. Curl tests catch wiring issues (routes not mounted, middleware not applied, serialization) that unit tests miss.
+
+**Rules:**
+- The executor must start the server, run curls, and show the output
+- "I wrote the tests and they pass" without actual curl output is not acceptable
+- If the server can't start (e.g., missing DB), document why and run the curls as soon as the blocker is resolved
