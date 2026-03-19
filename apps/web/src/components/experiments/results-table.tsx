@@ -41,6 +41,26 @@ export function ResultsTable({ experiment, filter, onFilterChange }: ResultsTabl
   // Sort items: fail count descending (failures float to top)
   const sortedItems = [...items].sort((a, b) => failCount(b.id, results) - failCount(a.id, results))
 
+  // Compute filtered item IDs and filtered results for pass-rate display
+  const filteredItemIds = new Set(
+    sortedItems
+      .filter((item) => {
+        if (filter === 'all') return true
+        const itemResults = results.filter((r) => r.datasetRevisionItemId === item.id)
+        const graderCount = graders.length
+        if (filter === 'passed-all') {
+          const passes = itemResults.filter((r) => r.verdict === 'pass').length
+          return passes === graderCount && graderCount > 0
+        }
+        if (filter === 'any-failed') {
+          return itemResults.some((r) => r.verdict === 'fail' || r.verdict === 'error')
+        }
+        return true
+      })
+      .map((i) => i.id),
+  )
+  const filteredResults = results.filter((r) => filteredItemIds.has(r.datasetRevisionItemId))
+
   // Apply filter
   const filteredItems = sortedItems.filter((item) => {
     if (filter === 'all') return true
@@ -99,6 +119,20 @@ export function ResultsTable({ experiment, filter, onFilterChange }: ResultsTabl
                   className="text-center border-b border-border whitespace-nowrap min-w-[72px] px-3 py-2.5"
                 >
                   <SectionLabel>{eg.grader.name}</SectionLabel>
+                  {filteredResults.length > 0 &&
+                    (() => {
+                      const graderResults = filteredResults.filter(
+                        (r) => r.graderId === eg.graderId,
+                      )
+                      const passes = graderResults.filter((r) => r.verdict === 'pass').length
+                      const total = graderResults.length
+                      const pct = total > 0 ? Math.round((passes / total) * 100) : 0
+                      return (
+                        <span className="block font-mono text-[10px] tabular-nums text-muted-foreground/70 mt-0.5">
+                          {passes}/{total} — {pct}%
+                        </span>
+                      )
+                    })()}
                 </TableHead>
               ))}
 

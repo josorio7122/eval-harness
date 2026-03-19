@@ -139,6 +139,7 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
         onDeleteClick={() => setShowDeleteDialog(true)}
         isRerunning={rerunExp.isPending}
         isExporting={exportingCsv}
+        canExport={canExport}
       />
 
       {/* Delete dialog */}
@@ -166,7 +167,13 @@ export function ExperimentDetail({ id }: ExperimentDetailProps) {
       {/* Chart — above table when results exist */}
       {(isComplete || hasResults) && (
         <div className="px-6 py-4 border-b border-border flex-shrink-0">
-          <GraderChart experiment={experiment} filteredResults={filteredResults} />
+          <GraderChart
+            experiment={experiment}
+            filteredResults={filteredResults}
+            isFiltered={filter !== 'all'}
+            totalItemCount={items.length}
+            filteredItemCount={filteredItems.length}
+          />
         </div>
       )}
 

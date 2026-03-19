@@ -16,6 +16,7 @@ interface ExperimentHeaderProps {
   onDeleteClick: () => void
   isRerunning: boolean
   isExporting: boolean
+  canExport: boolean
 }
 
 export function ExperimentHeader({
@@ -27,6 +28,7 @@ export function ExperimentHeader({
   onDeleteClick,
   isRerunning,
   isExporting,
+  canExport,
 }: ExperimentHeaderProps) {
   const navigate = useNavigate()
 
@@ -73,7 +75,12 @@ export function ExperimentHeader({
 
         {/* Export CSV — when complete or failed */}
         {(isComplete || experiment.status === 'failed') && (
-          <Button variant="outline" size="sm" onClick={onExport} disabled={isExporting}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onExport}
+            disabled={!canExport || isExporting}
+          >
             {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
             Export CSV
           </Button>

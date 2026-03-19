@@ -6,6 +6,9 @@ import type { Experiment, ExperimentResult } from '@/hooks/use-experiments'
 interface GraderChartProps {
   experiment: Experiment
   filteredResults: ExperimentResult[]
+  isFiltered?: boolean
+  totalItemCount?: number
+  filteredItemCount?: number
 }
 
 interface ChartEntry {
@@ -35,7 +38,13 @@ function GraderTooltip({ active, payload }: TooltipProps) {
   )
 }
 
-export function GraderChart({ experiment, filteredResults }: GraderChartProps) {
+export function GraderChart({
+  experiment,
+  filteredResults,
+  isFiltered,
+  totalItemCount,
+  filteredItemCount,
+}: GraderChartProps) {
   const graders = experiment.graders ?? []
   const results = filteredResults
 
@@ -49,17 +58,9 @@ export function GraderChart({ experiment, filteredResults }: GraderChartProps) {
     return { grader: eg.graderId, name: eg.grader.name, passes, total, pct }
   })
 
-  const items = experiment.revision?.items ?? []
-  const graderCount = graders.length
-  const filteredItemIds = new Set(results.map((r) => r.datasetRevisionItemId))
-  const filteredItems = items.filter((i) => filteredItemIds.has(i.id))
-  const itemsPassedAll = filteredItems.filter((item) => {
-    const itemResults = results.filter((r) => r.datasetRevisionItemId === item.id)
-    const passes = itemResults.filter((r) => r.verdict === 'pass').length
-    return passes === graderCount && graderCount > 0
-  }).length
-  const totalItems = filteredItems.length
-  const overallPct = totalItems > 0 ? Math.round((itemsPassedAll / totalItems) * 100) : 0
+  const totalPasses = results.filter((r) => r.verdict === 'pass').length
+  const totalCells = results.length
+  const overallPct = totalCells > 0 ? Math.round((totalPasses / totalCells) * 100) : 0
 
   const chartConfig = graders.reduce<ChartConfig>((acc, eg) => {
     acc[eg.graderId] = { label: eg.grader.name, color: PASS_COLOR }
@@ -72,7 +73,8 @@ export function GraderChart({ experiment, filteredResults }: GraderChartProps) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm font-mono tabular-nums text-muted-foreground">
-        {itemsPassedAll}/{totalItems} passed all — {overallPct}%
+        {totalPasses}/{totalCells} cells passed — {overallPct}%
+        {isFiltered && ` (showing ${filteredItemCount}/${totalItemCount} items)`}
       </p>
 
       <ChartContainer
