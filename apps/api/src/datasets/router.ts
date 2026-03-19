@@ -122,6 +122,7 @@ export function createDatasetRouter(service: DatasetService) {
       rows: result.data.validRows,
       validRowCount: result.data.validRows.length,
       skippedRows: result.data.skippedRows,
+      ignoredColumns: result.data.ignoredColumns,
     })
   })
 

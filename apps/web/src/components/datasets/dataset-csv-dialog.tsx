@@ -113,6 +113,16 @@ export default function DatasetCsvDialog({
               </div>
             )}
 
+            {csvPreview.ignoredColumns && csvPreview.ignoredColumns.length > 0 && (
+              <div className="flex flex-col gap-1">
+                <p className="text-xs text-muted-foreground">
+                  {csvPreview.ignoredColumns.length} column
+                  {csvPreview.ignoredColumns.length !== 1 ? 's' : ''} ignored:{' '}
+                  <span className="font-mono">{csvPreview.ignoredColumns.join(', ')}</span>
+                </p>
+              </div>
+            )}
+
             <div className="overflow-auto max-h-48 border border-border rounded-md">
               <Table>
                 <TableHeader>

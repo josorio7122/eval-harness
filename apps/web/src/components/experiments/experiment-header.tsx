@@ -51,6 +51,19 @@ export function ExperimentHeader({
           {getModelDisplayName(experiment.modelId)}
         </Badge>
       )}
+      {experiment.revision?.schemaVersion != null && (
+        <Badge
+          variant="outline"
+          className="shrink-0 font-normal font-mono text-[11px]"
+          title={
+            experiment.revision.createdAt
+              ? `Pinned revision from ${new Date(experiment.revision.createdAt).toLocaleString()}`
+              : undefined
+          }
+        >
+          Schema v{experiment.revision.schemaVersion}
+        </Badge>
+      )}
 
       {/* Status badge */}
       <StatusBadge status={experiment.status} />

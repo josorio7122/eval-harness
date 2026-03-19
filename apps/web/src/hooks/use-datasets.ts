@@ -148,6 +148,7 @@ export interface CsvPreview {
   rows: CsvPreviewRow[]
   validRowCount: number
   skippedRows?: { row: number; reason: string }[]
+  ignoredColumns?: string[]
   warnings?: string[]
 }
 
