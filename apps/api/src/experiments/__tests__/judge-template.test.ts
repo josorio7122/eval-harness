@@ -70,3 +70,54 @@ describe('buildUserMessage', () => {
     expect(contextSection).not.toContain('expected_output:')
   })
 })
+
+describe('buildUserMessage with output', () => {
+  it('uses generated output as Response and expected_output as Reference Output', () => {
+    const msg = buildUserMessage({ input: 'hello', expected_output: 'world' }, 'generated response')
+    expect(msg).toContain('## Response\n\ngenerated response')
+    expect(msg).toContain('## Reference Output\n\nworld')
+  })
+
+  it('does not use expected_output as the Response when output is provided', () => {
+    const msg = buildUserMessage({ input: 'hello', expected_output: 'world' }, 'generated response')
+    // Response section should contain generated response, not expected_output
+    const responseSection = msg.split('## Response\n\n')[1]?.split('\n\n')[0]
+    expect(responseSection).toBe('generated response')
+  })
+
+  it('includes input under Input heading', () => {
+    const msg = buildUserMessage({ input: 'hello', expected_output: 'world' }, 'my output')
+    expect(msg).toContain('## Input\n\nhello')
+  })
+
+  it('ends with the quality standard sentence', () => {
+    const msg = buildUserMessage({ input: 'hello', expected_output: 'world' }, 'my output')
+    expect(msg).toMatch(/Use the reference output as a quality standard for comparison\.\s*$/)
+  })
+
+  it('includes context section when custom attributes exist', () => {
+    const msg = buildUserMessage(
+      { input: 'hello', expected_output: 'world', tone: 'formal' },
+      'my output',
+    )
+    expect(msg).toContain('## Additional Context')
+    expect(msg).toContain('tone: formal')
+  })
+
+  it('omits Additional Context section when no custom attributes', () => {
+    const msg = buildUserMessage({ input: 'hello', expected_output: 'world' }, 'my output')
+    expect(msg).not.toContain('## Additional Context')
+  })
+
+  it('throws when input is missing even with output provided', () => {
+    expect(() => buildUserMessage({ expected_output: 'world' }, 'output')).toThrow(
+      'Missing required field: input',
+    )
+  })
+
+  it('throws when expected_output is missing even with output provided', () => {
+    expect(() => buildUserMessage({ input: 'hello' }, 'output')).toThrow(
+      'Missing required field: expected_output',
+    )
+  })
+})

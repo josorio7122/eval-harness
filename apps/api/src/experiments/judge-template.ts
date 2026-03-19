@@ -24,6 +24,20 @@ const USER_TEMPLATE = `## Input
 
 Evaluate the response above against the criteria and return your assessment.`
 
+const USER_TEMPLATE_WITH_OUTPUT = `## Input
+
+{input}
+
+## Response
+
+{output}
+
+## Reference Output
+
+{expected_output}{context}
+
+Evaluate the generated response above against the criteria. Use the reference output as a quality standard for comparison.`
+
 const CONTEXT_TEMPLATE = `
 
 ## Additional Context
@@ -34,7 +48,7 @@ export function buildSystemPrompt(rubric: string) {
   return SYSTEM_TEMPLATE.replace('{rubric}', rubric)
 }
 
-export function buildUserMessage(itemAttributes: Record<string, string>) {
+export function buildUserMessage(itemAttributes: Record<string, string>, output?: string) {
   const input = itemAttributes['input']
   if (input === undefined) {
     throw new Error('Missing required field: input')
@@ -56,6 +70,13 @@ export function buildUserMessage(itemAttributes: Record<string, string>) {
           customAttributes.map(([k, v]) => `${k}: ${v}`).join('\n'),
         )
       : ''
+
+  if (output !== undefined) {
+    return USER_TEMPLATE_WITH_OUTPUT.replace('{input}', input)
+      .replace('{output}', output)
+      .replace('{expected_output}', expectedOutput)
+      .replace('{context}', contextSection)
+  }
 
   return USER_TEMPLATE.replace('{input}', input)
     .replace('{expected_output}', expectedOutput)

@@ -18,6 +18,7 @@ function unwrap<T>(result: Result<T>): T {
 }
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
+type GenerateFn = Parameters<typeof createExperimentRunner>[2]
 
 const promptRepository = createPromptRepository(prisma)
 
@@ -38,9 +39,12 @@ async function seedAndRun(params: {
   itemValues: Array<Record<string, string>>
   graderDefs: Array<{ name: string; rubric: string }>
   mockEvaluate: EvaluateFn
+  mockGenerate?: GenerateFn
   promptVersionId: string
 }) {
   const { itemValues, graderDefs, mockEvaluate, promptVersionId } = params
+  const mockGenerate: GenerateFn =
+    params.mockGenerate ?? (() => Promise.resolve({ output: 'generated output', error: null }))
   const n = ++seedCounter
   const dataset = unwrap(await datasetRepository.create(`csv-dataset-${n}`))
 
@@ -84,12 +88,18 @@ async function seedAndRun(params: {
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
 
-  const runner = createExperimentRunner(experimentRepository, mockEvaluate)
+  const runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
   await runner.enqueue({
     experimentId: experiment.id,
     datasetItems: items,
     graders,
     modelId: MODEL_ID,
+    promptVersion: {
+      systemPrompt: 'You are a helpful assistant.',
+      userPrompt: 'Answer the following: {input}',
+      modelId: MODEL_ID,
+      modelParams: {},
+    },
   })
 
   return { experiment, items, graders, dataset }
@@ -249,22 +259,17 @@ describe('CSV export (integration)', () => {
   })
 
   it('export includes output column with stored outputs', async () => {
-    const { experiment, items } = await seedAndRun({
+    // Use a custom generate mock that returns a specific output for verification
+    const customGenerate: GenerateFn = () =>
+      Promise.resolve({ output: 'The answer is 2', error: null })
+
+    const { experiment } = await seedAndRun({
       itemValues: [{ input: 'what is 1+1', expected_output: '2' }],
       graderDefs: [{ name: 'output-grader', rubric: 'check output' }],
       mockEvaluate,
+      mockGenerate: customGenerate,
       promptVersionId,
     })
-
-    // Manually store an output for the item
-    unwrap(
-      await experimentRepository.createOutput({
-        experimentId: experiment.id,
-        datasetRevisionItemId: items[0].id,
-        output: 'The answer is 2',
-        error: null,
-      }),
-    )
 
     const result = await service.exportCsv(experiment.id)
     const csv = unwrap(result)

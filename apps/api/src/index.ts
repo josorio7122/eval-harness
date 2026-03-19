@@ -16,6 +16,7 @@ import { createExperimentService } from './experiments/service.js'
 import { createExperimentRouter } from './experiments/router.js'
 import { createExperimentRunner } from './experiments/runner.js'
 import { evaluate } from './experiments/evaluator.js'
+import { generateOutput } from './experiments/generator.js'
 import { createPromptRepository } from './prompts/repository.js'
 import { createPromptService } from './prompts/service.js'
 import { createPromptRouter } from './prompts/router.js'
@@ -35,7 +36,7 @@ const datasetRouter = createDatasetRouter(datasetService)
 const graderService = createGraderService(graderRepository)
 const graderRouter = createGraderRouter(graderService)
 
-const experimentRunner = createExperimentRunner(experimentRepository, evaluate)
+const experimentRunner = createExperimentRunner(experimentRepository, evaluate, generateOutput)
 
 const promptRepository = createPromptRepository(prisma)
 const promptService = createPromptService(promptRepository)

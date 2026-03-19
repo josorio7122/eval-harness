@@ -123,4 +123,43 @@ describe('evaluate', () => {
     // CAST: openrouter mock returns { model: string }, not a real LanguageModel
     expect((call.model as unknown as { model: string }).model).toBe('anthropic/claude-3-5-sonnet')
   })
+
+  it('passes output to buildUserMessage when provided', async () => {
+    // CAST: partial mock — only output field is consumed by evaluate()
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+    } as Awaited<ReturnType<typeof generateText>>)
+
+    await evaluate({
+      rubric: 'Check quality',
+      itemAttributes: { input: 'question', expected_output: 'reference answer' },
+      modelId: 'openai/gpt-4o',
+      output: 'generated response from LLM',
+    })
+
+    const call = mockGenerateText.mock.calls[0][0]
+    const messages = call.messages!
+    // With output, user message should have Response = generated response
+    // and Reference Output = expected_output
+    expect(messages[1].content).toContain('## Response\n\ngenerated response from LLM')
+    expect(messages[1].content).toContain('## Reference Output\n\nreference answer')
+  })
+
+  it('uses expected_output as Response when no output provided (backward compat)', async () => {
+    // CAST: partial mock — only output field is consumed by evaluate()
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+    } as Awaited<ReturnType<typeof generateText>>)
+
+    await evaluate({
+      rubric: 'Check quality',
+      itemAttributes: { input: 'question', expected_output: 'reference answer' },
+      modelId: 'openai/gpt-4o',
+    })
+
+    const call = mockGenerateText.mock.calls[0][0]
+    const messages = call.messages!
+    expect(messages[1].content).toContain('## Response\n\nreference answer')
+    expect(messages[1].content).not.toContain('## Reference Output')
+  })
 })

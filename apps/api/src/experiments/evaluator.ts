@@ -16,8 +16,9 @@ export const evaluate = async (params: {
   rubric: string
   itemAttributes: Record<string, string>
   modelId: string
+  output?: string
 }): Promise<{ verdict: 'pass' | 'fail'; reason: string }> => {
-  const { rubric, itemAttributes, modelId } = params
+  const { rubric, itemAttributes, modelId, output } = params
   const model = modelId
 
   const result = await generateText({
@@ -25,7 +26,7 @@ export const evaluate = async (params: {
     output: Output.object({ schema: verdictSchema }),
     messages: [
       { role: 'system', content: buildSystemPrompt(rubric) },
-      { role: 'user', content: buildUserMessage(itemAttributes) },
+      { role: 'user', content: buildUserMessage(itemAttributes, output) },
     ],
   })
 

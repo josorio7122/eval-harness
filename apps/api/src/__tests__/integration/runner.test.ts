@@ -19,6 +19,7 @@ function unwrap<T>(result: Result<T>): T {
 }
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
+type GenerateFn = Parameters<typeof createExperimentRunner>[2]
 
 let seedCounter = 0
 
@@ -81,27 +82,41 @@ async function seedExperiment(itemCount: number, graderCount: number) {
   )
   unwrap(await experimentRepository.updateStatus(experiment.id, 'running'))
 
-  return { experiment, items, graders }
+  return {
+    experiment,
+    items,
+    graders,
+    promptVersion: {
+      systemPrompt: 'You are a helpful assistant.',
+      userPrompt: 'Answer: {input}',
+      modelId: MODEL_ID,
+      modelParams: {} as Record<string, unknown>,
+    },
+  }
 }
 
 describe('experiment runner (integration)', () => {
   let mockEvaluate: EvaluateFn
+  let mockGenerate: GenerateFn
   let runner: ReturnType<typeof createExperimentRunner>
 
   beforeEach(() => {
     mockEvaluate = vi.fn<EvaluateFn>()
+    mockGenerate = vi.fn<GenerateFn>()
     vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'pass', reason: 'correct' })
-    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+    vi.mocked(mockGenerate).mockResolvedValue({ output: 'generated output', error: null })
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
   })
 
   it('full run: 3 items × 2 graders → 6 results in DB, status = complete', async () => {
-    const { experiment, items, graders } = await seedExperiment(3, 2)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(3, 2)
 
     await runner.enqueue({
       experimentId: experiment.id,
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     const count = unwrap(await experimentRepository.countResultsByExperimentId(experiment.id))
@@ -116,15 +131,16 @@ describe('experiment runner (integration)', () => {
 
   it('each result has correct verdict from mock (fail)', async () => {
     vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'fail', reason: 'wrong answer' })
-    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
 
-    const { experiment, items, graders } = await seedExperiment(2, 2)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 2)
 
     await runner.enqueue({
       experimentId: experiment.id,
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
@@ -134,13 +150,14 @@ describe('experiment runner (integration)', () => {
   })
 
   it('final status = complete when all evaluations succeed', async () => {
-    const { experiment, items, graders } = await seedExperiment(2, 1)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 1)
 
     await runner.enqueue({
       experimentId: experiment.id,
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     const found = unwrap(await experimentRepository.findById(experiment.id))
@@ -149,15 +166,16 @@ describe('experiment runner (integration)', () => {
 
   it('all-fail run → status = failed, all results have verdict = error', async () => {
     vi.mocked(mockEvaluate).mockRejectedValue(new Error('API error'))
-    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
 
-    const { experiment, items, graders } = await seedExperiment(2, 2)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 2)
 
     await runner.enqueue({
       experimentId: experiment.id,
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
@@ -170,9 +188,9 @@ describe('experiment runner (integration)', () => {
 
   it('all-fail run → emits error event but NOT completed event', async () => {
     vi.mocked(mockEvaluate).mockRejectedValue(new Error('API error'))
-    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
 
-    const { experiment, items, graders } = await seedExperiment(2, 1)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 1)
 
     const emittedTypes: string[] = []
     const { experimentEvents } = await import('../../experiments/runner.js')
@@ -184,6 +202,7 @@ describe('experiment runner (integration)', () => {
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     experimentEvents.off(experiment.id, listener)
@@ -194,9 +213,9 @@ describe('experiment runner (integration)', () => {
 
   it('successful run → emits completed event but NOT error event', async () => {
     vi.mocked(mockEvaluate).mockResolvedValue({ verdict: 'pass', reason: 'ok' })
-    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
 
-    const { experiment, items, graders } = await seedExperiment(2, 1)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 1)
 
     const emittedTypes: string[] = []
     const { experimentEvents } = await import('../../experiments/runner.js')
@@ -208,6 +227,7 @@ describe('experiment runner (integration)', () => {
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     experimentEvents.off(experiment.id, listener)
@@ -225,15 +245,16 @@ describe('experiment runner (integration)', () => {
       }
       return Promise.resolve({ verdict: 'pass', reason: 'ok' })
     })
-    runner = createExperimentRunner(experimentRepository, mockEvaluate)
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
 
-    const { experiment, items, graders } = await seedExperiment(2, 2)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 2)
 
     await runner.enqueue({
       experimentId: experiment.id,
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
@@ -249,17 +270,76 @@ describe('experiment runner (integration)', () => {
   })
 
   it('unique constraint respected: result count equals exactly items × graders', async () => {
-    const { experiment, items, graders } = await seedExperiment(3, 3)
+    const { experiment, items, graders, promptVersion } = await seedExperiment(3, 3)
 
     await runner.enqueue({
       experimentId: experiment.id,
       datasetItems: items,
       graders,
       modelId: MODEL_ID,
+      promptVersion,
     })
 
     const count = unwrap(await experimentRepository.countResultsByExperimentId(experiment.id))
     expect(count).toBe(items.length * graders.length)
     expect(count).toBe(9)
+  })
+
+  it('stores ExperimentOutput records during Phase 1', async () => {
+    const { experiment, items, graders, promptVersion } = await seedExperiment(3, 2)
+
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+      promptVersion,
+    })
+
+    const outputs = unwrap(await experimentRepository.findOutputsByExperimentId(experiment.id))
+    // One output per item (3 items)
+    expect(outputs).toHaveLength(3)
+    outputs.forEach((o) => {
+      expect(o.output).toBe('generated output')
+      expect(o.error).toBeNull()
+    })
+  })
+
+  it('Phase 1 failure creates error grading cells for that item', async () => {
+    let generateCallCount = 0
+    vi.mocked(mockGenerate).mockImplementation(async () => {
+      generateCallCount++
+      // Fail the first item only
+      if (generateCallCount === 1) {
+        return { output: '', error: 'generation failed' }
+      }
+      return { output: 'ok output', error: null }
+    })
+    runner = createExperimentRunner(experimentRepository, mockEvaluate, mockGenerate)
+
+    const { experiment, items, graders, promptVersion } = await seedExperiment(2, 2)
+
+    await runner.enqueue({
+      experimentId: experiment.id,
+      datasetItems: items,
+      graders,
+      modelId: MODEL_ID,
+      promptVersion,
+    })
+
+    const results = unwrap(await experimentRepository.findResultsByExperimentId(experiment.id))
+    expect(results).toHaveLength(4)
+
+    // First item gets error cells
+    const errorResults = results.filter((r) => r.verdict === 'error')
+    expect(errorResults).toHaveLength(2) // 2 graders × 1 failed item
+
+    // Second item gets pass cells
+    const passResults = results.filter((r) => r.verdict === 'pass')
+    expect(passResults).toHaveLength(2)
+
+    // Status is still complete (partial generation failure)
+    const found = unwrap(await experimentRepository.findById(experiment.id))
+    expect(found.status).toBe('complete')
   })
 })
