@@ -134,6 +134,50 @@ assert_success "$G4_RESPONSE" "Create grader 'Completeness'"
 G4_ID=$(echo "$G4_RESPONSE" | jq -r '.id')
 echo "  ✓ Grader 'Completeness' created: $G4_ID"
 
+# ─── Prompts ──────────────────────────────────────────────────────────────────
+
+echo ""
+echo "Creating prompts..."
+
+BASE_URL="$API_URL"
+
+# Prompt 1: Professional Support Agent
+PROMPT1_RESPONSE=$(curl -s -X POST "$BASE_URL/prompts" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Professional Support Agent",
+    "systemPrompt": "You are a senior customer support agent for a SaaS company. Your responses must be professional, empathetic, and actionable. Always acknowledge the customer'\''s concern before providing a solution. Include specific next steps with timeframes when applicable. Keep responses concise — no more than 3-4 sentences unless the issue requires detailed instructions.",
+    "userPrompt": "Customer message:\n{input}\n\nExpected response for reference:\n{expected_output}\n\nWrite a customer support response to the customer message above.",
+    "modelId": "anthropic/claude-sonnet-4",
+    "modelParams": {"temperature": 0.7}
+  }')
+PROMPT1_ID=$(echo "$PROMPT1_RESPONSE" | jq -r '.id')
+echo "  ✓ Professional Support Agent (id: $PROMPT1_ID)"
+
+# Prompt 1: Add a v2 with adjusted temperature
+curl -s -X POST "$BASE_URL/prompts/$PROMPT1_ID/versions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "systemPrompt": "You are a senior customer support agent for a SaaS company. Your responses must be professional, empathetic, and actionable. Always acknowledge the customer'\''s concern before providing a solution. Include specific next steps with timeframes when applicable. Keep responses concise — no more than 3-4 sentences unless the issue requires detailed instructions. When a customer is frustrated, lead with a brief apology before jumping to the solution.",
+    "userPrompt": "Customer message:\n{input}\n\nExpected response for reference:\n{expected_output}\n\nWrite a customer support response to the customer message above.",
+    "modelId": "anthropic/claude-sonnet-4",
+    "modelParams": {"temperature": 0.5}
+  }' > /dev/null
+echo "  ✓ Professional Support Agent v2 (lower temperature)"
+
+# Prompt 2: Empathetic Resolution Specialist
+PROMPT2_RESPONSE=$(curl -s -X POST "$BASE_URL/prompts" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Empathetic Resolution Specialist",
+    "systemPrompt": "You are a customer support specialist who leads with empathy. Before offering any solution, validate the customer'\''s feelings and show you understand their frustration or concern. Use warm, conversational language — avoid corporate jargon. When providing solutions, frame them as \"here'\''s what I can do for you\" rather than listing steps. If the customer is upset, briefly apologize for the inconvenience before moving to resolution.",
+    "userPrompt": "A customer has reached out with the following message:\n\n{input}\n\nFor context, here is the ideal response:\n{expected_output}\n\nPlease write a response to this customer that prioritizes empathy and emotional connection while still resolving their issue.",
+    "modelId": "openai/gpt-4o",
+    "modelParams": {"temperature": 0.9, "maxTokens": 500}
+  }')
+PROMPT2_ID=$(echo "$PROMPT2_RESPONSE" | jq -r '.id')
+echo "  ✓ Empathetic Resolution Specialist (id: $PROMPT2_ID)"
+
 # ── Step 5: Seed experiments with results ────────────────────────────────────
 
 echo "Seeding experiments with pre-computed results..."
@@ -345,6 +389,9 @@ echo "  Grader 'Helpfulness':        $G1_ID"
 echo "  Grader 'Tone & Empathy':     $G2_ID"
 echo "  Grader 'Accuracy':           $G3_ID"
 echo "  Grader 'Completeness':       $G4_ID"
+echo ""
+echo "  Prompt 'Professional Support Agent':     $PROMPT1_ID  (v1 + v2)"
+echo "  Prompt 'Empathetic Resolution Specialist': $PROMPT2_ID  (v1)"
 echo ""
 echo "  Experiment 'Baseline GPT-4o Run':  $EXP1_ID  (~90% pass)"
 echo "  Experiment 'Gemini Flash Run':     $EXP2_ID  (~63% pass)"

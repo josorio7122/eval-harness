@@ -150,6 +150,15 @@ Open the UI at http://localhost:5173 to explore the seeded experiments immediate
 
 You can use these rubrics as-is or adapt them for your own datasets. The seed script creates all four automatically, or you can copy them from the markdown file and create graders manually in the UI.
 
+**[recommended-prompts.md](test-data/recommended-prompts.md)** — Two prompt templates designed for this dataset. Each pairs a system message with a user message template and model configuration:
+
+| Prompt                           | Model           | What it does                                                    |
+| -------------------------------- | --------------- | --------------------------------------------------------------- |
+| Professional Support Agent       | Claude Sonnet 4 | Clear, professional responses with actionable next steps        |
+| Empathetic Resolution Specialist | GPT-4o          | Warmly empathetic responses that lead with emotional connection |
+
+The seed script creates both prompts automatically (the Professional Agent gets a v2 with adjusted temperature). You can also copy the prompts from the markdown file and create them manually in the UI.
+
 ## Documentation
 
 - [Architecture](docs/architecture.md) — data model, backend layers, frontend structure
