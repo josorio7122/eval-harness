@@ -36,6 +36,7 @@ model DatasetRevisionItem {
   createdAt  DateTime           @default(now())
   revision   DatasetRevision    @relation(fields: [revisionId], references: [id], onDelete: Cascade)
   results    ExperimentResult[]
+  outputs    ExperimentOutput[]
 
   @@index([revisionId])
   @@index([itemId])
@@ -58,14 +59,18 @@ model Experiment {
   datasetRevisionId String             @db.Uuid
   status            String             @default("queued")
   modelId           String
+  promptVersionId   String             @db.Uuid
+  promptVersion     PromptVersion      @relation(fields: [promptVersionId], references: [id], onDelete: Restrict)
   deletedAt         DateTime?
   dataset           Dataset            @relation(fields: [datasetId], references: [id], onDelete: Restrict)
   revision          DatasetRevision    @relation(fields: [datasetRevisionId], references: [id])
   graders           ExperimentGrader[]
   results           ExperimentResult[]
+  outputs           ExperimentOutput[]
 
   @@index([datasetId])
   @@index([datasetRevisionId])
+  @@index([promptVersionId])
 }
 
 model ExperimentGrader {
@@ -95,12 +100,26 @@ model ExperimentResult {
   @@index([graderId])
 }
 
+model ExperimentOutput {
+  id                    String              @id @default(uuid()) @db.Uuid
+  experimentId          String              @db.Uuid
+  datasetRevisionItemId String              @db.Uuid
+  output                String              @default("")
+  error                 String?
+  experiment            Experiment          @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  datasetRevisionItem   DatasetRevisionItem @relation(fields: [datasetRevisionItemId], references: [id], onDelete: Cascade)
+
+  @@unique([experimentId, datasetRevisionItemId])
+  @@index([experimentId])
+}
+
 model Prompt {
   id        String          @id @default(uuid()) @db.Uuid
   name      String
   deletedAt DateTime?
   versions  PromptVersion[]
 }
+
 
 model PromptVersion {
   id           String   @id @default(uuid()) @db.Uuid
@@ -112,6 +131,7 @@ model PromptVersion {
   modelId      String
   modelParams  Json     @default("{}")
   createdAt    DateTime @default(now())
+  experiments  Experiment[]
 
   @@index([promptId])
   @@unique([promptId, version])
