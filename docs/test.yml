@@ -373,6 +373,89 @@ experiments:
       Filename: experiment-{id}.csv
       Columns include item attributes, grader scores, and reasoning per grader.
 
+prompts:
+
+  create:
+    description: "Create a new prompt (includes first version)"
+    command: |
+      curl -X POST http://localhost:3001/prompts \
+        -H "Content-Type: application/json" \
+        -d '{"name": "customer-support-v1", "systemPrompt": "You are a helpful customer support agent.", "userPrompt": "Respond to the following customer message: {input}", "modelId": "anthropic/claude-sonnet-4", "modelParams": {"temperature": 0.7}}'
+    expected_status: 201
+    expected_body: |
+      { "id": "...", "name": "customer-support-v1", "versions": [{ "id": "...", "version": 1, "systemPrompt": "...", "userPrompt": "...", "modelId": "anthropic/claude-sonnet-4", "modelParams": { "temperature": 0.7 }, "createdAt": "..." }] }
+    notes: "Creates a Prompt and its first PromptVersion (v1) in a single transaction."
+
+  create_duplicate_name:
+    description: "Reject duplicate prompt name"
+    command: |
+      curl -X POST http://localhost:3001/prompts \
+        -H "Content-Type: application/json" \
+        -d '{"name": "customer-support-v1", "systemPrompt": "test", "userPrompt": "test", "modelId": "openai/gpt-4o"}'
+    expected_status: 400
+    expected_body: '{ "error": "Prompt name already exists" }'
+
+  create_empty_name:
+    description: "Reject empty prompt name"
+    command: |
+      curl -X POST http://localhost:3001/prompts \
+        -H "Content-Type: application/json" \
+        -d '{"name": "", "systemPrompt": "test", "userPrompt": "test", "modelId": "openai/gpt-4o"}'
+    expected_status: 400
+
+  create_missing_model:
+    description: "Reject prompt without model"
+    command: |
+      curl -X POST http://localhost:3001/prompts \
+        -H "Content-Type: application/json" \
+        -d '{"name": "test", "systemPrompt": "test", "userPrompt": "test"}'
+    expected_status: 400
+
+  list:
+    description: "List all prompts (with latest version and version count)"
+    command: |
+      curl http://localhost:3001/prompts
+    expected_status: 200
+    notes: "Each prompt includes versionCount and latestVersion. Soft-deleted prompts are excluded."
+
+  get:
+    description: "Get prompt by ID with all versions"
+    command: |
+      curl http://localhost:3001/prompts/:id
+    expected_status: 200
+    notes: "Response includes all versions ordered newest first."
+
+  update_name:
+    description: "Rename a prompt (no new version created)"
+    command: |
+      curl -X PATCH http://localhost:3001/prompts/:id \
+        -H "Content-Type: application/json" \
+        -d '{"name": "customer-support-v2"}'
+    expected_status: 200
+    notes: "Updates only the prompt name. No new version is created."
+
+  create_version:
+    description: "Create a new version (version number auto-increments)"
+    command: |
+      curl -X POST http://localhost:3001/prompts/:id/versions \
+        -H "Content-Type: application/json" \
+        -d '{"systemPrompt": "You are an expert support agent.", "userPrompt": "Handle this query: {input}", "modelId": "openai/gpt-4o", "modelParams": {"temperature": 0.5, "maxTokens": 1000}}'
+    expected_status: 201
+    notes: "Creates an immutable version. Previous versions are preserved."
+
+  delete:
+    description: "Soft-delete a prompt"
+    command: |
+      curl -X DELETE http://localhost:3001/prompts/:id
+    expected_status: 200
+    notes: "Sets deletedAt. All versions preserved. Name becomes available for reuse."
+
+  get_not_found:
+    description: "404 for non-existent prompt"
+    command: |
+      curl http://localhost:3001/prompts/00000000-0000-0000-0000-000000000000
+    expected_status: 404
+
 # ─── Revision Semantics Notes ─────────────────────────────────────────────────
 #
 # Every mutation to a dataset (add/edit/delete item, add/remove attribute, CSV import)
