@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router'
-import { Database, FlaskConical, GraduationCap } from 'lucide-react'
+import { Database, FlaskConical, GraduationCap, MessageSquareText } from 'lucide-react'
 
 const navItems = [
   { to: '/datasets', label: 'Datasets', icon: Database },
   { to: '/graders', label: 'Graders', icon: GraduationCap },
   { to: '/experiments', label: 'Experiments', icon: FlaskConical },
+  { to: '/prompts', label: 'Prompts', icon: MessageSquareText },
 ]
 
 export function Layout() {

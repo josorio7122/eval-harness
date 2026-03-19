@@ -5,6 +5,7 @@ import { Layout } from './components/layout'
 import { DatasetsPage } from './pages/datasets'
 import { GradersPage } from './pages/graders'
 import { ExperimentsPage } from './pages/experiments'
+import { PromptsPage } from './pages/prompts'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,6 +30,8 @@ export default function App() {
               <Route path="/graders/:id" element={<GradersPage />} />
               <Route path="/experiments" element={<ExperimentsPage />} />
               <Route path="/experiments/:id" element={<ExperimentsPage />} />
+              <Route path="/prompts" element={<PromptsPage />} />
+              <Route path="/prompts/:id" element={<PromptsPage />} />
             </Route>
           </Routes>
         </BrowserRouter>
