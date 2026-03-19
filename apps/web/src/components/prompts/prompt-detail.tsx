@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Loader2 } from 'lucide-react'
-import { usePrompt, useCreatePromptVersion, useDeletePrompt } from '@/hooks/use-prompts'
+import {
+  usePrompt,
+  useCreatePromptVersion,
+  useDeletePrompt,
+  useUpdatePromptName,
+} from '@/hooks/use-prompts'
 import { PageHeader } from '@/components/shared/page-header'
+import { Input } from '@/components/ui/input'
 import { PromptEditor } from './prompt-editor'
 import { PromptVersionHistory } from './prompt-version-history'
 import { PromptDeleteDialog } from './prompt-delete-dialog'
@@ -22,7 +28,10 @@ export function PromptDetail({ id }: PromptDetailProps) {
   const { data: prompt, isLoading } = usePrompt(id)
   const createPromptVersion = useCreatePromptVersion()
   const deletePrompt = useDeletePrompt()
+  const updatePromptName = useUpdatePromptName()
 
+  const [name, setName] = useState('')
+  const [syncedNameId, setSyncedNameId] = useState<string | undefined>(undefined)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [userPrompt, setUserPrompt] = useState('')
   const [modelId, setModelId] = useState('')
@@ -49,6 +58,12 @@ export function PromptDetail({ id }: PromptDetailProps) {
     }
   } else if (isDirty !== syncedIsDirty) {
     setSyncedIsDirty(isDirty)
+  }
+
+  // Sync name from server when prompt first loads or changes
+  if (prompt && prompt.id !== syncedNameId) {
+    setSyncedNameId(prompt.id)
+    setName(prompt.name)
   }
 
   function markDirty(
@@ -90,6 +105,13 @@ export function PromptDetail({ id }: PromptDetailProps) {
         setIsDirty(false)
       }
     }
+  }
+
+  async function handleRenameSave() {
+    if (!prompt) return
+    const trimmed = name.trim()
+    if (!trimmed || trimmed === prompt.name) return
+    await updatePromptName.mutateAsync({ id: prompt.id, name: trimmed })
   }
 
   async function handleSave() {
@@ -142,7 +164,12 @@ export function PromptDetail({ id }: PromptDetailProps) {
   return (
     <div className="flex flex-col h-full overflow-auto">
       <PageHeader onBack={() => navigate('/prompts')} className="flex-shrink-0">
-        <h2 className="text-base font-semibold text-foreground">{prompt.name}</h2>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={handleRenameSave}
+          className="text-base font-semibold border-none bg-transparent p-0 h-auto focus-visible:ring-0 shadow-none"
+        />
       </PageHeader>
 
       <div className="flex-1 overflow-auto">
@@ -176,7 +203,7 @@ export function PromptDetail({ id }: PromptDetailProps) {
           saveError={saveError}
         />
 
-        {prompt.versions.length > 1 && (
+        {prompt.versions.length > 0 && (
           <div className="px-6 pb-6">
             <PromptVersionHistory
               versions={prompt.versions}

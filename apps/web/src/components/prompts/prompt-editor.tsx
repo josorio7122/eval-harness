@@ -90,7 +90,7 @@ export function PromptEditor({
       {/* Model */}
       <div className="flex flex-col gap-1.5">
         <SectionLabel>Model</SectionLabel>
-        <ModelSelector value={modelId} onChange={onModelIdChange} />
+        <ModelSelector value={modelId} onChange={onModelIdChange} disabled={readOnly} />
       </div>
 
       {/* Model Params */}

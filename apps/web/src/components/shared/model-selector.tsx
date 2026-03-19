@@ -12,15 +12,17 @@ import { AVAILABLE_MODELS, MODEL_PROVIDERS, getModelDisplayName } from '@/lib/mo
 interface ModelSelectorProps {
   value: string
   onChange: (value: string) => void
+  disabled?: boolean
 }
 
-export function ModelSelector({ value, onChange }: ModelSelectorProps) {
+export function ModelSelector({ value, onChange, disabled }: ModelSelectorProps) {
   return (
     <Select
       value={value}
       onValueChange={(v) => {
         if (v) onChange(v)
       }}
+      disabled={disabled}
     >
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Select a model…">

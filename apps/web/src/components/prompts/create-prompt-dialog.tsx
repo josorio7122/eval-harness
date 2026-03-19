@@ -35,6 +35,7 @@ export function CreatePromptDialog({ open, onClose, onCreated }: CreatePromptDia
   const [modelId, setModelId] = useState('')
   const [modelParams, setModelParams] = useState<ModelParamsValue>({})
   const [prevOpen, setPrevOpen] = useState(open)
+  const [submitted, setSubmitted] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
   const createPrompt = useCreatePrompt()
 
@@ -46,6 +47,7 @@ export function CreatePromptDialog({ open, onClose, onCreated }: CreatePromptDia
     setUserPrompt('')
     setModelId('')
     setModelParams({})
+    setSubmitted(false)
   } else if (!open && prevOpen) {
     setPrevOpen(false)
   }
@@ -60,6 +62,7 @@ export function CreatePromptDialog({ open, onClose, onCreated }: CreatePromptDia
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setSubmitted(true)
     if (!name.trim() || !modelId) return
     try {
       const result = await createPrompt.mutateAsync({
@@ -107,6 +110,9 @@ export function CreatePromptDialog({ open, onClose, onCreated }: CreatePromptDia
               placeholder="e.g. summarise-v1"
               required
             />
+            {submitted && !name.trim() && (
+              <p className="text-destructive text-xs">Name is required</p>
+            )}
           </div>
 
           {/* System Prompt */}
@@ -139,6 +145,7 @@ export function CreatePromptDialog({ open, onClose, onCreated }: CreatePromptDia
               Model <span className="text-destructive">*</span>
             </SectionLabel>
             <ModelSelector value={modelId} onChange={setModelId} />
+            {submitted && !modelId && <p className="text-destructive text-xs">Model is required</p>}
           </div>
 
           {/* Model Params */}
