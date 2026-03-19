@@ -74,10 +74,18 @@ describe('POST /experiments', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID,
     })
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body).toEqual(created)
+    expect(mockService.createExperiment).toHaveBeenCalledWith({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+      modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID,
+    })
   })
 
   it('returns 400 when name is empty', async () => {
@@ -86,6 +94,7 @@ describe('POST /experiments', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID,
     })
     expect(res.status).toBe(400)
     expect(mockService.createExperiment).not.toHaveBeenCalled()
@@ -97,6 +106,7 @@ describe('POST /experiments', () => {
       datasetId: VALID_UUID_2,
       graderIds: [],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID,
     })
     expect(res.status).toBe(400)
     expect(mockService.createExperiment).not.toHaveBeenCalled()
@@ -107,6 +117,18 @@ describe('POST /experiments', () => {
       name: 'exp1',
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
+      promptId: VALID_UUID,
+    })
+    expect(res.status).toBe(400)
+    expect(mockService.createExperiment).not.toHaveBeenCalled()
+  })
+
+  it('returns 400 when promptId is missing', async () => {
+    const res = await jsonPost('/experiments', {
+      name: 'test',
+      datasetId: VALID_UUID,
+      graderIds: [VALID_UUID],
+      modelId: 'openai/gpt-4o',
     })
     expect(res.status).toBe(400)
     expect(mockService.createExperiment).not.toHaveBeenCalled()
@@ -119,6 +141,7 @@ describe('POST /experiments', () => {
       datasetId: VALID_UUID_2,
       graderIds: [VALID_UUID_3],
       modelId: 'openai/gpt-4o',
+      promptId: VALID_UUID,
     })
     expect(res.status).toBe(400)
     const body = await res.json()
