@@ -10,6 +10,7 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 - Select from 14 pre-configured models grouped by provider (Anthropic, OpenAI, Google, Meta, Mistral, DeepSeek)
 - Review results in a dense table — rows are items, columns are graders, cells show pass/fail verdicts
 - Dataset versioning via immutable revisions — experiments pin to a snapshot, so results are reproducible
+- Author versioned prompts — pair system and user messages with model configuration, with full version history
 
 ## Workflow
 
@@ -160,7 +161,7 @@ You can use these rubrics as-is or adapt them for your own datasets. The seed sc
 - **Job queue** — Replace in-process p-queue with BullMQ + Redis. Current setup loses jobs on restart and doesn't scale horizontally.
 - **Revision storage** — Switch from full-copy revisions to a log-based approach (append-only deltas). Current model duplicates all items per revision.
 - **Results storage** — Move experiment results to a columnar store (ClickHouse) for faster analytical queries at scale.
-- **Prompt management & playground** — Add prompt versioning and an interactive playground so users can iterate on prompts, run them, and evaluate results in one workflow.
+- **Prompt playground** — Add an interactive playground so users can execute prompts against models directly, iterate on outputs, and evaluate results in one workflow. (Prompt versioning and management is now implemented.)
 - **Re-run with a different model** — Allow re-running an existing experiment with a different LLM model to compare outputs across models without recreating the experiment.
 
 ## License
