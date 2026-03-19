@@ -131,6 +131,7 @@ Every feature, fix, and refactor follows this exact sequence. No exceptions.
 5. **Commit** — test + implementation together
 
 **The red-green proof is mandatory.** When dispatching executors:
+
 - Write tests first (derived from spec)
 - Run them and show they fail (red)
 - Write implementation
@@ -138,6 +139,7 @@ Every feature, fix, and refactor follows this exact sequence. No exceptions.
 - Never combine "write tests + write implementation + run once" — that is not TDD, it's test-after
 
 **Integration tests** live in `apps/api/src/__tests__/integration/` and run via:
+
 ```bash
 pnpm --filter api exec vitest run --config vitest.integration.config.ts <test-file>
 ```
@@ -155,6 +157,7 @@ The project has `docs/test.yml` documenting every API endpoint with curl command
 5. **Never skip this step** — integration tests against Hono's test client are not a substitute for actual HTTP verification. Curl tests catch wiring issues (routes not mounted, middleware not applied, serialization) that unit tests miss.
 
 **Rules:**
+
 - The executor must start the server, run curls, and show the output
 - "I wrote the tests and they pass" without actual curl output is not acceptable
 - If the server can't start (e.g., missing DB), document why and run the curls as soon as the blocker is resolved

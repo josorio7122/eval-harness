@@ -256,14 +256,14 @@ These describe what the user provides and what the system surfaces — not inter
 
 ### Behaviors
 
-- **ExperimentCreate:** When the user provides a name, selects a dataset, selects one or more graders, and selects a model, the experiment is created and automatically enqueued for evaluation — no separate run step is required. The experiment references the dataset's latest revision at the time of creation and is immediately visible in the experiment list. The system evaluates every grader against every item in the experiment's referenced revision — not the dataset's current state. For each evaluation, the system sends the rubric as judging instructions and the revision item's attributes as the data to judge. Each evaluation produces a verdict (pass or fail) and a reason. Dataset edits made after experiment creation do not affect the experiment's items or results.
+- **ExperimentCreate:** When the user provides a name, selects a dataset, selects one or more graders, selects a model, and optionally selects a prompt, the experiment is created and automatically enqueued for evaluation — no separate run step is required. The experiment references the dataset's latest revision at the time of creation. If a prompt is provided, its latest version is pinned at creation time. The experiment is immediately visible in the experiment list. Dataset edits and prompt edits made after experiment creation do not affect the experiment's items, outputs, or results.
 - **ExperimentModelSelection:** When creating an experiment, the user selects a model from a dropdown — selection is required. Available models are grouped by provider: Anthropic, OpenAI, Google, Meta, Mistral, and DeepSeek. The selected model is stored on the experiment and used by the evaluator when the experiment runs. The model ID is displayed in the experiment header and in the experiment list.
 - **ExperimentModelStored:** The model is stored per experiment. No default or environment fallback exists — the model is always explicitly set at creation time.
-- **ExperimentRerun:** When the user re-runs an experiment, the system creates a new experiment that references the dataset's latest revision at the time of the rerun. The new experiment runs independently with its own revision reference. The original experiment and its results are preserved with their original revision.
+- **ExperimentRerun:** When the user re-runs an experiment, the system creates a new experiment referencing the dataset's latest revision at the time of rerun. If the original experiment had a prompt, the new experiment pins the latest version of that same prompt at the time of rerun. The new experiment runs independently with its own revision and prompt version references. The original experiment and its results are preserved.
 - **ExperimentList:** The user can see a list of all experiments, each showing at minimum its name and the dataset it is associated with.
-- **ExperimentResults:** When the user opens an experiment, they see a results table where rows are the revision's items (frozen at experiment creation), columns are graders, and each cell displays the pass/fail verdict for that item–grader pair. The reason for each verdict is accessible on hover without leaving the table. The revision version and creation timestamp are visible.
+- **ExperimentResults:** When the user opens an experiment, they see a results table where rows are the revision's items (frozen at experiment creation), columns are graders, and each cell displays the pass/fail verdict for that item–grader pair. The reason for each verdict is accessible on hover. When the experiment has a pinned prompt, an additional column displays the LLM-generated output for each item. The revision version, creation timestamp, and (if present) the prompt name and pinned version number are visible in the experiment header.
 - **ExperimentDelete:** When the user deletes an experiment, it is soft-deleted — hidden from the list but preserved in the database along with all its results. The dataset and graders are not affected.
-- **ExperimentCSVExport:** When the user requests a CSV export of a completed experiment's results, they receive a file where the header contains the revision's attributes followed by one pair of columns per grader (`{grader_name}_verdict` and `{grader_name}_reason`). Each subsequent row is one revision item's results. Verdicts are the literal strings `pass` or `fail`; cells in error state contain `error`. The export always reflects the revision's data, not the dataset's current state. Re-exporting after dataset edits produces identical output.
+- **ExperimentCSVExport:** When the user requests a CSV export of a completed experiment's results, they receive a file where the header contains the revision's attributes, followed by an `output` column (only when the experiment has a prompt), followed by one pair of columns per grader (`{grader_name}_verdict` and `{grader_name}_reason`). Each subsequent row is one revision item's results. The `output` column contains the generated text or the literal string `"error"`. Verdicts are the literal strings `pass`, `fail`, or `error`. The export always reflects the revision's frozen data.
 - **ExperimentRevisionPinning:** Once an experiment is created, its revision reference never changes. Editing the dataset creates new revisions but does not affect any existing experiment's items or results.
 - **ExperimentSharedRevision:** Two experiments created against the same dataset without any intervening edits share the same revision. No duplicate snapshot is created.
 
@@ -286,6 +286,7 @@ These describe what the user provides and what the system surfaces — not inter
 - `dataset` — one selected dataset, must contain at least one item
 - `graders` — one or more selected graders
 - `modelId` — string, required, non-empty; the OpenRouter model ID to use as the LLM judge
+- `promptId` — UUID, optional; if provided, the system locates the prompt's latest version and pins it
 
 **Experiment (as shown in the list)**
 
@@ -296,16 +297,17 @@ These describe what the user provides and what the system surfaces — not inter
 
 **Experiment (detail view header)**
 
-- `revision_schema_version` — the schemaVersion of the revision this experiment is pinned to (displayed in the detail view header alongside `created_at`, not in the list view)
+- `revision_schema_version` — the schemaVersion of the revision this experiment is pinned to
+- `prompt_name` — string or null; the name of the prompt used, if any
+- `prompt_version` — integer or null; the pinned version number, if any
 
 **Experiment Results table**
 
-- Rows are revision items (frozen at experiment creation, identified by their content)
-- Columns are graders (identified by name)
-- Each cell contains:
-  - `verdict` — "pass" or "fail"
-  - `reason` — string, visible on hover
-- The revision's `schemaVersion` and `created_at` are displayed
+- Rows are revision items (frozen at experiment creation)
+- Columns: item attribute values | `output` (present only when experiment has a prompt) | one verdict+reason pair per grader
+- Each `output` cell: the text generated by the LLM in Phase 1; error state displayed explicitly
+- Each verdict cell: `verdict` — "pass", "fail", or "error"; `reason` — string, visible on hover
+- The revision's `schemaVersion`, `created_at`, prompt name, and prompt version (when present) are displayed in the header
 
 ### Error Cases
 
@@ -315,6 +317,8 @@ These describe what the user provides and what the system surfaces — not inter
 - **RunFailureTotal:** The run cannot start or all cells fail → the experiment is marked as failed and the user is informed. No misleading "complete" status is shown.
 - **ConcurrentRun:** The system allows up to two experiments to run in parallel. If both slots are occupied, additional experiments are queued and wait until a slot becomes available.
 - **ExportNoResults:** The user attempts to export experiment results when the experiment has no results → the export action is unavailable with a clear indication that results must exist before export.
+- **PromptNotFound:** The user selects a prompt ID that does not exist or has been soft-deleted → experiment creation is rejected with a message indicating the prompt was not found.
+- **TemplateMissingInputPlaceholder:** The selected prompt's latest `userPrompt` does not contain the `{input}` placeholder → experiment creation is rejected with a clear message. The user must edit the prompt to include `{input}` before it can be used in an experiment.
 
 ### Resolved Decisions (Experiments)
 
@@ -323,6 +327,7 @@ These describe what the user provides and what the system surfaces — not inter
 3. **Grader cap:** No cap on graders per experiment. Unbounded selection.
 4. **Timestamps:** No timestamps for now.
 5. **Experiment statuses:** Experiments have four statuses: "queued" (created, briefly waiting for a slot), "running" (actively evaluating), "complete" (all cells evaluated), "failed" (run could not complete). Experiments are automatically enqueued on creation. Up to two experiments may run in parallel; additional experiments queue until a slot is available.
+6. **Prompt pinning:** When a prompt is selected at experiment creation, the latest version of that prompt is pinned. The pinned version never changes. If the prompt is later edited (creating a new version) or deleted (soft-deleted), the experiment's pinned version is unaffected.
 
 ---
 
@@ -399,5 +404,66 @@ These describe what the user provides and what the system surfaces — not inter
 3. **Full-snapshot versioning:** Every version stores the complete prompt content (system prompt, user prompt, model ID, model parameters). There are no partial updates or diffs between versions.
 4. **Name change does not create a version:** Renaming a prompt updates only the parent metadata. It does not affect versions or create a new version.
 5. **Model parameters are optional:** If not provided, the LLM's default parameters are used. The `modelParams` field defaults to an empty object `{}`.
-6. **No prompt-experiment linking (this phase):** Prompts are a standalone entity in this phase. They are not linked to experiments or graders. Future work will integrate prompts into the experiment workflow.
-7. **Deletion safety:** Prompts are soft-deleted — hidden from lists but preserved in the database. Since prompts are not linked to other entities in this phase, no cascade concerns exist.
+6. **Prompt-experiment linking:** Prompts can optionally be selected when creating an experiment. See the Prompt-Experiment Integration section for full details.
+7. **Deletion safety:** Prompts are soft-deleted — hidden from lists but preserved in the database. Experiments pinned to a prompt version continue to reference that version after soft-deletion.
+
+---
+
+## Prompt-Experiment Integration
+
+### Behaviors
+
+- **PromptSelection:** When creating an experiment, the user may optionally select a prompt from the list of active (non-deleted) prompts. Selection is not required — experiments without a prompt continue to function as before. Only active prompts are shown in the picker.
+
+- **PromptVersionPinning:** When the user selects a prompt during experiment creation, the system records the ID of that prompt's latest version at the exact moment the experiment is created. Subsequent edits to the prompt (which create new versions) do not affect the experiment. The pinned version is immutable for the lifetime of the experiment.
+
+- **LLMRunPhase:** When an experiment has a pinned prompt version, execution proceeds in two sequential phases per experiment. Phase 1 (Generation): for each dataset item, the item's `input` value is substituted into the prompt version's `userPrompt` template (replacing the `{input}` placeholder) and sent to the prompt version's model with its `systemPrompt` and `modelParams`. The LLM response is the item's generated output. All generation calls for an experiment complete before Phase 2 begins. Phase 2 (Grading): the generated output from Phase 1 is used as the response being judged, replacing the role previously filled by `expected_output`. The item's `expected_output` is still passed to the judge as reference context.
+
+- **OutputStorage:** After Phase 1 completes for an item, the generated output is stored and associated with that item within the experiment. Stored outputs are never overwritten by reruns — each experiment owns its own set of outputs.
+
+- **OutputDisplay:** The results table for an experiment with a prompt shows a dedicated column containing each item's generated output. The column appears between the item's input attributes and the grader verdict columns. The full output text is accessible (not truncated to an unusable length) — a popover or expandable cell is acceptable.
+
+- **GradingWithOutput:** When an experiment has a pinned prompt version, the LLM judge receives the generated output (from Phase 1) as the response to evaluate. The item's `expected_output` remains visible to the judge as reference context but is not the primary response under evaluation. The judge's task is explicitly framed as evaluating the generated output against the rubric, with `expected_output` as a reference standard.
+
+- **ExperimentWithoutPrompt:** When an experiment has no prompt, the existing behavior is fully preserved: the `expected_output` field is treated as the response, Phase 1 does not occur, and no output column appears in the results table. The `expected_output` is passed to the judge exactly as it is today.
+
+- **GenerationFailure:** If the LLM generation call fails for an item during Phase 1, that item's output is stored as an error state. Grading cells for that item are still created but are stored as `verdict: "error"` with the generation error as the reason — no grading call is made for items whose generation failed. Other items continue processing unaffected.
+
+- **PromptVersionDisplay:** When viewing an experiment that has a pinned prompt version, the experiment header displays the prompt name and the pinned version number so the user can identify exactly which prompt configuration produced the results.
+
+- **RerunPromptCarryover:** When the user reruns an experiment that had a prompt, the new experiment pins the latest version of the same prompt at the time of rerun — not the originally pinned version. The rerun respects the same prompt selection as the original, but always pins the current latest version, consistent with how dataset revisions are handled.
+
+### Contracts
+
+**ExperimentOutput (new entity — one per dataset item per experiment, only when prompt is present)**
+
+- `experimentId` — UUID, the owning experiment
+- `datasetRevisionItemId` — UUID, the item whose `input` was used
+- `output` — string, the raw text returned by the LLM during Phase 1; empty string on generation failure
+- `error` — string or null; the error message if generation failed; null on success
+
+**CSV Export (modification — adds output column when prompt is present)**
+
+- When the experiment has a prompt: an `output` column appears after `expected_output` and before the first grader verdict column
+- The `output` column contains the generated text for each item, or the literal string `"error"` if generation failed
+- When the experiment has no prompt: export format is identical to the current format — no `output` column
+
+### Error Cases
+
+- **PromptNotFound:** The user selects a prompt ID that does not exist or has been soft-deleted → experiment creation is rejected with a message indicating the prompt was not found.
+- **PromptHasNoVersions:** The selected prompt exists but has no versions → experiment creation is rejected with a message indicating the prompt has no content to pin.
+- **GenerationFailurePartial:** One or more items fail during Phase 1 (LLM generation) → those items' outputs are stored as errors; their grading cells are marked as `verdict: "error"` with the generation error as the reason. Remaining items continue through both phases unaffected. Experiment status follows the same rules as today: `"complete"` if any cells succeeded, `"failed"` if all cells error.
+- **GenerationFailureTotal:** All items fail during Phase 1 → experiment is marked as `"failed"`. No grading calls are made.
+- **TemplatePlaceholderMissing:** The prompt's `userPrompt` does not contain the `{input}` placeholder → experiment creation is rejected with a message indicating the template must include `{input}`.
+- **GenerationOutputEmpty:** The LLM generation call succeeds but returns an empty string → the output is stored as an empty string; grading proceeds with the empty string as the response. The judge may produce a `"fail"` verdict in this case — no special handling is applied.
+
+### Resolved Decisions (Prompt-Experiment Integration)
+
+1. **Prompt is optional:** Selecting a prompt on experiment creation is not required. Experiments without a prompt continue to evaluate `expected_output` as the response — no behavior change.
+2. **Latest version pinned at creation:** When a prompt is selected, the system always pins the latest version at the moment of experiment creation. There is no UI for selecting a specific past version during experiment creation.
+3. **Template convention:** The `{input}` placeholder in the prompt's `userPrompt` is the only substitution performed. No other dataset attributes are substituted into the prompt template. Custom attributes remain available only to the judge, not to the generation model.
+4. **Two-phase ordering:** Phase 1 (all generation calls) completes before Phase 2 (all grading calls) begins for a given experiment. This ensures grading always uses finalized outputs.
+5. **Output stored separately:** Generated outputs are stored in a dedicated entity (not inside `ExperimentResult`), because one output is shared across all graders for that item.
+6. **Generation model comes from the prompt version:** The model used in Phase 1 is the one stored on the pinned `PromptVersion` (its `modelId` and `modelParams`). The experiment's `modelId` continues to identify the judge model used in Phase 2.
+7. **Rerun pins latest version:** Reruns always pin the latest version of the original prompt — they do not preserve the originally pinned version. This is consistent with how reruns reference the dataset's latest revision.
+8. **Judge template change:** When a prompt is present, the judge's user message labels the generated output as "Response" and includes `expected_output` as "Reference Output" or equivalent context. The judge is told it is evaluating the generated response, not the reference. When no prompt is present, the judge template is unchanged.
