@@ -146,7 +146,7 @@ type Experiment = {
   graderIds: uuid[] // User-selected. List of Grader IDs; at least one required
   status: ExperimentStatus // System-managed. Starts as "queued" on creation
   modelId: string // Required. OpenRouter model ID for the LLM judge (Phase 2)
-  promptVersionId: uuid | null // System-set. Pinned PromptVersion ID; null if no prompt selected
+  promptVersionId: uuid // System-set. Pinned PromptVersion ID, resolved from user-provided promptId
   deletedAt: timestamp | null // Soft-delete timestamp; null when active
 }
 ```
@@ -168,7 +168,7 @@ type Experiment = {
 - `datasetRevisionId` references the dataset's latest revision at the time of experiment creation. This reference never changes after creation
 - Re-running creates a new `Experiment` with a new `id` and derived `name`; original is preserved
 - `modelId` must be a non-empty string; required when creating an experiment
-- `promptVersionId` is set at creation time and never changes. If the prompt is later edited or soft-deleted, the pinned version row is unaffected
+- `promptVersionId` is required and set at creation time. It never changes after creation. If the prompt is later edited or soft-deleted, the pinned version row is unaffected
 
 **Relationships:**
 
@@ -178,7 +178,7 @@ type Experiment = {
 - Has many `ExperimentResult`s (one-to-many, cascade delete)
 - Protected by `onDelete: Restrict` on the Dataset FK — preserved when the dataset is soft-deleted
 - Graders are soft-deleted independently — experiments are never affected by grader deletion
-- References zero or one `PromptVersion` (many-to-one, optional; `onDelete: Restrict`)
+- References one `PromptVersion` (many-to-one, required; `onDelete: Restrict`)
 
 ---
 
@@ -349,17 +349,17 @@ PromptVersion ──< Experiment                 (one-to-many via promptVersionI
 
 ### System-Generated vs. User-Provided Fields
 
-| Entity                | System-generated                                       | User-provided                                                                                                        |
-| --------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| `Dataset`             | `id`                                                   | `name`                                                                                                               |
-| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`                     | _(none — system-produced from mutations)_                                                                            |
-| `DatasetRevisionItem` | `id`, `itemId`                                         | `values`                                                                                                             |
-| `Grader`              | `id`                                                   | `name`, `description`, `rubric`                                                                                      |
-| `Experiment`          | `id`, `status`, `datasetRevisionId`, `promptVersionId` | `name`, `datasetId`, `graderIds`, `modelId`, `promptId` (user provides prompt ID; system resolves to latest version) |
-| `ExperimentResult`    | `id`, `verdict`, `reason`                              | _(none — fully system-produced)_                                                                                     |
-| `ExperimentOutput`    | `id`, `output`, `error`                                | _(none — fully system-produced)_                                                                                     |
-| `Prompt`              | `id`                                                   | `name`                                                                                                               |
-| `PromptVersion`       | `id`, `version`, `createdAt`                           | `systemPrompt`, `userPrompt`, `modelId`, `modelParams`                                                               |
+| Entity                | System-generated                                       | User-provided                                                                                         |
+| --------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `Dataset`             | `id`                                                   | `name`                                                                                                |
+| `DatasetRevision`     | `id`, `schemaVersion`, `createdAt`                     | _(none — system-produced from mutations)_                                                             |
+| `DatasetRevisionItem` | `id`, `itemId`                                         | `values`                                                                                              |
+| `Grader`              | `id`                                                   | `name`, `description`, `rubric`                                                                       |
+| `Experiment`          | `id`, `status`, `datasetRevisionId`, `promptVersionId` | `name`, `datasetId`, `graderIds`, `modelId`, `promptId` (required; system resolves to latest version) |
+| `ExperimentResult`    | `id`, `verdict`, `reason`                              | _(none — fully system-produced)_                                                                      |
+| `ExperimentOutput`    | `id`, `output`, `error`                                | _(none — fully system-produced)_                                                                      |
+| `Prompt`              | `id`                                                   | `name`                                                                                                |
+| `PromptVersion`       | `id`, `version`, `createdAt`                           | `systemPrompt`, `userPrompt`, `modelId`, `modelParams`                                                |
 
 ---
 
@@ -595,26 +595,9 @@ Every tool must be initialized via its CLI command. No hand-writing manifests or
 
 ### Overview
 
-Experiments are executed asynchronously using a queue pattern. When no prompt is attached, the existing **two-level queue** runs (experiment queue → evaluation queue). When a prompt is attached, a **three-level queue** runs (experiment queue → LLM run queue → evaluation queue). The API returns immediately when a run is triggered; processing happens in the background. This is implemented in-process using `p-queue` for the prototype, with a clear migration path to BullMQ + Redis for production.
+Experiments are executed asynchronously using a **three-level queue** pattern: experiment queue → LLM run queue → evaluation queue. The API returns immediately when a run is triggered; processing happens in the background. This is implemented in-process using `p-queue` for the prototype, with a clear migration path to BullMQ + Redis for production.
 
 ### Queue Architecture
-
-**Without prompt (existing two-level queue):**
-
-```
-HTTP POST /experiments → 201 Created
-    │
-    ▼
-Experiment Queue (concurrency: 2)
-    │
-    ▼
-Evaluation Queue (concurrency: 4)  ← items × graders in parallel
-    │
-    ▼
-LLM Judge call → verdict + reason → ExperimentResult
-```
-
-**With prompt (three-level queue):**
 
 ```
 HTTP POST /experiments → 201 Created
@@ -641,10 +624,10 @@ LLM Judge call → verdict + reason → ExperimentResult
 - When the queue picks it up, status transitions to `"running"`
 - If both slots are occupied, additional experiments wait in `"queued"` status
 
-### Level 2: LLM Run Queue — Phase 1 (only when `promptVersionId` is set)
+### Level 2: LLM Run Queue — Phase 1
 
 - **Concurrency: 2** — up to 2 parallel generation calls per experiment
-- Created fresh for each experiment run, only when the experiment has a `promptVersionId`
+- Created fresh for each experiment run
 - One task per dataset item — substitutes `{input}` into the prompt's `userPrompt`, calls the prompt's model with `systemPrompt` and `modelParams`, stores `ExperimentOutput`
 - Failures are caught per-item: the item's output is stored with `error` set; processing continues for other items
 - The entire Phase 1 queue drains (`await Promise.all(tasks)`) before Phase 2 begins
@@ -655,8 +638,7 @@ LLM Judge call → verdict + reason → ExperimentResult
 - **Concurrency: 4** — up to 4 parallel LLM judge calls per experiment
 - Created fresh for each experiment run
 - One task per `(datasetItem × grader)` cell — skips items whose Phase 1 output errored
-- When prompt is present: sends the stored `output` string as the response to judge; sends `expected_output` as reference context
-- When no prompt: sends `expected_output` as the response (unchanged behavior)
+- Sends the stored `output` string as the response to judge; sends `expected_output` as reference context
 - Each task is independent — a failure in one cell does not affect others
 
 ### Status Lifecycle
@@ -696,8 +678,7 @@ POST /experiments (creation auto-enqueues)
 **Phase 2 — Grading**
 
 - **System message**: Contains the grader's `rubric` — the judging instructions (unchanged)
-- **User message (without prompt)**: Contains the item's `input` + `expected_output` as the response + custom attributes (unchanged)
-- **User message (with prompt)**: Contains the item's `input` + generated output labeled as "Response" + `expected_output` labeled as "Reference Output" + custom attributes. The judge evaluates the generated response against the rubric, using the reference as a quality standard.
+- **User message**: Contains the item's `input` + generated output labeled as "Response" + `expected_output` labeled as "Reference Output" + custom attributes. The judge evaluates the generated response against the rubric, using the reference as a quality standard.
 - **Expected response**: Structured output with `verdict` ("pass" or "fail") and `reason` (string) (unchanged)
 
 ### Technology Choice: p-queue
