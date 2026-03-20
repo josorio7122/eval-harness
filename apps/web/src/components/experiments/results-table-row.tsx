@@ -1,4 +1,5 @@
 import { TableRow, TableCell } from '@/components/ui/table'
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { VerdictCell } from './verdict-cell'
 import type { ExperimentOutput, ExperimentResult } from '@/hooks/use-experiments'
 
@@ -66,14 +67,22 @@ export function ResultsTableRow({
         <TableCell className="border-b border-border px-3 py-2 text-xs min-w-[160px] max-w-[300px]">
           {(() => {
             const output = outputMap.get(item.id)
+            if (output?.error) {
+              return <span className="text-amber-500">Error: {output.error}</span>
+            }
             return (
-              <div className="truncate" title={output?.output ?? ''}>
-                {output?.error ? (
-                  <span className="text-amber-500">Error: {output.error}</span>
-                ) : (
-                  (output?.output ?? '—')
-                )}
-              </div>
+              <Popover>
+                <PopoverTrigger className="w-full truncate text-left text-xs cursor-pointer hover:text-foreground bg-transparent border-0 p-0 font-[inherit]">
+                  {output?.output ?? '—'}
+                </PopoverTrigger>
+                <PopoverContent
+                  side="bottom"
+                  align="start"
+                  className="w-[400px] max-h-[300px] overflow-auto"
+                >
+                  <p className="text-xs whitespace-pre-wrap">{output?.output ?? '—'}</p>
+                </PopoverContent>
+              </Popover>
             )
           })()}
         </TableCell>
