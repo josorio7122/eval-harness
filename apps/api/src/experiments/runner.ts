@@ -97,13 +97,12 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn, generat
 
       const totalCells = datasetItems.length * graders.length
       let cellsCompleted = 0
-      let phase1Completed = 0
 
-      // Phase 1: LLM Generation
       const llmRunQueue = new PQueue({ concurrency: 2 })
-      const outputMap = new Map<string, { output: string; error: string | null }>()
+      const evalQueue = new PQueue({ concurrency: 4 })
+      const allGradingPromises: Promise<unknown>[] = []
 
-      const phase1Tasks = datasetItems.map((item) =>
+      const generationTasks = datasetItems.map((item) =>
         llmRunQueue.add(async () => {
           const input = item.values['input'] ?? ''
           const result = await generate({
@@ -121,83 +120,74 @@ export const createExperimentRunner = (repo: Repo, evaluate: EvaluateFn, generat
             error: result.error,
           })
 
-          outputMap.set(item.id, result)
+          if (result.error) {
+            // Write error cells immediately without blocking the llmRunQueue slot
+            for (const grader of graders) {
+              await repo.createResult({
+                experimentId,
+                datasetRevisionItemId: item.id,
+                graderId: grader.id,
+                verdict: 'error',
+                reason: result.error,
+              })
+              cellsCompleted++
+              experimentEvents.emit(experimentId, {
+                type: 'progress',
+                experimentId,
+                cellsCompleted,
+                totalCells,
+                status: 'running',
+                result: null,
+              })
+            }
+            return
+          }
 
-          phase1Completed++
-          experimentEvents.emit(experimentId, {
-            type: 'progress',
-            experimentId,
-            cellsCompleted: 0,
-            totalCells,
-            status: 'running',
-            phase: 'generating',
-            generationCompleted: phase1Completed,
-            generationTotal: datasetItems.length,
-          })
+          // Generation succeeded — enqueue grading for this item on evalQueue
+          // llmRunQueue slot is freed immediately after this function returns
+          for (const grader of graders) {
+            const gradingPromise = evalQueue.add(async () => {
+              const cellResult = await evaluateCell({
+                evaluate,
+                repo,
+                experimentId,
+                item,
+                grader,
+                modelId,
+                output: result.output,
+              })
+
+              cellsCompleted++
+              experimentEvents.emit(experimentId, {
+                type: 'progress',
+                experimentId,
+                cellsCompleted,
+                totalCells,
+                status: 'running',
+                result: cellResult.saved,
+              })
+
+              return cellResult
+            })
+            allGradingPromises.push(gradingPromise as Promise<unknown>)
+          }
         }),
       )
 
-      await Promise.all(phase1Tasks)
+      // Wait for all generations to complete (which also enqueues all grading tasks)
+      await Promise.all(generationTasks)
+      // Wait for all grading to complete
+      const gradingResults = await Promise.all(allGradingPromises)
 
-      // For items that failed generation, write error grading cells immediately
-      const failedItems = datasetItems.filter((item) => outputMap.get(item.id)?.error != null)
-      for (const item of failedItems) {
-        const errorMsg = outputMap.get(item.id)!.error!
-        for (const grader of graders) {
-          await repo.createResult({
-            experimentId,
-            datasetRevisionItemId: item.id,
-            graderId: grader.id,
-            verdict: 'error',
-            reason: errorMsg,
-          })
-          cellsCompleted++
-        }
-      }
+      // Count errors: generation error cells + grading errors
+      const typedResults = gradingResults as Array<{ isError: boolean } | null | undefined>
+      const errorCount = typedResults.filter((r) => r?.isError).length
+      // Also count cells where cellsCompleted incremented with result: null (generation errors)
+      const generationErrorCells = totalCells - typedResults.length
 
-      // Phase 2: Grading (only for items that succeeded generation)
-      const successItems = datasetItems.filter((item) => outputMap.get(item.id)?.error == null)
-
-      const evalQueue = new PQueue({ concurrency: 4 })
-
-      const phase2Tasks = successItems.flatMap((item) =>
-        graders.map((grader) =>
-          evalQueue.add(async () => {
-            const output = outputMap.get(item.id)!.output
-            const cellResult = await evaluateCell({
-              evaluate,
-              repo,
-              experimentId,
-              item,
-              grader,
-              modelId,
-              output,
-            })
-
-            cellsCompleted++
-            experimentEvents.emit(experimentId, {
-              type: 'progress',
-              experimentId,
-              cellsCompleted,
-              totalCells,
-              status: 'running',
-              result: cellResult.saved,
-            })
-
-            return cellResult
-          }),
-        ),
-      )
-
-      const phase2Results = await Promise.all(phase2Tasks)
-
-      // Count all errors: phase1 errors (failed items × graders) + phase2 errors
-      const phase1ErrorCount = failedItems.length * graders.length
-      const phase2ErrorCount = phase2Results.filter((r) => r?.isError).length
-      const errorCount = phase1ErrorCount + phase2ErrorCount
-
-      const finalStatus: ExperimentStatus = errorCount === totalCells ? 'failed' : 'complete'
-      logger.info({ experimentId, totalCells, errorCount, finalStatus }, 'experiment finished')
+      const totalErrors = errorCount + generationErrorCells
+      const finalStatus: ExperimentStatus = totalErrors === totalCells ? 'failed' : 'complete'
+      logger.info({ experimentId, totalCells, totalErrors, finalStatus }, 'experiment finished')
       await repo.updateStatus(experimentId, finalStatus)
 
       if (finalStatus === 'failed') {

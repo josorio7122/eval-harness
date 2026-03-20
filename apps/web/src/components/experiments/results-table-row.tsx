@@ -1,5 +1,5 @@
 import { TableRow, TableCell } from '@/components/ui/table'
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { VerdictCell } from './verdict-cell'
 import type { ExperimentOutput, ExperimentResult } from '@/hooks/use-experiments'
 
@@ -71,18 +71,18 @@ export function ResultsTableRow({
               return <span className="text-amber-500">Error: {output.error}</span>
             }
             return (
-              <Popover>
-                <PopoverTrigger className="w-full truncate text-left text-xs cursor-pointer hover:text-foreground bg-transparent border-0 p-0 font-[inherit]">
+              <Tooltip>
+                <TooltipTrigger className="w-full truncate text-left text-xs cursor-default hover:text-foreground bg-transparent border-0 p-0 font-[inherit]">
                   {output?.output ?? '—'}
-                </PopoverTrigger>
-                <PopoverContent
+                </TooltipTrigger>
+                <TooltipContent
                   side="bottom"
                   align="start"
-                  className="w-[400px] max-h-[300px] overflow-auto"
+                  className="max-w-[400px] w-[400px] max-h-[300px] overflow-auto whitespace-pre-wrap text-left font-normal leading-relaxed"
                 >
-                  <p className="text-xs whitespace-pre-wrap">{output?.output ?? '—'}</p>
-                </PopoverContent>
-              </Popover>
+                  {output?.output ?? '—'}
+                </TooltipContent>
+              </Tooltip>
             )
           })()}
         </TableCell>

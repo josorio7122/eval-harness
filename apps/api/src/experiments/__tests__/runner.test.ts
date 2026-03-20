@@ -97,7 +97,7 @@ describe('createExperimentRunner', () => {
     })
   })
 
-  it('emits progress events for each cell', async () => {
+  it('emits progress events for each grading cell', async () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
     mockRepo.createResult.mockResolvedValue(
       ok({
@@ -125,14 +125,14 @@ describe('createExperimentRunner', () => {
 
     const progressEvents = events.filter((e) => e.type === 'progress')
     // 2 items × 2 graders = 4 grading progress events
-    expect(progressEvents.filter((e) => e.phase !== 'generating').length).toBe(4)
+    expect(progressEvents.length).toBe(4)
 
-    const gradingEvents = progressEvents.filter((e) => e.phase !== 'generating')
-    expect(gradingEvents[gradingEvents.length - 1].cellsCompleted).toBe(4)
-    expect(gradingEvents[gradingEvents.length - 1].totalCells).toBe(4)
+    const lastProgress = progressEvents[progressEvents.length - 1]
+    expect(lastProgress.cellsCompleted).toBe(4)
+    expect(lastProgress.totalCells).toBe(4)
 
     // Each grading progress event must include the saved result
-    gradingEvents.forEach((evt) => {
+    progressEvents.forEach((evt) => {
       expect(evt.result).toBeDefined()
       expect(evt.result).toMatchObject({
         id: expect.any(String),
@@ -291,7 +291,6 @@ describe('createExperimentRunner', () => {
       promptVersion,
     })
 
-    // evaluate should be called with an object containing modelId
     const calls = mockEvaluate.mock.calls
     expect(calls.length).toBeGreaterThan(0)
     calls.forEach((call) => {
@@ -299,17 +298,26 @@ describe('createExperimentRunner', () => {
     })
   })
 
-  it('Phase 1 runs all items through generator before Phase 2', async () => {
+  it('grading starts as soon as an item generation completes (pipeline)', async () => {
+    // Each item's grading should start immediately after its generation, not waiting for all
+    // items to finish generating. We verify by checking interleaved ordering.
     const order: string[] = []
 
-    mockGenerate.mockImplementation(async () => {
-      order.push('generate')
-      return { output: 'generated', error: null }
+    // Make generation slow for item-1 so item-2 generates and grades before item-1 grading
+    mockGenerate.mockImplementation(async ({ input }: { input: string }) => {
+      if (input === 'hello') {
+        await new Promise((r) => setTimeout(r, 20))
+      }
+      order.push(`generate:${input}`)
+      return { output: `response for ${input}`, error: null }
     })
-    mockEvaluate.mockImplementation(async () => {
-      order.push('evaluate')
-      return { verdict: 'pass', reason: 'ok' }
-    })
+
+    mockEvaluate.mockImplementation(
+      async ({ itemAttributes }: { itemAttributes: Record<string, string> }) => {
+        order.push(`evaluate:${itemAttributes['input']}`)
+        return { verdict: 'pass', reason: 'ok' }
+      },
+    )
 
     const runner = createExperimentRunner(mockRepo, mockEvaluate, mockGenerate)
     await runner.enqueue({
@@ -320,13 +328,18 @@ describe('createExperimentRunner', () => {
       promptVersion,
     })
 
-    // All generate calls must come before all evaluate calls
-    const firstEval = order.indexOf('evaluate')
-    const lastGenerate = order.lastIndexOf('generate')
-    expect(lastGenerate).toBeLessThan(firstEval)
+    // item-2 (foo) should generate and start grading before item-1 (hello) finishes
+    const fooGenerateIdx = order.indexOf('generate:foo')
+    const fooEvaluateIdx = order.indexOf('evaluate:foo')
+    const helloGenerateIdx = order.indexOf('generate:hello')
+
+    // foo should be generated before hello (since hello has delay)
+    expect(fooGenerateIdx).toBeLessThan(helloGenerateIdx)
+    // foo evaluation should start before hello generation completes
+    expect(fooEvaluateIdx).toBeLessThan(helloGenerateIdx)
   })
 
-  it('Phase 1 failure for one item → that item grading cells are error, others continue', async () => {
+  it('generation failure for one item writes error cells immediately, others continue', async () => {
     mockGenerate.mockImplementation(async ({ input }: { input: string }) => {
       if (input === 'hello') return { output: '', error: 'generation failed' }
       return { output: 'generated answer', error: null }
@@ -359,7 +372,7 @@ describe('createExperimentRunner', () => {
     })
   })
 
-  it('Phase 1 total failure → experiment status is failed', async () => {
+  it('total generation failure → experiment status is failed', async () => {
     mockGenerate.mockResolvedValue({ output: '', error: 'all generation failed' })
 
     const runner = createExperimentRunner(mockRepo, mockEvaluate, mockGenerate)
@@ -378,7 +391,7 @@ describe('createExperimentRunner', () => {
     expect(mockEvaluate).not.toHaveBeenCalled()
   })
 
-  it('Phase 2 receives generated output in evaluate call', async () => {
+  it('grading receives generated output in evaluate call', async () => {
     mockGenerate.mockImplementation(async ({ input }: { input: string }) => ({
       output: `response for ${input}`,
       error: null,
@@ -403,7 +416,7 @@ describe('createExperimentRunner', () => {
     })
   })
 
-  it('stores ExperimentOutput records during Phase 1', async () => {
+  it('stores ExperimentOutput records during generation', async () => {
     mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
 
     const runner = createExperimentRunner(mockRepo, mockEvaluate, mockGenerate)
@@ -428,28 +441,5 @@ describe('createExperimentRunner', () => {
     // Verify item IDs
     const itemIds = outputCalls.map((c) => c.datasetRevisionItemId).sort()
     expect(itemIds).toEqual(['item-1', 'item-2'])
-  })
-
-  it('emits generating progress events during Phase 1', async () => {
-    mockEvaluate.mockResolvedValue({ verdict: 'pass', reason: 'ok' })
-    const runner = createExperimentRunner(mockRepo, mockEvaluate, mockGenerate)
-
-    const events: ExperimentEvent[] = []
-    experimentEvents.on('exp-15', (e) => events.push(e))
-
-    await runner.enqueue({
-      experimentId: 'exp-15',
-      datasetItems,
-      graders,
-      modelId: 'openai/gpt-4o',
-      promptVersion,
-    })
-
-    experimentEvents.off('exp-15', (e) => events.push(e))
-
-    const generatingEvents = events.filter((e) => e.type === 'progress' && e.phase === 'generating')
-    expect(generatingEvents.length).toBe(2) // one per item
-    expect(generatingEvents[generatingEvents.length - 1].generationCompleted).toBe(2)
-    expect(generatingEvents[generatingEvents.length - 1].generationTotal).toBe(2)
   })
 })
