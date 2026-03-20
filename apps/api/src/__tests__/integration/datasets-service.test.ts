@@ -1,14 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { datasetRepository } from '../../datasets/repository.js'
 import { createDatasetService } from '../../datasets/service.js'
-import { unwrap } from './helpers.js'
+import { unwrap, uid } from './helpers.js'
 
 const service = createDatasetService(datasetRepository)
-
-let counter = 0
-function uid(prefix: string) {
-  return `${prefix}-${++counter}`
-}
 
 describe('datasets service (integration)', () => {
   // 1. createDataset ok → row exists in DB via repo.findById

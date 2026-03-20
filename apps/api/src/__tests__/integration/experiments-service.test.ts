@@ -7,7 +7,7 @@ import { experimentRepository } from '../../experiments/repository.js'
 import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentService } from '../../experiments/service.js'
 import { prisma } from '../../lib/prisma.js'
-import { unwrap } from './helpers.js'
+import { unwrap, uid, seedPrompt } from './helpers.js'
 
 /** Extract id from an unknown data shape; fails test if missing */
 function idOf(data: unknown): string {
@@ -28,11 +28,6 @@ const service = createExperimentService({
   >,
 })
 
-let counter = 0
-function uid(prefix: string) {
-  return `${prefix}-${++counter}`
-}
-
 async function seedDatasetWithItems() {
   const ds = unwrap(await datasetRepository.create(uid('exp-svc-ds')))
   unwrap(await datasetRepository.createItem(ds.id, { input: 'q1', expected_output: 'a1' }))
@@ -45,17 +40,6 @@ async function seedGrader() {
       name: uid('exp-svc-grader'),
       description: 'test grader',
       rubric: 'award points',
-    }),
-  )
-}
-
-async function seedPrompt() {
-  return unwrap(
-    await promptRepository.create({
-      name: uid('exp-svc-prompt'),
-      systemPrompt: 'You are a helpful assistant.',
-      userPrompt: 'Answer the following: {input}',
-      modelId: MODEL_ID,
     }),
   )
 }

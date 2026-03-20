@@ -4,21 +4,14 @@ const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
-import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
-import { prisma } from '../../lib/prisma.js'
-import { unwrap } from './helpers.js'
-
-const promptRepository = createPromptRepository(prisma)
+import { unwrap, uid, seedPrompt } from './helpers.js'
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
 type GenerateFn = Parameters<typeof createExperimentRunner>[2]
 
-let seedCounter = 0
-
 async function seedExperiment(itemCount: number, graderCount: number) {
-  const n = ++seedCounter
-  const dataset = unwrap(await datasetRepository.create(`runner-dataset-${n}`))
+  const dataset = unwrap(await datasetRepository.create(uid('runner-ds')))
 
   for (let i = 1; i <= itemCount; i++) {
     unwrap(
@@ -44,7 +37,7 @@ async function seedExperiment(itemCount: number, graderCount: number) {
   for (let i = 1; i <= graderCount; i++) {
     const grader = unwrap(
       await graderRepository.create({
-        name: `runner-grader-${n}-${i}`,
+        name: uid('runner-grader'),
         description: 'test grader',
         rubric: `rubric-${i}`,
       }),
@@ -54,18 +47,11 @@ async function seedExperiment(itemCount: number, graderCount: number) {
 
   const graderIds = graders.map((g) => g.id)
 
-  const prompt = unwrap(
-    await promptRepository.create({
-      name: `runner-prompt-${n}`,
-      systemPrompt: 'You are a helpful assistant.',
-      userPrompt: 'Answer: {input}',
-      modelId: MODEL_ID,
-    }),
-  )
+  const prompt = await seedPrompt(MODEL_ID)
 
   const experiment = unwrap(
     await experimentRepository.create({
-      name: `runner-exp-${n}`,
+      name: uid('runner-exp'),
       datasetId: dataset.id,
       datasetRevisionId: revisionId,
       graderIds,

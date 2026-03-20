@@ -6,19 +6,12 @@ import { graderRepository as graderRepo } from '../../graders/repository.js'
 import { experimentRepository as experimentRepo } from '../../experiments/repository.js'
 import { createPromptRepository } from '../../prompts/repository.js'
 import { prisma } from '../../lib/prisma.js'
-import { unwrap } from './helpers.js'
+import { unwrap, uid } from './helpers.js'
 
 const promptRepo = createPromptRepository(prisma)
 
-let counter = 0
-
-// Each test gets unique names to avoid unique-constraint collisions across tests
-function uid() {
-  return `cd-${Date.now()}-${++counter}`
-}
-
 async function seedFullScenario() {
-  const id = uid()
+  const id = uid('cd')
 
   // 1. Create dataset with one item
   const dataset = unwrap(await datasetRepo.create(`cascade-dataset-${id}`))

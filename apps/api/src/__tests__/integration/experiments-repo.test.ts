@@ -4,30 +4,10 @@ const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository as repo } from '../../experiments/repository.js'
 import { datasetRepository } from '../../datasets/repository.js'
 import { graderRepository } from '../../graders/repository.js'
-import { prisma } from '../../lib/prisma.js'
-import { createPromptRepository } from '../../prompts/repository.js'
-import { unwrap } from './helpers.js'
-
-const promptRepo = createPromptRepository(prisma)
-
-let seedCounter = 0
-
-async function seedPromptVersion() {
-  const n = seedCounter
-  const prompt = unwrap(
-    await promptRepo.create({
-      name: `exp-repo-prompt-${n}-${Date.now()}`,
-      systemPrompt: 'You are helpful.',
-      userPrompt: 'Answer: {{input}}',
-      modelId: MODEL_ID,
-    }),
-  )
-  return prompt.versions[0]
-}
+import { unwrap, uid, seedPrompt } from './helpers.js'
 
 async function seedData() {
-  const n = ++seedCounter
-  const dataset = unwrap(await datasetRepository.create(`exp-repo-dataset-${n}`))
+  const dataset = unwrap(await datasetRepository.create(uid('exp-repo-ds')))
   unwrap(await datasetRepository.createItem(dataset.id, { input: 'q1', expected_output: 'a1' }))
   unwrap(await datasetRepository.createItem(dataset.id, { input: 'q2', expected_output: 'a2' }))
 
@@ -41,20 +21,21 @@ async function seedData() {
 
   const grader1 = unwrap(
     await graderRepository.create({
-      name: `exp-repo-grader-1-${n}`,
+      name: uid('exp-repo-grader-1'),
       description: 'desc',
       rubric: 'rubric1',
     }),
   )
   const grader2 = unwrap(
     await graderRepository.create({
-      name: `exp-repo-grader-2-${n}`,
+      name: uid('exp-repo-grader-2'),
       description: 'desc',
       rubric: 'rubric2',
     }),
   )
 
-  const promptVersion = await seedPromptVersion()
+  const prompt = await seedPrompt(MODEL_ID)
+  const promptVersion = prompt.versions[0]
 
   return { dataset, latestRevision, revisionItems, grader1, grader2, promptVersion }
 }
@@ -401,8 +382,8 @@ describe('experiments repository (integration)', () => {
     expect(found.promptVersionId).toBe(promptVersion.id)
     expect(found.promptVersion).toBeDefined()
     expect(found.promptVersion.version).toBe(promptVersion.version)
-    expect(found.promptVersion.systemPrompt).toBe('You are helpful.')
-    expect(found.promptVersion.userPrompt).toBe('Answer: {{input}}')
+    expect(found.promptVersion.systemPrompt).toBe('You are a helpful assistant.')
+    expect(found.promptVersion.userPrompt).toBe('Answer the following: {input}')
     expect(found.promptVersion.modelId).toBe(MODEL_ID)
     expect(found.promptVersion.modelParams).toBeDefined()
     expect(found.promptVersion.prompt).toBeDefined()

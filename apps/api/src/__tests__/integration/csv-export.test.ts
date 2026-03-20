@@ -8,7 +8,7 @@ import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
 import { createExperimentService } from '../../experiments/service.js'
 import { prisma } from '../../lib/prisma.js'
-import { unwrap } from './helpers.js'
+import { unwrap, seedPrompt } from './helpers.js'
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
 type GenerateFn = Parameters<typeof createExperimentRunner>[2]
@@ -16,17 +16,6 @@ type GenerateFn = Parameters<typeof createExperimentRunner>[2]
 const promptRepository = createPromptRepository(prisma)
 
 let seedCounter = 0
-
-async function seedPrompt() {
-  return unwrap(
-    await promptRepository.create({
-      name: `csv-prompt-${++seedCounter}`,
-      systemPrompt: 'You are a helpful assistant.',
-      userPrompt: 'Answer the following: {input}',
-      modelId: MODEL_ID,
-    }),
-  )
-}
 
 async function seedAndRun(params: {
   itemValues: Array<Record<string, string>>
