@@ -155,14 +155,15 @@ PROMPT1_ID=$(echo "$PROMPT1_RESPONSE" | jq -r '.id')
 echo "  ✓ Professional Support Agent (id: $PROMPT1_ID)"
 
 # Prompt 1: Add a v2 with adjusted temperature
-curl -s -X POST "$BASE_URL/prompts/$PROMPT1_ID/versions" \
+PROMPT1_V2_RESPONSE=$(curl -s -X POST "$BASE_URL/prompts/$PROMPT1_ID/versions" \
   -H "Content-Type: application/json" \
   -d '{
     "systemPrompt": "You are a senior customer support agent for a SaaS company. Your responses must be professional, empathetic, and actionable. Always acknowledge the customer'\''s concern before providing a solution. Include specific next steps with timeframes when applicable. Keep responses concise — no more than 3-4 sentences unless the issue requires detailed instructions. When a customer is frustrated, lead with a brief apology before jumping to the solution.",
     "userPrompt": "Customer message:\n{input}\n\nExpected response for reference:\n{expected_output}\n\nWrite a customer support response to the customer message above.",
     "modelId": "anthropic/claude-sonnet-4",
     "modelParams": {"temperature": 0.5}
-  }' > /dev/null
+  }')
+PROMPT1_VERSION_ID=$(echo "$PROMPT1_V2_RESPONSE" | jq -r '.id')
 echo "  ✓ Professional Support Agent v2 (lower temperature)"
 
 # Prompt 2: Empathetic Resolution Specialist
@@ -176,6 +177,7 @@ PROMPT2_RESPONSE=$(curl -s -X POST "$BASE_URL/prompts" \
     "modelParams": {"temperature": 0.9, "maxTokens": 500}
   }')
 PROMPT2_ID=$(echo "$PROMPT2_RESPONSE" | jq -r '.id')
+PROMPT2_VERSION_ID=$(echo "$PROMPT2_RESPONSE" | jq -r '.versions[0].id')
 echo "  ✓ Empathetic Resolution Specialist (id: $PROMPT2_ID)"
 
 # ── Step 5: Seed experiments with results ────────────────────────────────────
@@ -268,8 +270,8 @@ build_results_sql() {
 echo "Creating experiment 'Baseline GPT-4o Run' (openai/gpt-4o)..."
 
 EXP1_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
-  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptId\")
-   VALUES (gen_random_uuid(), 'Baseline GPT-4o Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'openai/gpt-4o', '$PROMPT1_ID')
+  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptVersionId\")
+   VALUES (gen_random_uuid(), 'Baseline GPT-4o Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'openai/gpt-4o', '$PROMPT1_VERSION_ID')
    RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
@@ -306,8 +308,8 @@ echo "  ✓ Experiment 1 created: $EXP1_ID"
 echo "Creating experiment 'Gemini Flash Run' (google/gemini-2.5-flash)..."
 
 EXP2_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
-  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptId\")
-   VALUES (gen_random_uuid(), 'Gemini Flash Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'google/gemini-2.5-flash', '$PROMPT2_ID')
+  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptVersionId\")
+   VALUES (gen_random_uuid(), 'Gemini Flash Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'google/gemini-2.5-flash', '$PROMPT2_VERSION_ID')
    RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
@@ -344,8 +346,8 @@ echo "  ✓ Experiment 2 created: $EXP2_ID"
 echo "Creating experiment 'Claude Haiku Run' (anthropic/claude-haiku-4.5)..."
 
 EXP3_ID=$(docker exec eval-harness-db psql -U eval -d eval_harness -t -A -c \
-  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptId\")
-   VALUES (gen_random_uuid(), 'Claude Haiku Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'anthropic/claude-haiku-4.5', '$PROMPT1_ID')
+  "INSERT INTO \"Experiment\" (id, name, \"datasetId\", \"datasetRevisionId\", status, \"modelId\", \"promptVersionId\")
+   VALUES (gen_random_uuid(), 'Claude Haiku Run', '$DATASET_ID', '$REVISION_ID', 'complete', 'anthropic/claude-haiku-4.5', '$PROMPT1_VERSION_ID')
    RETURNING id;" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
 
 docker exec eval-harness-db psql -U eval -d eval_harness -q -c \
