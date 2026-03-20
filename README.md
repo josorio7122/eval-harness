@@ -6,7 +6,7 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 
 - Create datasets with custom attributes (input, expected_output, plus any custom fields)
 - Define graders with natural-language rubrics for LLM-based evaluation
-- Run experiments that evaluate every test case against selected graders, using a model you choose per experiment
+- Run experiments that generate LLM responses for every test case using a prompt, then grade each response against selected graders using a judge model
 - Select from 14 pre-configured models grouped by provider (Anthropic, OpenAI, Google, Meta, Mistral, DeepSeek)
 - Review results in a dense table — rows are items, columns are graders, cells show pass/fail verdicts
 - Dataset versioning via immutable revisions — experiments pin to a snapshot, so results are reproducible
@@ -21,10 +21,11 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 flowchart LR
     A["📁 Create Dataset<br/>Define attributes<br/>Add items / import CSV"]
     B["📝 Define Graders<br/>Write natural-language<br/>pass/fail rubrics"]
-    C["🚀 Run Experiment<br/>Pick dataset + graders<br/>+ model"]
+    P["💬 Author Prompts<br/>System + user messages<br/>Model + parameters"]
+    C["🚀 Run Experiment<br/>Pick dataset + graders<br/>+ prompt + judge model"]
     D["📊 Review Results<br/>Dense table · charts<br/>CSV export"]
 
-    A --> B --> C --> D
+    A --> B --> P --> C --> D
 ```
 
 ### System Flow
@@ -33,15 +34,18 @@ flowchart LR
 flowchart TD
     UI["Frontend<br/>(React + TanStack Query)"]
     API["API<br/>(Hono · SSE endpoint)"]
-    Runner["Runner<br/>(p-queue: 2 experiments<br/>4 LLM calls each)"]
-    LLM["LLM Judge<br/>(OpenRouter)"]
-    DB["PostgreSQL<br/>(pinned revision)"]
+    Runner["Runner<br/>(p-queue: 2 experiments)"]
+    Gen["Phase 1 — Generate<br/>(prompt model · concurrency 2)<br/>input → LLM output"]
+    Judge["Phase 2 — Grade<br/>(judge model · concurrency 4)<br/>output + rubric → verdict"]
+    DB["PostgreSQL<br/>(pinned revision + prompt version)"]
 
-    UI -->|"POST /experiments<br/>(creates + enqueues runner)"| API
+    UI -->|"POST /experiments<br/>(dataset + graders + prompt + judge model)"| API
     API --> Runner
-    Runner -->|"rubric + item attributes"| LLM
-    LLM -->|"structured verdict<br/>(pass/fail + reasoning)"| Runner
-    Runner -->|"save results"| DB
+    Runner --> Gen
+    Gen -->|"generated output per item"| Runner
+    Runner --> Judge
+    Judge -->|"structured verdict<br/>(pass/fail + reason)"| Runner
+    Runner -->|"save outputs + results"| DB
     Runner -->|"emit progress events"| API
     API -->|"real-time updates via SSE"| UI
     UI -->|"GET results when complete"| API
@@ -171,8 +175,7 @@ The seed script creates both prompts automatically (the Professional Agent gets 
 - **Job queue** — Replace in-process p-queue with BullMQ + Redis. Current setup loses jobs on restart and doesn't scale horizontally.
 - **Revision storage** — Switch from full-copy revisions to a log-based approach (append-only deltas). Current model duplicates all items per revision.
 - **Results storage** — Move experiment results to a columnar store (ClickHouse) for faster analytical queries at scale.
-- **Prompt playground** — Add an interactive playground so users can execute prompts against models directly, iterate on outputs, and evaluate results in one workflow. (Prompt versioning and management is now implemented.)
-- **Re-run with a different model** — Allow re-running an existing experiment with a different LLM model to compare outputs across models without recreating the experiment.
+- **Prompt playground** — Add an interactive playground to test prompts against models, iterate on outputs, and preview results before running a full experiment.
 
 ## License
 

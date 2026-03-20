@@ -381,7 +381,7 @@ PromptVersion ──< Experiment                 (one-to-many via promptVersionI
 14. **Version number uniqueness:** Within a prompt, `(promptId, version)` uniquely identifies exactly one `PromptVersion`. No two versions of the same prompt share a version number
 15. **Prompt version pinning:** An experiment's `promptVersionId` is set at creation time and never changes. Editing a prompt after experiment creation (creating a new version) does not affect any existing experiment's `promptVersionId`
 16. **Output uniqueness:** Within an experiment, `(experimentId, datasetRevisionItemId)` uniquely identifies exactly one `ExperimentOutput`. Enforced at the database level
-17. **Phase ordering:** For experiments with a prompt, all Phase 1 generation tasks complete before any Phase 2 grading task begins. Enforced by the runner — the grading queue does not start until the generation queue drains
+17. **Pipelined execution:** For experiments with a prompt, each item's grading tasks are enqueued immediately after that item's generation completes. Generation and grading run concurrently across items — grading does not wait for all generations to finish. Each item's grading always uses that item's finalized output
 18. **Output ownership:** `ExperimentOutput` records belong exclusively to their experiment. Reruns create new output records on the new experiment; original outputs are preserved unchanged
 
 ---
@@ -608,7 +608,7 @@ Experiment Queue (concurrency: 2)
     ▼
 Phase 1 — LLM Run Queue (concurrency: 2)
     │  for each item: substitute {input} → call prompt model → store ExperimentOutput
-    │  (all items complete before Phase 2 starts)
+    │  (each item's grading tasks enqueued immediately on completion — pipelined)
     ▼
 Phase 2 — Evaluation Queue (concurrency: 4)
     │  for each item × grader: send generated output + expected_output ref → LLM judge
@@ -630,7 +630,7 @@ LLM Judge call → verdict + reason → ExperimentResult
 - Created fresh for each experiment run
 - One task per dataset item — substitutes `{input}` into the prompt's `userPrompt`, calls the prompt's model with `systemPrompt` and `modelParams`, stores `ExperimentOutput`
 - Failures are caught per-item: the item's output is stored with `error` set; processing continues for other items
-- The entire Phase 1 queue drains (`await Promise.all(tasks)`) before Phase 2 begins
+- As each item's generation completes, its grading tasks are immediately enqueued into the evaluation queue — Phase 2 runs concurrently with remaining Phase 1 work
 - Items that errored in Phase 1 are not added to Phase 2 grading tasks; their grading cells are immediately written as `verdict: "error"`
 
 ### Level 3: Evaluation Queue — Phase 2

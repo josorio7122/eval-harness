@@ -2,7 +2,7 @@
 
 ## Goal
 
-When this system is complete, a user can manage datasets of structured test cases, define graders with rubrics that instruct an LLM judge, and run experiments that evaluate every dataset item against selected graders — producing a pass/fail verdict and reason for each item–grader pair. Results are displayed in a table with per-grader pass rates, per-item pass summaries, and overall experiment statistics. The user can filter results by outcome, import and export dataset items via CSV, and export experiment results as CSV. All state persists in-memory for the session.
+When this system is complete, a user can manage datasets of structured test cases, define graders with rubrics that instruct an LLM judge, and run experiments that evaluate every dataset item against selected graders — producing a pass/fail verdict and reason for each item–grader pair. Results are displayed in a table with per-grader pass rates, per-item pass summaries, and overall experiment statistics. The user can filter results by outcome, import and export dataset items via CSV, and export experiment results as CSV. All state persists in PostgreSQL.
 
 ## Behaviors
 
@@ -417,7 +417,7 @@ These describe what the user provides and what the system surfaces — not inter
 
 - **PromptVersionPinning:** When the user selects a prompt during experiment creation, the system records the ID of that prompt's latest version at the exact moment the experiment is created. Subsequent edits to the prompt (which create new versions) do not affect the experiment. The pinned version is immutable for the lifetime of the experiment.
 
-- **LLMRunPhase:** Experiment execution proceeds in two sequential phases. Phase 1 (Generation): for each dataset item, the item's `input` value is substituted into the prompt version's `userPrompt` template (replacing the `{input}` placeholder) and sent to the prompt version's model with its `systemPrompt` and `modelParams`. The LLM response is the item's generated output. All generation calls complete before Phase 2 begins. Phase 2 (Grading): the generated output from Phase 1 is used as the response being judged. The item's `expected_output` is still passed to the judge as reference context.
+- **LLMRunPhase:** Experiment execution uses a pipelined two-phase approach. Phase 1 (Generation): for each dataset item, the item's `input` value is substituted into the prompt version's `userPrompt` template (replacing the `{input}` placeholder) and sent to the prompt version's model with its `systemPrompt` and `modelParams`. The LLM response is the item's generated output. As each generation completes, that item's grading tasks are immediately enqueued — grading does not wait for all generations to finish. Phase 2 (Grading): the generated output is used as the response being judged. The item's `expected_output` is still passed to the judge as reference context.
 
 - **OutputStorage:** After Phase 1 completes for an item, the generated output is stored and associated with that item within the experiment. Stored outputs are never overwritten by reruns — each experiment owns its own set of outputs.
 
@@ -459,7 +459,7 @@ These describe what the user provides and what the system surfaces — not inter
 1. **Prompt is required:** Selecting a prompt on experiment creation is required. Every experiment runs the prompt against the dataset to generate outputs, then grades those outputs.
 2. **Latest version pinned at creation:** When a prompt is selected, the system always pins the latest version at the moment of experiment creation. There is no UI for selecting a specific past version during experiment creation.
 3. **Template convention:** The `{input}` placeholder in the prompt's `userPrompt` is the only substitution performed. No other dataset attributes are substituted into the prompt template. Custom attributes remain available only to the judge, not to the generation model.
-4. **Two-phase ordering:** Phase 1 (all generation calls) completes before Phase 2 (all grading calls) begins for a given experiment. This ensures grading always uses finalized outputs.
+4. **Pipelined execution:** As each item's generation completes, its grading tasks are immediately enqueued. Generation and grading run concurrently across items — grading does not wait for all generations to finish. Each item's grading always uses that item's finalized output.
 5. **Output stored separately:** Generated outputs are stored in a dedicated entity (not inside `ExperimentResult`), because one output is shared across all graders for that item.
 6. **Generation model comes from the prompt version:** The model used in Phase 1 is the one stored on the pinned `PromptVersion` (its `modelId` and `modelParams`). The experiment's `modelId` continues to identify the judge model used in Phase 2.
 7. **Rerun pins latest version:** Reruns always pin the latest version of the original prompt — they do not preserve the originally pinned version. This is consistent with how reruns reference the dataset's latest revision.
