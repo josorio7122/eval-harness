@@ -404,7 +404,7 @@ These describe what the user provides and what the system surfaces — not inter
 3. **Full-snapshot versioning:** Every version stores the complete prompt content (system prompt, user prompt, model ID, model parameters). There are no partial updates or diffs between versions.
 4. **Name change does not create a version:** Renaming a prompt updates only the parent metadata. It does not affect versions or create a new version.
 5. **Model parameters are optional:** If not provided, the LLM's default parameters are used. The `modelParams` field defaults to an empty object `{}`.
-6. **Prompt-experiment linking:** Prompts can optionally be selected when creating an experiment. See the Prompt-Experiment Integration section for full details.
+6. **Prompt-experiment linking:** Selecting a prompt when creating an experiment is required. See the Prompt-Experiment Integration section for full details.
 7. **Deletion safety:** Prompts are soft-deleted — hidden from lists but preserved in the database. Experiments pinned to a prompt version continue to reference that version after soft-deletion.
 
 ---

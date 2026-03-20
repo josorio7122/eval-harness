@@ -314,7 +314,7 @@ experiments:
     command: |
       curl -X POST http://localhost:3001/experiments \
         -H "Content-Type: application/json" \
-        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": [], "promptId": ":promptId"}'
+        -d '{"name": "bad-exp", "datasetId": ":datasetId", "graderIds": [], "modelId": "openai/gpt-4o", "promptId": ":promptId"}'
     expected_status: 400
 
   create_invalid_dataset:
@@ -373,7 +373,7 @@ experiments:
     command: |
       curl -X POST http://localhost:3001/experiments/:id/rerun
     expected_status: 201
-    notes: "New experiment gets a derived name (e.g. 'eval-run-1 (2)'). Original is unchanged. Creates a new experiment pinned to the dataset's LATEST revision (not the original experiment's revision)."
+    notes: "New experiment gets a derived name (e.g. 'eval-run-1 (re-run)'). Original is unchanged. Creates a new experiment pinned to the dataset's LATEST revision (not the original experiment's revision)."
 
   delete:
     description: "Delete experiment and all its results"

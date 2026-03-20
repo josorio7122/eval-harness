@@ -26,23 +26,27 @@ Dataset (unique name)
 Prompt (unique name)
   │
   └── PromptVersion (immutable snapshot, version, systemPrompt, userPrompt, modelId, modelParams)
+
+PromptVersion ──< Experiment (via promptVersionId)
+Experiment ──< ExperimentOutput
 ```
 
 _Dataset, Grader, and Experiment include a `deletedAt` field for soft delete. Soft-deleted records are excluded from all list and lookup queries._
 
 ### Entities
 
-| Entity                | Purpose                                                    | Key fields                                                                                                                       | Constraints                                                                  |
-| --------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                                     | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
-| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                                                      | No updates — every mutation creates a new revision                           |
-| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                                                         | `itemId` is preserved across revisions to track the same logical row         |
-| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`, `deletedAt` (DateTime?)                                                                         | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
-| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId`, `deletedAt` (DateTime?)          | Status transitions: queued → running → complete/failed                       |
-| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                                                          | —                                                                            |
-| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                                                             | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`                     |
-| `Prompt`              | Reusable prompt template with model config                 | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                                     | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
-| `PromptVersion`       | Immutable snapshot of prompt content                       | `version` (Int), `systemPrompt`, `userPrompt`, `modelId`, `modelParams` (JSON: { temperature?, maxTokens?, topP? }), `createdAt` | No updates — every edit creates a new version                                |
+| Entity                | Purpose                                                    | Key fields                                                                                                                                         | Constraints                                                                  |
+| --------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Dataset`             | Top-level container for a dataset                          | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                                                       | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `DatasetRevision`     | Immutable snapshot of the dataset at a point in time       | `schemaVersion` (Int), `attributes` (String[]), `createdAt`                                                                                        | No updates — every mutation creates a new revision                           |
+| `DatasetRevisionItem` | A single row within a revision                             | `itemId` (UUID, stable), `values` (JSON)                                                                                                           | `itemId` is preserved across revisions to track the same logical row         |
+| `Grader`              | Evaluation criterion with rubric text used as judge prompt | `name`, `description`, `rubric`, `deletedAt` (DateTime?)                                                                                           | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `Experiment`          | A run definition, pinned to a specific revision            | `name`, `status` (queued/running/complete/failed), `datasetId`, `datasetRevisionId`, `modelId`, `promptVersionId` (UUID?), `deletedAt` (DateTime?) | Status transitions: queued → running → complete/failed                       |
+| `ExperimentGrader`    | Junction between Experiment and Grader                     | composite PK `(experimentId, graderId)`                                                                                                            | —                                                                            |
+| `ExperimentResult`    | Verdict for one (item × grader) cell                       | `verdict` (String), `reason` (String, default: `""`)                                                                                               | UNIQUE `(experimentId, datasetRevisionItemId, graderId)`                     |
+| `ExperimentOutput`    | LLM-generated output for one item within an experiment     | `experimentId` (UUID), `datasetRevisionItemId` (UUID), `output` (String), `error` (String?)                                                        | UNIQUE `(experimentId, datasetRevisionItemId)`                               |
+| `Prompt`              | Reusable prompt template with model config                 | `id` (UUID), `name`, `deletedAt` (DateTime?)                                                                                                       | `name` UNIQUE among active records (partial index where `deletedAt IS NULL`) |
+| `PromptVersion`       | Immutable snapshot of prompt content                       | `version` (Int), `systemPrompt`, `userPrompt`, `modelId`, `modelParams` (JSON: { temperature?, maxTokens?, topP? }), `createdAt`                   | No updates — every edit creates a new version                                |
 
 ### Soft Delete
 
@@ -146,7 +150,7 @@ async function tryCatch<T>(fn: () => Promise<Result<T>>): Promise<Result<T>> {
 Services are constructed as factory functions in `index.ts`:
 
 ```typescript
-const experimentRunner = createExperimentRunner(experimentRepository, evaluate)
+const experimentRunner = createExperimentRunner(experimentRepository, evaluate, generateOutput)
 const experimentService = createExperimentService({
   repo: experimentRepository,
   datasetRepo: datasetRepository,
@@ -160,21 +164,23 @@ const experimentRouter = createExperimentRouter(experimentService)
 
 `apps/api/src/experiments/runner.ts`
 
-Two-level queue using `p-queue`:
+Three-level queue using `p-queue`:
 
 ```
 experimentQueue  (concurrency: 2)   — limits parallel experiments
-  └── evalQueue  (concurrency: 4)   — created fresh per experiment run; limits parallel LLM calls
+  ├── genQueue   (concurrency: 2)   — created fresh per experiment run; limits parallel generation calls (Phase 1)
+  └── evalQueue  (concurrency: 4)   — created fresh per experiment run; limits parallel grading calls (Phase 2)
 ```
 
 Flow:
 
-1. `POST /experiments` creates the experiment and immediately calls `runner.enqueue({ experimentId, datasetItems, graders, modelId })`.
+1. `POST /experiments` creates the experiment and immediately calls `runner.enqueue({ experimentId, datasetItems, graders, modelId, promptVersion })`.
 2. `runner.enqueue` adds to `experimentQueue`; status starts as `queued`.
-3. When the experiment slot opens: status → `running`, a new `evalQueue` is created for this run, emit `progress` events per cell.
-4. All item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls).
-5. On completion: status → `complete` (or `failed` if all cells errored), emit `completed`/`error` event.
-6. Progress events are emitted on `experimentEvents` (a Node.js `EventEmitter`) keyed by experiment ID.
+3. When the experiment slot opens: status → `running`.
+4. **Phase 1 (Generation):** All items are scheduled onto `genQueue` (2 concurrent LLM calls). For each item, the `{input}` placeholder in the prompt's `userPrompt` is substituted and sent to the generation model. Generated outputs are stored as `ExperimentOutput` records.
+5. **Phase 2 (Grading):** After all generation calls complete, all item × grader cells are scheduled onto `evalQueue` (4 concurrent LLM calls). Each grading call uses the generated output from Phase 1 as the response to evaluate.
+6. On completion: status → `complete` (or `failed` if all cells errored), emit `completed`/`error` event.
+7. Progress events are emitted on `experimentEvents` (a Node.js `EventEmitter`) keyed by experiment ID.
 
 ### Evaluator
 
@@ -207,7 +213,7 @@ Two templates with `{variable}` placeholders replaced via `String.prototype.repl
 
 Required item attributes: `input`, `expected_output`. Any additional attributes are rendered as a `## Additional Context` section appended to the user message.
 
-> **Note:** The `expected_output` attribute is rendered in the prompt under the heading **"Response"** — not as "expected_output". This is intentional: the judge sees it as the candidate response to evaluate, without framing that reveals the test structure.
+> **Note:** When a prompt is present, the judge's user message labels the LLM-generated output (from Phase 1) as **"Response"** and includes the item's `expected_output` as **"Reference Output"** — giving the judge context to evaluate correctness without conflating the candidate response with the reference. The judge is explicitly told it is evaluating the generated response, not the reference.
 
 ### SSE (Server-Sent Events)
 

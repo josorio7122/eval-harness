@@ -11,6 +11,7 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 - Review results in a dense table — rows are items, columns are graders, cells show pass/fail verdicts
 - Dataset versioning via immutable revisions — experiments pin to a snapshot, so results are reproducible
 - Author versioned prompts — pair system and user messages with model configuration, with full version history
+- Prompt-experiment integration — every experiment requires a prompt; the prompt drives LLM generation per item (Phase 1), and the generated output is then graded (Phase 2)
 
 ## Workflow
 
@@ -94,7 +95,7 @@ cp .env.example .env
 # Edit .env with your OPENROUTER_API_KEY
 
 # 4. Push database schema
-pnpm --filter db exec prisma db push
+pnpm --filter db exec prisma migrate dev
 
 # 5. Start development servers
 pnpm dev

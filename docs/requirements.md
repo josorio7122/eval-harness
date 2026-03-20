@@ -30,8 +30,8 @@ Build a lightweight eval harness for running LLM graders against test cases.
 ### Prompt-Experiment Integration
 
 - [x] Prompts are a standalone entity with versioning (system prompt, user prompt, model, model params)
-- [ ] Select a prompt when creating an experiment (required — every experiment must have a prompt)
-- [ ] When a prompt is selected, pin its latest version at experiment creation time
-- [ ] For each dataset item, substitute the item's `input` into the prompt's user prompt template and call the LLM — producing an actual generated output
-- [ ] Grade the LLM-generated output, not the dataset's `expected_output` (the `expected_output` becomes reference context for the judge, not the response being evaluated)
-- [ ] Store and display the generated output per dataset item in the results table
+- [x] Select a prompt when creating an experiment (required — every experiment must have a prompt)
+- [x] When a prompt is selected, pin its latest version at experiment creation time
+- [x] For each dataset item, substitute the item's `input` into the prompt's user prompt template and call the LLM — producing an actual generated output
+- [x] Grade the LLM-generated output, not the dataset's `expected_output` (the `expected_output` becomes reference context for the judge, not the response being evaluated)
+- [x] Store and display the generated output per dataset item in the results table
