@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-import { type Result } from '@eval-harness/shared'
 
 const MODEL_ID = 'openai/gpt-4o'
 import { datasetRepository as datasetRepo } from '../../datasets/repository.js'
@@ -7,15 +6,9 @@ import { graderRepository as graderRepo } from '../../graders/repository.js'
 import { experimentRepository as experimentRepo } from '../../experiments/repository.js'
 import { createPromptRepository } from '../../prompts/repository.js'
 import { prisma } from '../../lib/prisma.js'
+import { unwrap } from './helpers.js'
 
 const promptRepo = createPromptRepository(prisma)
-
-/** Extract data from Result, fail test if not successful */
-function unwrap<T>(result: Result<T>): T {
-  expect(result.success).toBe(true)
-  if (!result.success) throw new Error(result.error)
-  return result.data
-}
 
 let counter = 0
 

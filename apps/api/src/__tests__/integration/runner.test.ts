@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { type Result } from '@eval-harness/shared'
 
 const MODEL_ID = 'openai/gpt-4o'
 import { experimentRepository } from '../../experiments/repository.js'
@@ -8,15 +7,9 @@ import { graderRepository } from '../../graders/repository.js'
 import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentRunner } from '../../experiments/runner.js'
 import { prisma } from '../../lib/prisma.js'
+import { unwrap } from './helpers.js'
 
 const promptRepository = createPromptRepository(prisma)
-
-/** Extract data from Result, fail test if not successful */
-function unwrap<T>(result: Result<T>): T {
-  expect(result.success).toBe(true)
-  if (!result.success) throw new Error(result.error)
-  return result.data
-}
 
 type EvaluateFn = Parameters<typeof createExperimentRunner>[1]
 type GenerateFn = Parameters<typeof createExperimentRunner>[2]

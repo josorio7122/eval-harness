@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { type Result } from '@eval-harness/shared'
 import { prisma } from '../../lib/prisma.js'
+import { unwrap } from './helpers.js'
 
 // These imports will fail until implementation exists — that's the RED phase
 import { createPromptRepository } from '../../prompts/repository.js'
@@ -10,13 +10,6 @@ import { createPromptRouter } from '../../prompts/router.js'
 const repo = createPromptRepository(prisma)
 const service = createPromptService(repo)
 const app = createPromptRouter(service)
-
-/** Extract data from Result, fail test if not successful */
-function unwrap<T>(result: Result<T>): T {
-  expect(result.success).toBe(true)
-  if (!result.success) throw new Error(result.error)
-  return result.data
-}
 
 function jsonPost(path: string, body: unknown) {
   return app.request(path, {

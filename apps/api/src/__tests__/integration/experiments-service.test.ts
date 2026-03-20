@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest'
-import { type Result } from '@eval-harness/shared'
 
 const MODEL_ID = 'openai/gpt-4o'
 import { datasetRepository } from '../../datasets/repository.js'
@@ -8,13 +7,7 @@ import { experimentRepository } from '../../experiments/repository.js'
 import { createPromptRepository } from '../../prompts/repository.js'
 import { createExperimentService } from '../../experiments/service.js'
 import { prisma } from '../../lib/prisma.js'
-
-/** Extract data from Result, fail test if not successful */
-function unwrap<T>(result: Result<T>): T {
-  expect(result.success).toBe(true)
-  if (!result.success) throw new Error(result.error)
-  return result.data
-}
+import { unwrap } from './helpers.js'
 
 /** Extract id from an unknown data shape; fails test if missing */
 function idOf(data: unknown): string {

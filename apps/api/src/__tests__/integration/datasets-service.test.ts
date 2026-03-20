@@ -1,14 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { type Result } from '@eval-harness/shared'
 import { datasetRepository } from '../../datasets/repository.js'
 import { createDatasetService } from '../../datasets/service.js'
-
-/** Extract data from Result, fail test if not successful */
-function unwrap<T>(result: Result<T>): T {
-  expect(result.success).toBe(true)
-  if (!result.success) throw new Error(result.error)
-  return result.data
-}
+import { unwrap } from './helpers.js'
 
 const service = createDatasetService(datasetRepository)
 

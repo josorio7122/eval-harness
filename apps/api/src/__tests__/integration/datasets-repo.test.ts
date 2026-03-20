@@ -1,13 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { type Result } from '@eval-harness/shared'
 import { datasetRepository as repo } from '../../datasets/repository.js'
-
-/** Extract data from Result, fail test if not successful */
-function unwrap<T>(result: Result<T>): T {
-  expect(result.success).toBe(true)
-  if (!result.success) throw new Error(result.error)
-  return result.data
-}
+import { unwrap } from './helpers.js'
 
 describe('datasets repository (integration)', () => {
   // 1. create → initial revision with schemaVersion=1, default attributes, 0 items
