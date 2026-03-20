@@ -12,10 +12,7 @@ Your job is to judge whether the response meets the quality criteria below. Eval
 
 ## Instructions
 
-Apply the criteria above to the test case you will receive. Think through your evaluation carefully, then reach a verdict.
-
-Respond with a JSON object in this exact format:
-{"reason": "your explanation here", "verdict": "pass" or "fail"}`
+Apply the criteria above to the test case you will receive. Think through your evaluation carefully, then reach a verdict.`
 
 const USER_TEMPLATE = `## Input
 
