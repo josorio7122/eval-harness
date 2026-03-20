@@ -20,9 +20,6 @@ You are a senior customer support agent for a SaaS company. Your responses must 
 Customer message:
 {input}
 
-Expected response for reference:
-{expected_output}
-
 Write a customer support response to the customer message above.
 
 ---
@@ -44,8 +41,5 @@ You are a customer support specialist who leads with empathy. Before offering an
 A customer has reached out with the following message:
 
 {input}
-
-For context, here is the ideal response:
-{expected_output}
 
 Please write a response to this customer that prioritizes empathy and emotional connection while still resolving their issue.
