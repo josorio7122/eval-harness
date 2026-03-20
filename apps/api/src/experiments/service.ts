@@ -40,22 +40,23 @@ export function createExperimentService(deps: {
     }))
 
     if (items.length > 0) {
-      const enqueuePayload = {
+      if (!exp.promptVersion) {
+        logger.warn({ experimentId }, 'enqueue skipped: missing promptVersion')
+        return
+      }
+
+      void runner.enqueue({
         experimentId,
         datasetItems: items,
         graders: graderList,
         modelId: exp.modelId,
-        promptVersion: exp.promptVersion
-          ? {
-              systemPrompt: exp.promptVersion.systemPrompt,
-              userPrompt: exp.promptVersion.userPrompt,
-              modelId: exp.promptVersion.modelId,
-              modelParams: exp.promptVersion.modelParams as Record<string, unknown>,
-            }
-          : null,
-      }
-      // CAST: runner type will be updated in Phase 4 to accept promptVersion
-      void runner.enqueue(enqueuePayload as Parameters<typeof runner.enqueue>[0])
+        promptVersion: {
+          systemPrompt: exp.promptVersion.systemPrompt,
+          userPrompt: exp.promptVersion.userPrompt,
+          modelId: exp.promptVersion.modelId,
+          modelParams: exp.promptVersion.modelParams as Record<string, unknown>,
+        },
+      })
     }
   }
 
@@ -72,8 +73,11 @@ export function createExperimentService(deps: {
       promptId: string
     }) {
       return tryCatch(async () => {
+        const promptResult = await promptRepo.findById(input.promptId)
+        if (!promptResult.success) return fail('Prompt not found')
+
         const latestVersionResult = await promptRepo.findLatestVersion(input.promptId)
-        if (!latestVersionResult.success) return fail('Prompt not found')
+        if (!latestVersionResult.success) return fail('Prompt has no versions')
         const latestVersion = latestVersionResult.data
 
         if (!latestVersion.userPrompt.includes('{input}')) {
@@ -122,13 +126,13 @@ export function createExperimentService(deps: {
         if (!expResult.success) return expResult
         const experiment = expResult.data
 
-        const promptId = experiment.promptVersion?.prompt.id
-        let promptVersionId: string | undefined
-        if (promptId) {
-          const latestVersionResult = await promptRepo.findLatestVersion(promptId)
-          if (!latestVersionResult.success) return fail('Prompt not found')
-          promptVersionId = latestVersionResult.data.id
+        const promptId = experiment.promptVersion.prompt.id
+        const latestVersionResult = await promptRepo.findLatestVersion(promptId)
+        if (!latestVersionResult.success) return fail('Prompt not found')
+        if (!latestVersionResult.data.userPrompt.includes('{input}')) {
+          return fail('Prompt template must include {input} placeholder')
         }
+        const promptVersionId = latestVersionResult.data.id
 
         const revisionsResult = await datasetRepo.findRevisions(experiment.datasetId)
         if (!revisionsResult.success) return revisionsResult
@@ -142,7 +146,7 @@ export function createExperimentService(deps: {
           datasetRevisionId,
           graderIds,
           modelId: experiment.modelId,
-          promptVersionId: promptVersionId ?? '',
+          promptVersionId,
         })
         if (createResult.success) {
           void enqueueExperiment(createResult.data.id)

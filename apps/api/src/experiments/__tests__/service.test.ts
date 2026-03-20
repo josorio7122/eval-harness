@@ -130,6 +130,7 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -203,6 +204,7 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -235,7 +237,7 @@ describe('createExperiment', () => {
   })
 
   it('fails when prompt not found', async () => {
-    mockPromptRepo.findLatestVersion.mockResolvedValue(fail('Prompt not found'))
+    mockPromptRepo.findById.mockResolvedValue(fail('Prompt not found'))
     const result = await service.createExperiment({
       name: 'exp1',
       datasetId: VALID_UUID_2,
@@ -246,7 +248,21 @@ describe('createExperiment', () => {
     expect(result).toEqual({ success: false, error: 'Prompt not found' })
   })
 
+  it('fails when prompt has no versions', async () => {
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
+    mockPromptRepo.findLatestVersion.mockResolvedValue(fail('No versions'))
+    const result = await service.createExperiment({
+      name: 'exp1',
+      datasetId: VALID_UUID_2,
+      graderIds: [VALID_UUID_3],
+      modelId: MODEL_ID,
+      promptId: PROMPT_UUID,
+    })
+    expect(result).toEqual({ success: false, error: 'Prompt has no versions' })
+  })
+
   it('fails when prompt template missing {input} placeholder', async () => {
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -276,6 +292,7 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-42',
@@ -307,6 +324,7 @@ describe('createExperiment', () => {
   })
 
   it('fails when dataset not found', async () => {
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -334,6 +352,7 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [],
     }
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -362,6 +381,7 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -392,6 +412,7 @@ describe('createExperiment', () => {
       attributes: ['input', 'expected_output'],
       items: [{ id: 'item1' }],
     }
+    mockPromptRepo.findById.mockResolvedValue(ok({ id: PROMPT_UUID, name: 'p1' }))
     mockPromptRepo.findLatestVersion.mockResolvedValue(
       ok({
         id: 'pv-1',
@@ -601,6 +622,41 @@ describe('rerunExperiment', () => {
     mockDatasetRepo.findRevisions.mockResolvedValue(ok([]))
     const result = await service.rerunExperiment(VALID_UUID)
     expect(result).toEqual({ success: false, error: 'Dataset has no revisions' })
+  })
+
+  it('rerunExperiment fails when new prompt version missing {input} placeholder', async () => {
+    const original = {
+      id: VALID_UUID,
+      name: 'exp1',
+      status: 'done',
+      datasetId: VALID_UUID_2,
+      modelId: 'google/gemini-2.5-flash',
+      graders: [{ graderId: VALID_UUID_3 }],
+      promptVersion: {
+        prompt: { id: 'prompt-1' },
+        id: 'pv-1',
+        version: 1,
+        systemPrompt: 'sys',
+        userPrompt: 'Answer: {input}',
+        modelId: 'test/m',
+        modelParams: {},
+      },
+    }
+    mockRepo.findById.mockResolvedValue(ok(original))
+    mockPromptRepo.findLatestVersion.mockResolvedValue(
+      ok({
+        id: 'pv-2',
+        userPrompt: 'Answer the question please',
+        systemPrompt: 'sys',
+        modelId: 'test/m',
+        modelParams: {},
+      }),
+    )
+    const result = await service.rerunExperiment(VALID_UUID)
+    expect(result).toEqual({
+      success: false,
+      error: 'Prompt template must include {input} placeholder',
+    })
   })
 })
 
