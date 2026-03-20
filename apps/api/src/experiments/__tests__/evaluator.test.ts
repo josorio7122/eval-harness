@@ -1,21 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('ai', () => ({
-  generateObject: vi.fn(),
+  generateText: vi.fn(),
+  Output: {
+    object: vi.fn().mockReturnValue('mock-output-config'),
+  },
 }))
 
 vi.mock('@openrouter/ai-sdk-provider', () => ({
   createOpenRouter: vi.fn(() => vi.fn((model: string) => ({ model }))),
 }))
 
-import { generateObject } from 'ai'
+import { generateText, Output } from 'ai'
 import { evaluate } from '../evaluator.js'
 
-const mockGenerateObject = vi.mocked(generateObject)
+const mockGenerateText = vi.mocked(generateText)
 
 beforeEach(() => {
   vi.resetAllMocks()
   vi.unstubAllEnvs()
+  vi.mocked(Output.object).mockReturnValue('mock-output-config' as never)
 })
 
 afterEach(() => {
@@ -23,10 +27,11 @@ afterEach(() => {
 })
 
 describe('evaluate', () => {
-  it('calls generateObject with correct model and messages', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: { verdict: 'pass', reason: 'good' },
-    } as Awaited<ReturnType<typeof generateObject>>)
+  it('calls generateText with correct model and messages', async () => {
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'good' },
+      text: '{"verdict":"pass","reason":"good"}',
+    } as Awaited<ReturnType<typeof generateText>>)
 
     await evaluate({
       rubric: 'Check quality',
@@ -34,8 +39,8 @@ describe('evaluate', () => {
       modelId: 'openai/gpt-4o',
     })
 
-    expect(mockGenerateObject).toHaveBeenCalledOnce()
-    const call = mockGenerateObject.mock.calls[0][0]
+    expect(mockGenerateText).toHaveBeenCalledOnce()
+    const call = mockGenerateText.mock.calls[0][0]
     // CAST: openrouter mock returns { model: string }, not a real LanguageModel
     expect((call.model as unknown as { model: string }).model).toBe('openai/gpt-4o')
     const messages = call.messages!
@@ -46,10 +51,11 @@ describe('evaluate', () => {
     expect(messages[1].content).toContain('bar')
   })
 
-  it('returns the verdict object directly from generateObject', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: { verdict: 'pass', reason: 'Looks good' },
-    } as Awaited<ReturnType<typeof generateObject>>)
+  it('returns the verdict object directly from generateText', async () => {
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'Looks good' },
+      text: '{"verdict":"pass","reason":"Looks good"}',
+    } as Awaited<ReturnType<typeof generateText>>)
 
     const result = await evaluate({
       rubric: 'Grade this response',
@@ -60,10 +66,11 @@ describe('evaluate', () => {
     expect(result).toEqual({ verdict: 'pass', reason: 'Looks good' })
   })
 
-  it('returns fail verdict from generateObject', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: { verdict: 'fail', reason: 'Does not match' },
-    } as Awaited<ReturnType<typeof generateObject>>)
+  it('returns fail verdict from generateText', async () => {
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'fail', reason: 'Does not match' },
+      text: '{"verdict":"fail","reason":"Does not match"}',
+    } as Awaited<ReturnType<typeof generateText>>)
 
     const result = await evaluate({
       rubric: 'Grade this response',
@@ -75,9 +82,10 @@ describe('evaluate', () => {
   })
 
   it('passes output to buildUserMessage when provided', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: { verdict: 'pass', reason: 'ok' },
-    } as Awaited<ReturnType<typeof generateObject>>)
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+      text: '{"verdict":"pass","reason":"ok"}',
+    } as Awaited<ReturnType<typeof generateText>>)
 
     await evaluate({
       rubric: 'Check quality',
@@ -86,16 +94,17 @@ describe('evaluate', () => {
       output: 'generated response from LLM',
     })
 
-    const call = mockGenerateObject.mock.calls[0][0]
+    const call = mockGenerateText.mock.calls[0][0]
     const messages = call.messages!
     expect(messages[1].content).toContain('## Response\n\ngenerated response from LLM')
     expect(messages[1].content).toContain('## Reference Output\n\nreference answer')
   })
 
   it('does not include Reference Output section when no output provided', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: { verdict: 'pass', reason: 'ok' },
-    } as Awaited<ReturnType<typeof generateObject>>)
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+      text: '{"verdict":"pass","reason":"ok"}',
+    } as Awaited<ReturnType<typeof generateText>>)
 
     await evaluate({
       rubric: 'Check quality',
@@ -103,14 +112,14 @@ describe('evaluate', () => {
       modelId: 'openai/gpt-4o',
     })
 
-    const call = mockGenerateObject.mock.calls[0][0]
+    const call = mockGenerateText.mock.calls[0][0]
     const messages = call.messages!
     expect(messages[1].content).toContain('## Response\n\nreference answer')
     expect(messages[1].content).not.toContain('## Reference Output')
   })
 
-  it('throws when generateObject rejects', async () => {
-    mockGenerateObject.mockRejectedValue(new Error('API error'))
+  it('throws when generateText rejects', async () => {
+    mockGenerateText.mockRejectedValue(new Error('API error'))
 
     await expect(
       evaluate({
@@ -138,9 +147,10 @@ describe('evaluate', () => {
   })
 
   it('passes modelId directly to openrouter with no fallback', async () => {
-    mockGenerateObject.mockResolvedValue({
-      object: { verdict: 'pass', reason: 'ok' },
-    } as Awaited<ReturnType<typeof generateObject>>)
+    mockGenerateText.mockResolvedValue({
+      output: { verdict: 'pass', reason: 'ok' },
+      text: '{"verdict":"pass","reason":"ok"}',
+    } as Awaited<ReturnType<typeof generateText>>)
 
     await evaluate({
       rubric: 'rubric',
@@ -148,7 +158,7 @@ describe('evaluate', () => {
       modelId: 'anthropic/claude-3-5-sonnet',
     })
 
-    const call = mockGenerateObject.mock.calls[0][0]
+    const call = mockGenerateText.mock.calls[0][0]
     // CAST: openrouter mock returns { model: string }, not a real LanguageModel
     expect((call.model as unknown as { model: string }).model).toBe('anthropic/claude-3-5-sonnet')
   })
