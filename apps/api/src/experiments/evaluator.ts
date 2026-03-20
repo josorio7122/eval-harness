@@ -2,6 +2,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { generateText } from 'ai'
 import { z } from 'zod'
 import { buildSystemPrompt, buildUserMessage } from './judge-template.js'
+import { logger } from '../lib/logger.js'
 
 const verdictSchema = z.object({
   reason: z.string(),
@@ -49,6 +50,8 @@ export const evaluate = async (params: {
 }): Promise<{ verdict: 'pass' | 'fail'; reason: string }> => {
   const { rubric, itemAttributes, modelId, output } = params
 
+  logger.info({ modelId, hasOutput: output != null }, 'evaluator: calling judge model')
+
   const result = await generateText({
     model: openrouter(modelId),
     messages: [
@@ -57,5 +60,22 @@ export const evaluate = async (params: {
     ],
   })
 
-  return parseVerdict(result.text)
+  logger.info(
+    { modelId, responseLength: result.text.length, responsePreview: result.text.slice(0, 200) },
+    'evaluator: judge response received',
+  )
+
+  try {
+    return parseVerdict(result.text)
+  } catch (err) {
+    logger.error(
+      {
+        modelId,
+        fullResponse: result.text,
+        error: err instanceof Error ? err.message : String(err),
+      },
+      'evaluator: failed to parse verdict',
+    )
+    throw err
+  }
 }
