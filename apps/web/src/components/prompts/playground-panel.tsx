@@ -75,7 +75,11 @@ export function PlaygroundPanel({ open, onClose, promptId, versions }: Playgroun
               }}
             >
               <SelectTrigger size="sm" className="flex-1 max-w-[280px]">
-                <SelectValue />
+                <SelectValue placeholder="Select a version…">
+                  {selectedVersion
+                    ? `v${selectedVersion.version} — ${selectedVersion.modelId}${selectedVersion.id === latestVersionId ? ' (Current)' : ''}`
+                    : null}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {versions.map((v) => (

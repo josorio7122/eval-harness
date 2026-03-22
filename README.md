@@ -12,6 +12,7 @@ A lightweight evaluation harness for running LLM graders against test datasets. 
 - Dataset versioning via immutable revisions — experiments pin to a snapshot, so results are reproducible
 - Author versioned prompts — pair system and user messages with model configuration, with full version history
 - Prompt-experiment integration — every experiment requires a prompt; the prompt drives LLM generation per item (Phase 1), and the generated output is then graded (Phase 2)
+- Prompt playground — test any prompt version interactively in a slide-over panel; send messages, inspect model responses, and iterate before committing to a full experiment run
 
 ## Workflow
 
@@ -175,7 +176,6 @@ The seed script creates both prompts automatically (the Professional Agent gets 
 - **Job queue** — Replace in-process p-queue with BullMQ + Redis. Current setup loses jobs on restart and doesn't scale horizontally.
 - **Revision storage** — Switch from full-copy revisions to a log-based approach (append-only deltas). Current model duplicates all items per revision.
 - **Results storage** — Move experiment results to a columnar store (ClickHouse) for faster analytical queries at scale.
-- **Prompt playground** — Add an interactive playground to test prompts against models, iterate on outputs, and preview results before running a full experiment.
 
 ## License
 
