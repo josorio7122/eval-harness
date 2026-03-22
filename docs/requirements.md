@@ -35,3 +35,18 @@ Build a lightweight eval harness for running LLM graders against test cases.
 - [x] For each dataset item, substitute the item's `input` into the prompt's user prompt template and call the LLM — producing an actual generated output
 - [x] Grade the LLM-generated output, not the dataset's `expected_output` (the `expected_output` becomes reference context for the judge, not the response being evaluated)
 - [x] Store and display the generated output per dataset item in the results table
+
+### Prompt Playground
+
+- [ ] Playground button on prompt detail view opens a slide-over chat panel from the right
+- [ ] User can select any saved prompt version to test (defaults to latest)
+- [ ] First message substitutes user input into the `userPrompt` template (`{input}` placeholder) and sends with `systemPrompt` as system message
+- [ ] Follow-up messages are plain text — no template re-application; full conversation history sent with each request
+- [ ] LLM responses stream token-by-token
+- [ ] User can stop streaming mid-response; partial response is kept
+- [ ] Uses the version's `modelId` and `modelParams` — no model override in playground
+- [ ] Conversations are ephemeral — not persisted to database; lost when panel closes
+- [ ] User can reset conversation and start fresh
+- [ ] System prompt displayed as read-only context at the top of the panel
+- [ ] Changing version clears the conversation
+- [ ] New streaming API endpoint (`POST /prompts/:id/playground`) — separate from experiment runner, no queuing

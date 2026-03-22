@@ -1097,3 +1097,137 @@ experiments:
     expected_status: 201
     notes: 'Creates a new experiment with derived name, original preserved'
 ```
+
+---
+
+## Prompt Playground
+
+### Overview
+
+The Prompt Playground adds a streaming chat interface to the prompt detail view. Users can test any saved prompt version in a multi-turn conversation. No new database entities — conversations are ephemeral.
+
+### API Endpoint
+
+**`POST /prompts/:id/playground`**
+
+Streaming endpoint for playground chat. Separate from experiment runner — no queuing.
+
+**Request:**
+
+```typescript
+{
+  versionId: string             // UUID — which PromptVersion to use
+  messages: Array<{             // Full conversation history from client
+    role: 'user' | 'assistant'
+    content: string
+  }>
+  isFirstMessage: boolean       // True → substitute into userPrompt template; False → send as plain message
+}
+```
+
+**Response:** Streaming `text/event-stream` — token-by-token text via Vercel AI SDK `streamText()`.
+
+**Validation:**
+
+- `versionId` must be a valid UUID referencing an existing PromptVersion belonging to prompt `:id`
+- `messages` must be a non-empty array; last message must have `role: 'user'`
+- `isFirstMessage` must be boolean
+
+### Message Construction
+
+**First message (`isFirstMessage: true`):**
+
+```typescript
+const userContent = promptVersion.userPrompt.replace(/\{input\}/g, messages[0].content)
+
+const llmMessages = [
+  { role: 'system', content: promptVersion.systemPrompt },
+  { role: 'user', content: userContent }
+]
+```
+
+**Follow-up messages (`isFirstMessage: false`):**
+
+```typescript
+// First user message was already substituted client-side in prior request
+// Server rebuilds the full history:
+const firstUserContent = promptVersion.userPrompt.replace(/\{input\}/g, messages[0].content)
+
+const llmMessages = [
+  { role: 'system', content: promptVersion.systemPrompt },
+  { role: 'user', content: firstUserContent },  // Always substitute the first message
+  ...messages.slice(1)                           // Rest are plain messages
+]
+```
+
+Note: The server always reconstructs the first message from the template to ensure consistency. The `isFirstMessage` flag tells the server whether the current request is the initial message (1 user message) or a follow-up (multiple messages in history).
+
+### Streaming Implementation
+
+Uses Vercel AI SDK `streamText()` with OpenRouter:
+
+```typescript
+import { streamText } from 'ai'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+
+const result = streamText({
+  model: openrouter(promptVersion.modelId),
+  messages: llmMessages,
+  ...(modelParams.temperature != null && { temperature: modelParams.temperature }),
+  ...(modelParams.maxTokens != null && { maxOutputTokens: modelParams.maxTokens }),
+  ...(modelParams.topP != null && { topP: modelParams.topP }),
+  abortSignal: c.req.raw.signal  // Support client-side abort
+})
+
+return result.toDataStreamResponse()
+```
+
+### Frontend Integration
+
+**Vercel AI SDK `useChat` hook:**
+
+The frontend uses `useChat` from `ai/react` which handles:
+- Streaming protocol parsing
+- Message state accumulation
+- Abort/stop functionality
+- Loading state management
+
+**Custom wrapper hook (`use-playground.ts`):**
+
+Wraps `useChat` with playground-specific logic:
+- Version selection state
+- First-message detection (tracks whether first message has been sent)
+- Reset functionality (clears messages + resets first-message flag)
+- Passes `versionId` and `isFirstMessage` as request body extras
+
+**Component structure:**
+
+```
+PromptDetail
+  └─ PlaygroundPanel (slide-over)
+       ├─ Version picker (dropdown, defaults to latest)
+       ├─ System prompt display (collapsible, read-only)
+       ├─ PlaygroundChat
+       │    └─ PlaygroundMessage (× N, user or assistant)
+       └─ PlaygroundInput (text field + send/stop buttons)
+```
+
+### Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| PromptVersion not found | 404 — `{ error: 'Version not found' }` |
+| Version doesn't belong to prompt | 404 — `{ error: 'Version not found' }` |
+| Empty messages array | 400 — `{ error: 'Messages required' }` |
+| Last message not from user | 400 — `{ error: 'Last message must be from user' }` |
+| LLM call fails mid-stream | Stream error event — client displays inline error |
+| Client aborts (stop button) | Server cancels LLM call via AbortSignal; partial response kept |
+
+### What This Feature Does NOT Add
+
+- No new database tables or entities
+- No new Prisma schema changes
+- No conversation persistence or history
+- No grading or evaluation
+- No experiment queue interaction
+- No model override — strictly uses version's model + params

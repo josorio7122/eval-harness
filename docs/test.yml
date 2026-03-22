@@ -474,6 +474,122 @@ prompts:
       curl http://localhost:3001/prompts/00000000-0000-0000-0000-000000000000
     expected_status: 404
 
+  # ── Prompt Playground ──────────────────────────────────────
+
+  prompt_playground:
+    description: "Streaming chat endpoint for testing prompt versions"
+
+    chat_first_message:
+      description: "Send first message — substitutes into userPrompt template, streams response"
+      command: |
+        curl -N -X POST http://localhost:3001/prompts/${PROMPT_ID}/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "${VERSION_ID}",
+            "messages": [{"role": "user", "content": "What is the capital of France?"}],
+            "isFirstMessage": true
+          }'
+      expected_status: 200
+      expected_headers: "content-type: text/event-stream"
+      notes: |
+        Response is a streaming text/event-stream.
+        The user message "What is the capital of France?" is substituted into the
+        version's userPrompt template (replacing {input}) and sent with the version's
+        systemPrompt, modelId, and modelParams.
+
+    chat_follow_up:
+      description: "Send follow-up message — plain text, no template substitution"
+      command: |
+        curl -N -X POST http://localhost:3001/prompts/${PROMPT_ID}/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "${VERSION_ID}",
+            "messages": [
+              {"role": "user", "content": "What is the capital of France?"},
+              {"role": "assistant", "content": "The capital of France is Paris."},
+              {"role": "user", "content": "What about Germany?"}
+            ],
+            "isFirstMessage": false
+          }'
+      expected_status: 200
+      expected_headers: "content-type: text/event-stream"
+      notes: |
+        Full conversation history sent. First user message is always substituted
+        into the template server-side. Follow-up messages sent as-is.
+
+    chat_empty_messages:
+      description: "Reject request with empty messages array"
+      command: |
+        curl -s -X POST http://localhost:3001/prompts/${PROMPT_ID}/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "${VERSION_ID}",
+            "messages": [],
+            "isFirstMessage": true
+          }'
+      expected_status: 400
+      expected_body: |
+        { "error": "Messages required" }
+
+    chat_invalid_version:
+      description: "Reject request with non-existent version ID"
+      command: |
+        curl -s -X POST http://localhost:3001/prompts/${PROMPT_ID}/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "00000000-0000-0000-0000-000000000000",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "isFirstMessage": true
+          }'
+      expected_status: 404
+      expected_body: |
+        { "error": "Version not found" }
+
+    chat_version_wrong_prompt:
+      description: "Reject request where version belongs to a different prompt"
+      command: |
+        curl -s -X POST http://localhost:3001/prompts/${PROMPT_ID}/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "${OTHER_PROMPT_VERSION_ID}",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "isFirstMessage": true
+          }'
+      expected_status: 404
+      expected_body: |
+        { "error": "Version not found" }
+
+    chat_last_message_not_user:
+      description: "Reject request where last message is not from user"
+      command: |
+        curl -s -X POST http://localhost:3001/prompts/${PROMPT_ID}/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "${VERSION_ID}",
+            "messages": [
+              {"role": "user", "content": "Hello"},
+              {"role": "assistant", "content": "Hi there"}
+            ],
+            "isFirstMessage": false
+          }'
+      expected_status: 400
+      expected_body: |
+        { "error": "Last message must be from user" }
+
+    chat_prompt_not_found:
+      description: "Reject request for non-existent prompt"
+      command: |
+        curl -s -X POST http://localhost:3001/prompts/00000000-0000-0000-0000-000000000000/playground \
+          -H "Content-Type: application/json" \
+          -d '{
+            "versionId": "${VERSION_ID}",
+            "messages": [{"role": "user", "content": "Hello"}],
+            "isFirstMessage": true
+          }'
+      expected_status: 404
+      expected_body: |
+        { "error": "Prompt not found" }
+
 # ─── Revision Semantics Notes ─────────────────────────────────────────────────
 #
 # Every mutation to a dataset (add/edit/delete item, add/remove attribute, CSV import)

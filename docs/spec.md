@@ -464,3 +464,79 @@ These describe what the user provides and what the system surfaces — not inter
 6. **Generation model comes from the prompt version:** The model used in Phase 1 is the one stored on the pinned `PromptVersion` (its `modelId` and `modelParams`). The experiment's `modelId` continues to identify the judge model used in Phase 2.
 7. **Rerun pins latest version:** Reruns always pin the latest version of the original prompt — they do not preserve the originally pinned version. This is consistent with how reruns reference the dataset's latest revision.
 8. **Judge template change:** When a prompt is present, the judge's user message labels the generated output as "Response" and includes `expected_output` as "Reference Output" or equivalent context. The judge is told it is evaluating the generated response, not the reference. When no prompt is present, the judge template is unchanged.
+
+---
+
+## Prompt Playground
+
+### Behaviors
+
+- **PlaygroundOpen:** When the user is viewing a prompt's detail and clicks the playground button, a slide-over panel opens from the right side of the screen. The panel shows a chat interface for testing the prompt. The prompt detail view remains visible underneath.
+
+- **PlaygroundVersionSelect:** When the playground opens, it defaults to the prompt's latest version. The user can select any saved version from a version picker within the playground panel. Changing the version clears the current conversation and resets the playground to its initial state.
+
+- **PlaygroundInitialState:** When the playground opens or the version is changed, the user sees the selected version's system prompt displayed as read-only context at the top of the panel, an empty chat area, and an input field. The input field is labeled to indicate the user's message will be substituted into the `{input}` placeholder of the `userPrompt` template.
+
+- **PlaygroundFirstMessage:** When the user types a message and sends it, the system substitutes the message into the selected version's `userPrompt` template (replacing `{input}`) and sends it to the version's model with the version's `systemPrompt` as the system message and the version's `modelParams`. The user's original message (not the substituted template) is displayed as the user message in the chat. The LLM response streams token-by-token into an assistant message bubble.
+
+- **PlaygroundFollowUp:** After the first exchange, the user can type and send follow-up messages. Follow-up messages are sent as plain user messages — the `userPrompt` template is not re-applied. The full conversation history (system prompt + all previous messages) is sent with each request. The LLM response streams token-by-token.
+
+- **PlaygroundStreaming:** All LLM responses in the playground stream token-by-token as they are generated. The user sees text appear incrementally in the assistant message bubble. While a response is streaming, the input field is disabled and a stop button is available.
+
+- **PlaygroundStop:** When the user clicks the stop button during streaming, the generation is cancelled. The partial response received so far is kept in the chat as the assistant's message. The user can continue the conversation from that point.
+
+- **PlaygroundModelFromVersion:** The playground always uses the selected version's `modelId` and `modelParams` (temperature, maxTokens, topP). There is no option to override model or parameters within the playground.
+
+- **PlaygroundEphemeral:** Conversations are not persisted. When the user closes the playground panel, the conversation is lost. Reopening the playground starts fresh. No data is saved to the database.
+
+- **PlaygroundReset:** The user can clear the current conversation at any time via a reset button. This returns the playground to its initial state — empty chat area with the input field ready for a new first message.
+
+- **PlaygroundClose:** The user can close the playground panel by clicking a close button or clicking outside the panel. The prompt detail view returns to its full width.
+
+- **PlaygroundSystemPromptDisplay:** The selected version's system prompt is displayed at the top of the playground panel as read-only context, so the user can see what instructions the model is operating under. If the system prompt is long, it is collapsed by default with an option to expand.
+
+### Contracts
+
+These describe what the user provides and what the system surfaces — not internal representations.
+
+**Playground state (ephemeral, client-side only)**
+
+- `promptId` — UUID, the prompt being tested
+- `selectedVersionId` — UUID, the version currently in use
+- `messages` — ordered list of chat messages, each with `role` ("user" or "assistant") and `content` (string)
+- `isStreaming` — boolean, whether a response is currently being generated
+
+**Playground first message (sent to API)**
+
+- `promptVersionId` — UUID, the version to use
+- `message` — string, the user's input text (substituted into `{input}` placeholder of `userPrompt`)
+
+**Playground follow-up message (sent to API)**
+
+- `promptVersionId` — UUID, the version to use
+- `messages` — the full conversation history (system prompt derived from version, all user and assistant messages)
+
+**Playground response (streamed from API)**
+
+- Token-by-token text stream
+- Final complete message text when streaming ends
+
+### Error Cases
+
+- **PlaygroundGenerationFailure:** The LLM call fails during a playground message → the error is displayed inline in the chat as a system error message. The user can retry by sending the same or a different message. The conversation history up to the error is preserved.
+- **PlaygroundEmptyMessage:** The user attempts to send an empty message → the send button is disabled; no API call is made.
+- **PlaygroundVersionDeleted:** The user has the playground open and the prompt is deleted in another tab → the playground continues to function with the already-loaded version data since conversations are ephemeral and client-side. No new conversations can be started after navigating away.
+- **PlaygroundStreamInterrupted:** The streaming connection is interrupted (network error) → the partial response is kept; an error message is shown. The user can retry or continue.
+
+### Resolved Decisions (Prompt Playground)
+
+1. **Template application:** The `userPrompt` template with `{input}` substitution is applied only to the first message. All subsequent messages are plain user messages with no template processing. This matches the industry-standard pattern used by OpenAI Playground, Anthropic Console, LangSmith, and Braintrust.
+2. **System prompt handling:** The system prompt from the selected version is sent as the system message on every request. It remains constant throughout the conversation and is never modified.
+3. **Conversation display:** The user's first message is displayed as-is (the raw input text), not as the substituted template. The template substitution happens server-side and is transparent to the user.
+4. **Version switching clears conversation:** Changing the selected version resets the entire conversation. There is no way to continue a conversation with a different version — the system prompt and template may have changed, making prior context potentially incoherent.
+5. **No persistence:** Conversations exist only in browser memory. There is no database table, no API endpoint for saving or loading conversations, and no conversation history across sessions.
+6. **No model override:** The playground strictly uses the version's model and parameters. This ensures the user is testing the prompt under the exact conditions it would run in an experiment.
+7. **Streaming is required:** All playground responses stream. There is no option for non-streaming responses.
+8. **No grading in playground:** The playground is for testing generation only. There is no grading, scoring, or evaluation in the playground — that is the experiment's responsibility.
+9. **API endpoint:** The playground requires a new streaming API endpoint. This endpoint is separate from the experiment runner and does not use the experiment queue — playground messages are processed immediately with no queuing.
+10. **Stop behavior:** Stopping a stream keeps the partial response. The user can continue the conversation as if the partial response were the full response.

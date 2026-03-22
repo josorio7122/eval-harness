@@ -344,3 +344,100 @@ Query hooks per domain (`hooks/use-*.ts`):
 - On unmount or status change away from `running`: closes the `EventSource`.
 - Falls back to polling (`refetchInterval: 2000ms`) when `status` is `queued` or `running` (both pre-start and in-progress), acting as a safety net if SSE is unavailable.
 - Returns `{ cellsCompleted, totalCells }` for progress display.
+
+---
+
+## 4. Prompt Playground Architecture
+
+### Overview
+
+The Prompt Playground is a slide-over chat interface accessible from the prompt detail view. It lets users test any saved prompt version in a multi-turn conversation with token-by-token streaming. Conversations are ephemeral — no database persistence.
+
+### Backend
+
+**New streaming endpoint:**
+
+```
+POST /prompts/:id/playground
+```
+
+- Accepts the full conversation (prompt version ID + message history)
+- Looks up the `PromptVersion` to get `systemPrompt`, `userPrompt`, `modelId`, `modelParams`
+- For the first message: substitutes the user's input into `userPrompt` template (replacing `{input}`)
+- For follow-up messages: sends messages as-is (no template substitution)
+- Streams the LLM response token-by-token using Vercel AI SDK `streamText()`
+- Returns a text stream (not SSE) — standard `text/event-stream` for AI SDK streaming
+- Separate from the experiment runner — no queuing, processed immediately
+- Supports abort via standard HTTP request cancellation
+
+**Module pattern:**
+
+The playground is part of the `prompts/` domain module — no new domain folder needed.
+
+| File | Addition |
+|------|----------|
+| `prompts/router.ts` | New `POST /:id/playground` route |
+| `prompts/validator.ts` | New Zod schemas for playground request |
+| `prompts/service.ts` | New method to resolve version + build messages |
+
+**Request shape:**
+
+```typescript
+{
+  versionId: string           // UUID of the PromptVersion to use
+  messages: Array<{           // Full conversation history
+    role: 'user' | 'assistant'
+    content: string
+  }>
+  isFirstMessage: boolean     // Whether to apply {input} template substitution
+}
+```
+
+**Streaming flow:**
+
+1. Validate request (version exists, messages non-empty)
+2. Fetch `PromptVersion` (systemPrompt, userPrompt, modelId, modelParams)
+3. Build messages array:
+   - System message: `PromptVersion.systemPrompt`
+   - If `isFirstMessage`: substitute first user message into `userPrompt` template
+   - Otherwise: pass messages as-is
+4. Call `streamText()` with OpenRouter model + built messages
+5. Pipe the text stream directly to the HTTP response
+
+### Frontend
+
+**New components (in `components/prompts/`):**
+
+| Component | Responsibility |
+|-----------|---------------|
+| `playground-panel.tsx` | Slide-over container, open/close state, version picker |
+| `playground-chat.tsx` | Message list rendering, auto-scroll, system prompt display |
+| `playground-input.tsx` | Text input, send button, stop button, disabled state during streaming |
+| `playground-message.tsx` | Single message bubble (user or assistant), streaming text display |
+
+**New hook:**
+
+| Hook | Purpose |
+|------|--------|
+| `use-playground.ts` | Manages conversation state, streaming via Vercel AI SDK `useChat`, version selection, reset |
+
+**State management:**
+
+- All conversation state is local (React state) — not in TanStack Query cache
+- `useChat` from Vercel AI SDK handles streaming, message accumulation, and abort
+- Version selection triggers state reset (clear messages, update version ID)
+- No server-side state — the full message history is sent with every request
+
+**Integration with prompt detail:**
+
+- Playground button added to `PromptHeader` or `PromptEditor`
+- Panel overlays from the right, does not navigate away from prompt detail
+- Prompt detail remains interactive underneath (user can view version history, etc.)
+
+### Key Design Decisions
+
+1. **`streamText()` not `generateText()`** — playground uses streaming for real-time token display, unlike experiments which use `generateText()` for batch processing
+2. **No new database entities** — conversations are ephemeral, stored only in browser memory
+3. **Full history sent per request** — stateless server; client owns conversation state
+4. **Same module, not new domain** — playground is a prompt feature, not a standalone domain
+5. **Vercel AI SDK `useChat` on frontend** — handles streaming protocol, message state, and abort natively
