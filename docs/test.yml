@@ -486,8 +486,7 @@ prompts:
           -H "Content-Type: application/json" \
           -d '{
             "versionId": "${VERSION_ID}",
-            "messages": [{"role": "user", "content": "What is the capital of France?"}],
-            "isFirstMessage": true
+            "messages": [{"role": "user", "content": "What is the capital of France?"}]
           }'
       expected_status: 200
       expected_headers: "content-type: text/event-stream"
@@ -508,8 +507,7 @@ prompts:
               {"role": "user", "content": "What is the capital of France?"},
               {"role": "assistant", "content": "The capital of France is Paris."},
               {"role": "user", "content": "What about Germany?"}
-            ],
-            "isFirstMessage": false
+            ]
           }'
       expected_status: 200
       expected_headers: "content-type: text/event-stream"
@@ -524,8 +522,7 @@ prompts:
           -H "Content-Type: application/json" \
           -d '{
             "versionId": "${VERSION_ID}",
-            "messages": [],
-            "isFirstMessage": true
+            "messages": []
           }'
       expected_status: 400
       expected_body: |
@@ -538,8 +535,7 @@ prompts:
           -H "Content-Type: application/json" \
           -d '{
             "versionId": "00000000-0000-0000-0000-000000000000",
-            "messages": [{"role": "user", "content": "Hello"}],
-            "isFirstMessage": true
+            "messages": [{"role": "user", "content": "Hello"}]
           }'
       expected_status: 404
       expected_body: |
@@ -552,8 +548,7 @@ prompts:
           -H "Content-Type: application/json" \
           -d '{
             "versionId": "${OTHER_PROMPT_VERSION_ID}",
-            "messages": [{"role": "user", "content": "Hello"}],
-            "isFirstMessage": true
+            "messages": [{"role": "user", "content": "Hello"}]
           }'
       expected_status: 404
       expected_body: |
@@ -569,8 +564,7 @@ prompts:
             "messages": [
               {"role": "user", "content": "Hello"},
               {"role": "assistant", "content": "Hi there"}
-            ],
-            "isFirstMessage": false
+            ]
           }'
       expected_status: 400
       expected_body: |
@@ -583,8 +577,7 @@ prompts:
           -H "Content-Type: application/json" \
           -d '{
             "versionId": "${VERSION_ID}",
-            "messages": [{"role": "user", "content": "Hello"}],
-            "isFirstMessage": true
+            "messages": [{"role": "user", "content": "Hello"}]
           }'
       expected_status: 404
       expected_body: |

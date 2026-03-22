@@ -6,14 +6,9 @@ import {
   updatePromptSchema,
   createVersionSchema,
   playgroundSchema,
+  modelParamsSchema,
 } from './validator.js'
 import { type createPromptService } from './service.js'
-
-type ModelParams = {
-  temperature?: number
-  maxTokens?: number
-  topP?: number
-}
 
 const openrouter = createOpenRouter({
   apiKey: process.env['OPENROUTER_API_KEY'] ?? '',
@@ -96,7 +91,7 @@ export function createPromptRouter(service: PromptService) {
     }
 
     const { version, llmMessages } = result.data
-    const modelParams = (version.modelParams ?? {}) as ModelParams
+    const modelParams = modelParamsSchema.parse(version.modelParams ?? {})
 
     const streamResult = streamText({
       model: openrouter(version.modelId),

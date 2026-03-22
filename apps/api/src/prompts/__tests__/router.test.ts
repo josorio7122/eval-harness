@@ -58,7 +58,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [],
-        isFirstMessage: true,
       }),
     })
 
@@ -77,7 +76,6 @@ describe('POST /prompts/:id/playground', () => {
           { role: 'user', content: 'Hello' },
           { role: 'assistant', content: 'Hi there' },
         ],
-        isFirstMessage: false,
       }),
     })
 
@@ -95,7 +93,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [{ role: 'user', content: 'Hello' }],
-        isFirstMessage: true,
       }),
     })
 
@@ -113,7 +110,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [{ role: 'user', content: 'Hello' }],
-        isFirstMessage: true,
       }),
     })
 
@@ -141,7 +137,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [{ role: 'user', content: 'Hello' }],
-        isFirstMessage: true,
       }),
     })
 
@@ -158,7 +153,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [{ role: 'user', content: 'Hello' }],
-        isFirstMessage: true,
       }),
     })
 
@@ -186,7 +180,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [{ role: 'user', content: 'Hello' }],
-        isFirstMessage: true,
       }),
     })
 
@@ -216,7 +209,6 @@ describe('POST /prompts/:id/playground', () => {
       body: JSON.stringify({
         versionId: VALID_VERSION_ID,
         messages: [{ role: 'user', content: 'Hello' }],
-        isFirstMessage: true,
       }),
     })
 

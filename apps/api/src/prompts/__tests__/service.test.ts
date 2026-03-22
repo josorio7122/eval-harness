@@ -20,7 +20,6 @@ const mockRepo = {
   create: vi.fn(),
   updateName: vi.fn(),
   createVersion: vi.fn(),
-  findLatestVersion: vi.fn(),
   findVersionById: vi.fn(),
   remove: vi.fn(),
 }

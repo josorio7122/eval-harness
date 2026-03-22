@@ -11,7 +11,6 @@ export const playgroundSchema = z
         }),
       )
       .min(1, 'Messages required'),
-    isFirstMessage: z.boolean(),
   })
   .refine(
     (data) => data.messages.length === 0 || data.messages[data.messages.length - 1].role === 'user',

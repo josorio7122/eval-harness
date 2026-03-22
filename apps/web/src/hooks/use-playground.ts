@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import type { UIMessage } from '@ai-sdk/react'
@@ -14,16 +14,10 @@ interface UsePlaygroundOptions {
 export function usePlayground({ promptId, versions }: UsePlaygroundOptions) {
   const [selectedVersionId, setSelectedVersionId] = useState(versions[0]?.id ?? '')
 
-  // Tracks whether the next message is the first in a conversation.
-  // Used by the API to inject the system/user prompt template on the first turn.
-  const isFirstMessage = useRef<boolean>(true)
-
   // Transport is recreated when selectedVersionId changes so the body carries
-  // the correct versionId. isFirstMessage is read via a callback that runs at
-  // request time (sendMessage), never during render.
+  // the correct versionId.
   const transport = useMemo(
     () =>
-      // eslint-disable-next-line react-hooks/refs
       new DefaultChatTransport({
         api: `${API_URL}/prompts/${promptId}/playground`,
         prepareSendMessagesRequest: ({ messages, body }) => ({
@@ -40,7 +34,6 @@ export function usePlayground({ promptId, versions }: UsePlaygroundOptions) {
         }),
         body: () => ({
           versionId: selectedVersionId,
-          isFirstMessage: isFirstMessage.current,
         }),
       }),
     [promptId, selectedVersionId],
@@ -51,14 +44,12 @@ export function usePlayground({ promptId, versions }: UsePlaygroundOptions) {
   const append = useCallback(
     async (text: string) => {
       await chat.sendMessage({ text })
-      isFirstMessage.current = false
     },
     [chat],
   )
 
   const selectVersion = useCallback(
     (id: string) => {
-      isFirstMessage.current = true
       setSelectedVersionId(id)
       chat.setMessages([])
     },
@@ -66,7 +57,6 @@ export function usePlayground({ promptId, versions }: UsePlaygroundOptions) {
   )
 
   const reset = useCallback(() => {
-    isFirstMessage.current = true
     chat.setMessages([])
   }, [chat])
 

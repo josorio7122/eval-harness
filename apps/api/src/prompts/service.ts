@@ -31,9 +31,9 @@ type BuildPlaygroundMessagesInput = {
 
 export function createPromptService(repo: PromptRepository) {
   return {
-    listPrompts: repo.findAll.bind(repo),
+    listPrompts: repo.findAll,
 
-    getPrompt: repo.findById.bind(repo),
+    getPrompt: repo.findById,
 
     createPrompt(input: CreatePromptInput) {
       return tryCatch(async () => {
@@ -63,7 +63,7 @@ export function createPromptService(repo: PromptRepository) {
       })
     },
 
-    deletePrompt: repo.remove.bind(repo),
+    deletePrompt: repo.remove,
 
     buildPlaygroundMessages(input: BuildPlaygroundMessagesInput) {
       return tryCatch(async () => {

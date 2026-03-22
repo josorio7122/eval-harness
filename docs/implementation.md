@@ -1122,7 +1122,6 @@ Streaming endpoint for playground chat. Separate from experiment runner — no q
     role: 'user' | 'assistant'
     content: string
   }>
-  isFirstMessage: boolean // True → substitute into userPrompt template; False → send as plain message
 }
 ```
 
@@ -1132,26 +1131,12 @@ Streaming endpoint for playground chat. Separate from experiment runner — no q
 
 - `versionId` must be a valid UUID referencing an existing PromptVersion belonging to prompt `:id`
 - `messages` must be a non-empty array; last message must have `role: 'user'`
-- `isFirstMessage` must be boolean
 
 ### Message Construction
 
-**First message (`isFirstMessage: true`):**
+The server always substitutes the first user message into the `userPrompt` template and appends the rest of the conversation verbatim:
 
 ```typescript
-const userContent = promptVersion.userPrompt.replace(/\{input\}/g, messages[0].content)
-
-const llmMessages = [
-  { role: 'system', content: promptVersion.systemPrompt },
-  { role: 'user', content: userContent },
-]
-```
-
-**Follow-up messages (`isFirstMessage: false`):**
-
-```typescript
-// First user message was already substituted client-side in prior request
-// Server rebuilds the full history:
 const firstUserContent = promptVersion.userPrompt.replace(/\{input\}/g, messages[0].content)
 
 const llmMessages = [
@@ -1160,8 +1145,6 @@ const llmMessages = [
   ...messages.slice(1), // Rest are plain messages
 ]
 ```
-
-Note: The server always reconstructs the first message from the template to ensure consistency. The `isFirstMessage` flag tells the server whether the current request is the initial message (1 user message) or a follow-up (multiple messages in history).
 
 ### Streaming Implementation
 
@@ -1199,9 +1182,8 @@ The frontend uses `useChat` from `@ai-sdk/react` which handles:
 Wraps `useChat` with playground-specific logic:
 
 - Version selection state
-- First-message detection (tracks whether first message has been sent)
-- Reset functionality (clears messages + resets first-message flag)
-- Passes `versionId` and `isFirstMessage` as request body extras
+- Reset functionality (clears messages on version change or explicit reset)
+- Passes `versionId` as request body extra
 
 **Component structure:**
 

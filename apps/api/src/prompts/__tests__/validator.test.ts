@@ -6,7 +6,6 @@ describe('playgroundSchema', () => {
     const result = playgroundSchema.safeParse({
       versionId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       messages: [{ role: 'user', content: 'Hello!' }],
-      isFirstMessage: true,
     })
     expect(result.success).toBe(true)
   })
@@ -19,7 +18,6 @@ describe('playgroundSchema', () => {
         { role: 'assistant', content: 'Hi there!' },
         { role: 'user', content: 'How are you?' },
       ],
-      isFirstMessage: false,
     })
     expect(result.success).toBe(true)
   })
@@ -28,7 +26,6 @@ describe('playgroundSchema', () => {
     const result = playgroundSchema.safeParse({
       versionId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       messages: [],
-      isFirstMessage: true,
     })
     expect(result.success).toBe(false)
     if (!result.success) {
@@ -44,7 +41,6 @@ describe('playgroundSchema', () => {
         { role: 'user', content: 'Hello!' },
         { role: 'assistant', content: 'Hi there!' },
       ],
-      isFirstMessage: false,
     })
     expect(result.success).toBe(false)
     if (!result.success) {
@@ -56,15 +52,6 @@ describe('playgroundSchema', () => {
   it('rejects non-UUID versionId', () => {
     const result = playgroundSchema.safeParse({
       versionId: 'not-a-uuid',
-      messages: [{ role: 'user', content: 'Hello!' }],
-      isFirstMessage: true,
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('rejects missing isFirstMessage field', () => {
-    const result = playgroundSchema.safeParse({
-      versionId: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
       messages: [{ role: 'user', content: 'Hello!' }],
     })
     expect(result.success).toBe(false)

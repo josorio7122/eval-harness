@@ -146,7 +146,6 @@ export function createPromptRepository(prisma: PrismaClient) {
           select: {
             id: true,
             name: true,
-            deletedAt: true,
           },
         })
         return ok(prompt)

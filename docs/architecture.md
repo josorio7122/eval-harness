@@ -394,7 +394,6 @@ The playground is part of the `prompts/` domain module — no new domain folder 
     role: 'user' | 'assistant'
     content: string
   }>
-  isFirstMessage: boolean // Whether to apply {input} template substitution
 }
 ```
 
@@ -404,8 +403,8 @@ The playground is part of the `prompts/` domain module — no new domain folder 
 2. Fetch `PromptVersion` (systemPrompt, userPrompt, modelId, modelParams)
 3. Build messages array:
    - System message: `PromptVersion.systemPrompt`
-   - If `isFirstMessage`: substitute first user message into `userPrompt` template
-   - Otherwise: pass messages as-is
+   - First user message: always substituted into `userPrompt` template
+   - Remaining messages: passed as-is
 4. Call `streamText()` with OpenRouter model + built messages
 5. Pipe the text stream directly to the HTTP response
 
@@ -422,8 +421,8 @@ The playground is part of the `prompts/` domain module — no new domain folder 
 
 **New hook:**
 
-| Hook                | Purpose                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------- |
+| Hook                | Purpose                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `use-playground.ts` | Manages conversation state, streaming via Vercel AI SDK `useChat` (from `@ai-sdk/react`), version selection, reset |
 
 **State management:**

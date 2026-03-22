@@ -54,7 +54,6 @@ describe('POST /prompts/:id/playground', () => {
     const res = await jsonPost(`/prompts/${prompt.id}/playground`, {
       versionId,
       messages: [{ role: 'user', content: 'What is the capital of France?' }],
-      isFirstMessage: true,
     })
 
     expect(res.status).toBe(200)
@@ -72,7 +71,6 @@ describe('POST /prompts/:id/playground', () => {
         { role: 'assistant', content: 'The capital of France is Paris.' },
         { role: 'user', content: 'What about Germany?' },
       ],
-      isFirstMessage: false,
     })
 
     expect(res.status).toBe(200)
@@ -86,7 +84,6 @@ describe('POST /prompts/:id/playground', () => {
     const res = await jsonPost(`/prompts/${prompt.id}/playground`, {
       versionId,
       messages: [],
-      isFirstMessage: true,
     })
 
     expect(res.status).toBe(400)
@@ -100,7 +97,6 @@ describe('POST /prompts/:id/playground', () => {
     const res = await jsonPost(`/prompts/${prompt.id}/playground`, {
       versionId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
       messages: [{ role: 'user', content: 'Hello' }],
-      isFirstMessage: true,
     })
 
     expect(res.status).toBe(404)
@@ -117,7 +113,6 @@ describe('POST /prompts/:id/playground', () => {
     const res = await jsonPost(`/prompts/${prompt1.id}/playground`, {
       versionId: otherVersionId,
       messages: [{ role: 'user', content: 'Hello' }],
-      isFirstMessage: true,
     })
 
     expect(res.status).toBe(404)
@@ -129,7 +124,6 @@ describe('POST /prompts/:id/playground', () => {
     const res = await jsonPost('/prompts/00000000-0000-0000-0000-000000000000/playground', {
       versionId: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
       messages: [{ role: 'user', content: 'Hello' }],
-      isFirstMessage: true,
     })
 
     expect(res.status).toBe(404)
@@ -147,7 +141,6 @@ describe('POST /prompts/:id/playground', () => {
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi there' },
       ],
-      isFirstMessage: false,
     })
 
     expect(res.status).toBe(400)
