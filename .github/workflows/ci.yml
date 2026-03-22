@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  checks:
+    name: Typecheck, Lint & Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create .env for dotenv-cli
+        run: |
+          cat <<'EOF' > .env
+          DATABASE_URL=postgresql://eval:eval@localhost:5432/eval_harness
+          OPENROUTER_API_KEY=ci-placeholder
+          API_PORT=3001
+          VITE_API_URL=http://localhost:3001
+          EOF
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Unit tests
+        run: pnpm run test
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: checks
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: eval
+          POSTGRES_PASSWORD: eval
+          POSTGRES_DB: eval_harness
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create .env for dotenv-cli
+        run: |
+          cat <<'EOF' > .env
+          DATABASE_URL=postgresql://eval:eval@localhost:5432/eval_harness
+          OPENROUTER_API_KEY=ci-placeholder
+          API_PORT=3001
+          VITE_API_URL=http://localhost:3001
+          EOF
+
+      - name: Build (generates Prisma client)
+        run: pnpm run build
+        env:
+          DATABASE_URL: postgresql://eval:eval@localhost:5432/eval_harness
+
+      - name: Run integration tests
+        run: pnpm --filter api exec vitest run --config vitest.integration.config.ts
+        env:
+          DATABASE_URL: postgresql://eval:eval@localhost:5432/eval_harness
