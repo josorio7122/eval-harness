@@ -38,15 +38,15 @@ Build a lightweight eval harness for running LLM graders against test cases.
 
 ### Prompt Playground
 
-- [ ] Playground button on prompt detail view opens a slide-over chat panel from the right
-- [ ] User can select any saved prompt version to test (defaults to latest)
-- [ ] First message substitutes user input into the `userPrompt` template (`{input}` placeholder) and sends with `systemPrompt` as system message
-- [ ] Follow-up messages are plain text — no template re-application; full conversation history sent with each request
-- [ ] LLM responses stream token-by-token
-- [ ] User can stop streaming mid-response; partial response is kept
-- [ ] Uses the version's `modelId` and `modelParams` — no model override in playground
-- [ ] Conversations are ephemeral — not persisted to database; lost when panel closes
-- [ ] User can reset conversation and start fresh
-- [ ] System prompt displayed as read-only context at the top of the panel
-- [ ] Changing version clears the conversation
-- [ ] New streaming API endpoint (`POST /prompts/:id/playground`) — separate from experiment runner, no queuing
+- [x] Playground button on prompt detail view opens a slide-over chat panel from the right
+- [x] User can select any saved prompt version to test (defaults to latest)
+- [x] First message substitutes user input into the `userPrompt` template (`{input}` placeholder) and sends with `systemPrompt` as system message
+- [x] Follow-up messages are plain text — no template re-application; full conversation history sent with each request
+- [x] LLM responses stream token-by-token
+- [x] User can stop streaming mid-response; partial response is kept
+- [x] Uses the version's `modelId` and `modelParams` — no model override in playground
+- [x] Conversations are ephemeral — not persisted to database; lost when panel closes
+- [x] User can reset conversation and start fresh
+- [x] System prompt displayed as read-only context at the top of the panel
+- [x] Changing version clears the conversation
+- [x] New streaming API endpoint (`POST /prompts/:id/playground`) — separate from experiment runner, no queuing

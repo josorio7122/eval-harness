@@ -30,6 +30,7 @@ export function PlaygroundPanel({ open, onClose, promptId, versions }: Playgroun
     append,
     stop,
     isLoading,
+    error,
   } = usePlayground({ promptId, versions })
 
   const latestVersionId = versions[0]?.id
@@ -99,6 +100,7 @@ export function PlaygroundPanel({ open, onClose, promptId, versions }: Playgroun
             key={selectedVersionId}
             messages={messages}
             systemPrompt={selectedVersion?.systemPrompt ?? ''}
+            error={error}
           />
 
           {/* Input */}

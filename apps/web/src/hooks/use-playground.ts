@@ -81,5 +81,6 @@ export function usePlayground({ promptId, versions }: UsePlaygroundOptions) {
     append,
     stop: chat.stop,
     isLoading: chat.status === 'submitted' || chat.status === 'streaming',
+    error: chat.error,
   }
 }

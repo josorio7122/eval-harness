@@ -8,9 +8,10 @@ const SYSTEM_PROMPT_COLLAPSE_THRESHOLD = 200
 interface PlaygroundChatProps {
   messages: UIMessage[]
   systemPrompt: string
+  error?: Error
 }
 
-export function PlaygroundChat({ messages, systemPrompt }: PlaygroundChatProps) {
+export function PlaygroundChat({ messages, systemPrompt, error }: PlaygroundChatProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const isLong = systemPrompt.length > SYSTEM_PROMPT_COLLAPSE_THRESHOLD
   const [collapsed, setCollapsed] = useState(isLong)
@@ -47,6 +48,11 @@ export function PlaygroundChat({ messages, systemPrompt }: PlaygroundChatProps) 
           </div>
         ) : (
           messages.map((msg) => <PlaygroundMessage key={msg.id} message={msg} />)
+        )}
+        {error && (
+          <p className="text-sm text-destructive px-1">
+            {error.message || 'An error occurred. Please try again.'}
+          </p>
         )}
         <div ref={bottomRef} />
       </div>

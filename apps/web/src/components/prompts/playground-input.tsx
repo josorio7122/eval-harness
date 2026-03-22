@@ -39,7 +39,7 @@ export function PlaygroundInput({ onSend, onStop, isLoading, disabled }: Playgro
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Send a message… (Shift+Enter for newline)"
-        disabled={disabled}
+        disabled={disabled || isLoading}
         rows={3}
         className="resize-none text-sm"
       />
