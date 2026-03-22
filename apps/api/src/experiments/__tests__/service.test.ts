@@ -63,6 +63,7 @@ const mockPromptRepo = {
   create: vi.fn(),
   updateName: vi.fn(),
   createVersion: vi.fn(),
+  findVersionById: vi.fn(),
   findLatestVersion: vi.fn(),
   remove: vi.fn(),
 }

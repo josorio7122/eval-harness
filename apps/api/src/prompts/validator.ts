@@ -14,9 +14,7 @@ export const playgroundSchema = z
     isFirstMessage: z.boolean(),
   })
   .refine(
-    (data) =>
-      data.messages.length === 0 ||
-      data.messages[data.messages.length - 1].role === 'user',
+    (data) => data.messages.length === 0 || data.messages[data.messages.length - 1].role === 'user',
     { message: 'Last message must be from user' },
   )
 
