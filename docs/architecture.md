@@ -294,6 +294,10 @@ App
             ├── PromptHeader (inline name edit + delete action)
             ├── PromptEditor (readOnly prop for past versions)
             ├── PromptVersionHistory
+            ├── PlaygroundPanel (slide-over chat interface)
+            │   ├── PlaygroundChat
+            │   │   └── PlaygroundMessage (× N)
+            │   └── PlaygroundInput
             └── Dialogs: CreatePromptDialog, PromptDeleteDialog
 ```
 
@@ -420,7 +424,7 @@ The playground is part of the `prompts/` domain module — no new domain folder 
 
 | Hook                | Purpose                                                                                     |
 | ------------------- | ------------------------------------------------------------------------------------------- |
-| `use-playground.ts` | Manages conversation state, streaming via Vercel AI SDK `useChat`, version selection, reset |
+| `use-playground.ts` | Manages conversation state, streaming via Vercel AI SDK `useChat` (from `@ai-sdk/react`), version selection, reset |
 
 **State management:**
 

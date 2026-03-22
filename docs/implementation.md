@@ -1187,7 +1187,7 @@ return result.toUIMessageStreamResponse()
 
 **Vercel AI SDK `useChat` hook:**
 
-The frontend uses `useChat` from `ai/react` which handles:
+The frontend uses `useChat` from `@ai-sdk/react` which handles:
 
 - Streaming protocol parsing
 - Message state accumulation
