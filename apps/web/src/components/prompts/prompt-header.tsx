@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { FlaskConical, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router'
 import { PageHeader } from '@/components/shared/page-header'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ interface PromptHeaderProps {
   onNameChange: (value: string) => void
   onNameSave: () => void
   onDeleteClick: () => void
+  onPlaygroundClick?: () => void
   nameError: string | null
 }
 
@@ -17,6 +18,7 @@ export function PromptHeader({
   onNameChange,
   onNameSave,
   onDeleteClick,
+  onPlaygroundClick,
   nameError,
 }: PromptHeaderProps) {
   const navigate = useNavigate()
@@ -30,6 +32,10 @@ export function PromptHeader({
           onBlur={onNameSave}
           className="text-base font-semibold border-none bg-transparent p-0 h-auto focus-visible:ring-0 shadow-none flex-1"
         />
+        <Button variant="outline" size="sm" onClick={onPlaygroundClick}>
+          <FlaskConical size={12} />
+          Playground
+        </Button>
         <Button
           variant="outline"
           size="sm"
