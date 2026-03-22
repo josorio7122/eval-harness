@@ -35,6 +35,7 @@ beforeEach(() => {
 
 describe('buildPlaygroundMessages', () => {
   it('first message: substitutes {input} into userPrompt and returns system + user messages', async () => {
+    mockRepo.findById.mockResolvedValue(ok({ id: 'p1', name: 'Test Prompt', versions: [] }))
     mockRepo.findVersionById.mockResolvedValue(ok(mockVersion))
 
     const result = await service.buildPlaygroundMessages({
@@ -54,6 +55,7 @@ describe('buildPlaygroundMessages', () => {
   })
 
   it('follow-up (3 messages): substitutes first user message and appends remaining verbatim', async () => {
+    mockRepo.findById.mockResolvedValue(ok({ id: 'p1', name: 'Test Prompt', versions: [] }))
     mockRepo.findVersionById.mockResolvedValue(ok(mockVersion))
 
     const messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }> = [
@@ -80,7 +82,8 @@ describe('buildPlaygroundMessages', () => {
     }
   })
 
-  it('propagates failure when repo returns fail', async () => {
+  it('returns "Version not found" when repo cannot find the version', async () => {
+    mockRepo.findById.mockResolvedValue(ok({ id: 'p1', name: 'Test Prompt', versions: [] }))
     mockRepo.findVersionById.mockResolvedValue(fail('Record not found'))
 
     const result = await service.buildPlaygroundMessages({
@@ -91,11 +94,27 @@ describe('buildPlaygroundMessages', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error).toBe('Record not found')
+      expect(result.error).toBe('Version not found')
+    }
+  })
+
+  it('returns "Prompt not found" when prompt does not exist', async () => {
+    mockRepo.findById.mockResolvedValue(fail('Record not found'))
+
+    const result = await service.buildPlaygroundMessages({
+      promptId: 'bad-prompt',
+      versionId: 'v1',
+      messages: [{ role: 'user', content: 'hello' }],
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error).toBe('Prompt not found')
     }
   })
 
   it('empty systemPrompt: system message content is empty string', async () => {
+    mockRepo.findById.mockResolvedValue(ok({ id: 'p1', name: 'Test Prompt', versions: [] }))
     mockRepo.findVersionById.mockResolvedValue(ok({ ...mockVersion, systemPrompt: '' }))
 
     const result = await service.buildPlaygroundMessages({
@@ -111,6 +130,7 @@ describe('buildPlaygroundMessages', () => {
   })
 
   it('multiple {input} occurrences in userPrompt: all are replaced', async () => {
+    mockRepo.findById.mockResolvedValue(ok({ id: 'p1', name: 'Test Prompt', versions: [] }))
     mockRepo.findVersionById.mockResolvedValue(
       ok({ ...mockVersion, userPrompt: 'First: {input}. Second: {input}.' }),
     )

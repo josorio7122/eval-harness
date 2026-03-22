@@ -67,8 +67,11 @@ export function createPromptService(repo: PromptRepository) {
 
     buildPlaygroundMessages(input: BuildPlaygroundMessagesInput) {
       return tryCatch(async () => {
+        const promptResult = await repo.findById(input.promptId)
+        if (!promptResult.success) return fail('Prompt not found')
+
         const versionResult = await repo.findVersionById(input.promptId, input.versionId)
-        if (!versionResult.success) return versionResult
+        if (!versionResult.success) return fail('Version not found')
 
         const version = versionResult.data
         const firstUserContent = version.userPrompt.replace(/\{input\}/g, input.messages[0].content)
