@@ -25,7 +25,9 @@ const mockRepo = {
   remove: vi.fn(),
 }
 
-const service = createPromptService(mockRepo as unknown as Parameters<typeof createPromptService>[0])
+const service = createPromptService(
+  mockRepo as unknown as Parameters<typeof createPromptService>[0],
+)
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -94,9 +96,7 @@ describe('buildPlaygroundMessages', () => {
   })
 
   it('empty systemPrompt: system message content is empty string', async () => {
-    mockRepo.findVersionById.mockResolvedValue(
-      ok({ ...mockVersion, systemPrompt: '' }),
-    )
+    mockRepo.findVersionById.mockResolvedValue(ok({ ...mockVersion, systemPrompt: '' }))
 
     const result = await service.buildPlaygroundMessages({
       promptId: 'p1',

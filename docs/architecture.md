@@ -374,22 +374,23 @@ POST /prompts/:id/playground
 
 The playground is part of the `prompts/` domain module — no new domain folder needed.
 
-| File | Addition |
-|------|----------|
-| `prompts/router.ts` | New `POST /:id/playground` route |
-| `prompts/validator.ts` | New Zod schemas for playground request |
-| `prompts/service.ts` | New method to resolve version + build messages |
+| File                   | Addition                                       |
+| ---------------------- | ---------------------------------------------- |
+| `prompts/router.ts`    | New `POST /:id/playground` route               |
+| `prompts/validator.ts` | New Zod schemas for playground request         |
+| `prompts/service.ts`   | New method to resolve version + build messages |
 
 **Request shape:**
 
 ```typescript
 {
-  versionId: string           // UUID of the PromptVersion to use
-  messages: Array<{           // Full conversation history
+  versionId: string // UUID of the PromptVersion to use
+  messages: Array<{
+    // Full conversation history
     role: 'user' | 'assistant'
     content: string
   }>
-  isFirstMessage: boolean     // Whether to apply {input} template substitution
+  isFirstMessage: boolean // Whether to apply {input} template substitution
 }
 ```
 
@@ -408,17 +409,17 @@ The playground is part of the `prompts/` domain module — no new domain folder 
 
 **New components (in `components/prompts/`):**
 
-| Component | Responsibility |
-|-----------|---------------|
-| `playground-panel.tsx` | Slide-over container, open/close state, version picker |
-| `playground-chat.tsx` | Message list rendering, auto-scroll, system prompt display |
-| `playground-input.tsx` | Text input, send button, stop button, disabled state during streaming |
-| `playground-message.tsx` | Single message bubble (user or assistant), streaming text display |
+| Component                | Responsibility                                                        |
+| ------------------------ | --------------------------------------------------------------------- |
+| `playground-panel.tsx`   | Slide-over container, open/close state, version picker                |
+| `playground-chat.tsx`    | Message list rendering, auto-scroll, system prompt display            |
+| `playground-input.tsx`   | Text input, send button, stop button, disabled state during streaming |
+| `playground-message.tsx` | Single message bubble (user or assistant), streaming text display     |
 
 **New hook:**
 
-| Hook | Purpose |
-|------|--------|
+| Hook                | Purpose                                                                                     |
+| ------------------- | ------------------------------------------------------------------------------------------- |
 | `use-playground.ts` | Manages conversation state, streaming via Vercel AI SDK `useChat`, version selection, reset |
 
 **State management:**

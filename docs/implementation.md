@@ -1116,12 +1116,13 @@ Streaming endpoint for playground chat. Separate from experiment runner — no q
 
 ```typescript
 {
-  versionId: string             // UUID — which PromptVersion to use
-  messages: Array<{             // Full conversation history from client
+  versionId: string // UUID — which PromptVersion to use
+  messages: Array<{
+    // Full conversation history from client
     role: 'user' | 'assistant'
     content: string
   }>
-  isFirstMessage: boolean       // True → substitute into userPrompt template; False → send as plain message
+  isFirstMessage: boolean // True → substitute into userPrompt template; False → send as plain message
 }
 ```
 
@@ -1142,7 +1143,7 @@ const userContent = promptVersion.userPrompt.replace(/\{input\}/g, messages[0].c
 
 const llmMessages = [
   { role: 'system', content: promptVersion.systemPrompt },
-  { role: 'user', content: userContent }
+  { role: 'user', content: userContent },
 ]
 ```
 
@@ -1155,8 +1156,8 @@ const firstUserContent = promptVersion.userPrompt.replace(/\{input\}/g, messages
 
 const llmMessages = [
   { role: 'system', content: promptVersion.systemPrompt },
-  { role: 'user', content: firstUserContent },  // Always substitute the first message
-  ...messages.slice(1)                           // Rest are plain messages
+  { role: 'user', content: firstUserContent }, // Always substitute the first message
+  ...messages.slice(1), // Rest are plain messages
 ]
 ```
 
@@ -1176,10 +1177,10 @@ const result = streamText({
   ...(modelParams.temperature != null && { temperature: modelParams.temperature }),
   ...(modelParams.maxTokens != null && { maxOutputTokens: modelParams.maxTokens }),
   ...(modelParams.topP != null && { topP: modelParams.topP }),
-  abortSignal: c.req.raw.signal  // Support client-side abort
+  abortSignal: c.req.raw.signal, // Support client-side abort
 })
 
-return result.toDataStreamResponse()
+return result.toUIMessageStreamResponse()
 ```
 
 ### Frontend Integration
@@ -1187,6 +1188,7 @@ return result.toDataStreamResponse()
 **Vercel AI SDK `useChat` hook:**
 
 The frontend uses `useChat` from `ai/react` which handles:
+
 - Streaming protocol parsing
 - Message state accumulation
 - Abort/stop functionality
@@ -1195,6 +1197,7 @@ The frontend uses `useChat` from `ai/react` which handles:
 **Custom wrapper hook (`use-playground.ts`):**
 
 Wraps `useChat` with playground-specific logic:
+
 - Version selection state
 - First-message detection (tracks whether first message has been sent)
 - Reset functionality (clears messages + resets first-message flag)
@@ -1214,14 +1217,14 @@ PromptDetail
 
 ### Error Handling
 
-| Scenario | Behavior |
-|----------|----------|
-| PromptVersion not found | 404 — `{ error: 'Version not found' }` |
-| Version doesn't belong to prompt | 404 — `{ error: 'Version not found' }` |
-| Empty messages array | 400 — `{ error: 'Messages required' }` |
-| Last message not from user | 400 — `{ error: 'Last message must be from user' }` |
-| LLM call fails mid-stream | Stream error event — client displays inline error |
-| Client aborts (stop button) | Server cancels LLM call via AbortSignal; partial response kept |
+| Scenario                         | Behavior                                                       |
+| -------------------------------- | -------------------------------------------------------------- |
+| PromptVersion not found          | 404 — `{ error: 'Version not found' }`                         |
+| Version doesn't belong to prompt | 404 — `{ error: 'Version not found' }`                         |
+| Empty messages array             | 400 — `{ error: 'Messages required' }`                         |
+| Last message not from user       | 400 — `{ error: 'Last message must be from user' }`            |
+| LLM call fails mid-stream        | Stream error event — client displays inline error              |
+| Client aborts (stop button)      | Server cancels LLM call via AbortSignal; partial response kept |
 
 ### What This Feature Does NOT Add
 
