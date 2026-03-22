@@ -57,6 +57,20 @@ packages/shared/   — Result type, tryCatch utility
 test-data/         — Seed script + sample CSV for manual testing
 ```
 
+## TypeScript build — tsconfig exclude rules
+
+All packages extend `packages/typescript-config/base.json`. However, **`exclude` globs in tsconfig resolve relative to the file that defines them**, not relative to the extending config. This means a shared base config **cannot** centralize `exclude` patterns — they would resolve to the wrong directory.
+
+**Every package that compiles with `tsc` must define its own `exclude` array** to prevent test files from being compiled into `dist/`:
+
+```json
+"exclude": ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "dist", "node_modules"]
+```
+
+This must be present in every `tsconfig.json` that has `"outDir": "dist"` (or similar). Without it, `tsc` compiles test files into `dist/`, and Vitest picks them up as stale JS tests that fail.
+
+**When creating a new package or app**, always add this `exclude` array to its `tsconfig.json`. Do not rely on the base config for this.
+
 ## Architecture
 
 - **API layers**: validator → repository → service → router (see global AGENTS.md for patterns)
