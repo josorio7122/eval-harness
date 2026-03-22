@@ -23,10 +23,12 @@ flowchart LR
     A["📁 Create Dataset<br/>Define attributes<br/>Add items / import CSV"]
     B["📝 Define Graders<br/>Write natural-language<br/>pass/fail rubrics"]
     P["💬 Author Prompts<br/>System + user messages<br/>Model + parameters"]
+    T["🧪 Test in Playground<br/>Multi-turn chat<br/>Iterate on wording"]
     C["🚀 Run Experiment<br/>Pick dataset + graders<br/>+ prompt + judge model"]
     D["📊 Review Results<br/>Dense table · charts<br/>CSV export"]
 
-    A --> B --> P --> C --> D
+    A --> B --> P --> T --> C --> D
+    T -->|"revise"| P
 ```
 
 ### System Flow
@@ -39,6 +41,7 @@ flowchart TD
     Gen["Phase 1 — Generate<br/>(prompt model · concurrency 2)<br/>input → LLM output"]
     Judge["Phase 2 — Grade<br/>(judge model · concurrency 4)<br/>output + rubric → verdict"]
     DB["PostgreSQL<br/>(pinned revision + prompt version)"]
+    PG["Playground<br/>(streamText · no queue)<br/>multi-turn chat"]
 
     UI -->|"POST /experiments<br/>(dataset + graders + prompt + judge model)"| API
     API --> Runner
@@ -51,6 +54,9 @@ flowchart TD
     API -->|"real-time updates via SSE"| UI
     UI -->|"GET results when complete"| API
     API -->|"query"| DB
+    UI -->|"POST /prompts/:id/playground<br/>(version + messages)"| API
+    API --> PG
+    PG -->|"token-by-token stream"| UI
 ```
 
 > Full data model and layer details in [docs/architecture.md](docs/architecture.md).
