@@ -8,7 +8,6 @@ const SYSTEM_PROMPT_COLLAPSE_THRESHOLD = 200
 interface PlaygroundChatProps {
   messages: UIMessage[]
   systemPrompt: string
-  isLoading: boolean
 }
 
 export function PlaygroundChat({ messages, systemPrompt }: PlaygroundChatProps) {

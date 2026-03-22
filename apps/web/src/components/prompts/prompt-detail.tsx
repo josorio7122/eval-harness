@@ -175,12 +175,14 @@ export function PromptDetail({ id }: PromptDetailProps) {
         isDeleting={deletePrompt.isPending}
       />
 
-      <PlaygroundPanel
-        open={playgroundOpen}
-        onClose={() => setPlaygroundOpen(false)}
-        promptId={id}
-        versions={prompt.versions}
-      />
+      {playgroundOpen && (
+        <PlaygroundPanel
+          open={true}
+          onClose={() => setPlaygroundOpen(false)}
+          promptId={id}
+          versions={prompt.versions}
+        />
+      )}
     </div>
   )
 }

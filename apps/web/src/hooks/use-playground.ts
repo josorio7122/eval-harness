@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react'
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from '@ai-sdk/react'
 import type { PromptVersion } from './use-prompts'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
@@ -25,6 +26,18 @@ export function usePlayground({ promptId, versions }: UsePlaygroundOptions) {
       // eslint-disable-next-line react-hooks/refs
       new DefaultChatTransport({
         api: `${API_URL}/prompts/${promptId}/playground`,
+        prepareSendMessagesRequest: ({ messages, body }) => ({
+          body: {
+            ...body,
+            messages: (messages as UIMessage[]).map((m) => ({
+              role: m.role,
+              content: m.parts
+                .filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+                .map((p) => p.text)
+                .join(''),
+            })),
+          },
+        }),
         body: () => ({
           versionId: selectedVersionId,
           isFirstMessage: isFirstMessage.current,

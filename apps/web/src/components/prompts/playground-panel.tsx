@@ -92,9 +92,9 @@ export function PlaygroundPanel({ open, onClose, promptId, versions }: Playgroun
 
           {/* Chat area */}
           <PlaygroundChat
+            key={selectedVersionId}
             messages={messages}
             systemPrompt={selectedVersion?.systemPrompt ?? ''}
-            isLoading={isLoading}
           />
 
           {/* Input */}
