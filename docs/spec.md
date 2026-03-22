@@ -508,12 +508,12 @@ These describe what the user provides and what the system surfaces — not inter
 
 **Playground first message (sent to API)**
 
-- `promptVersionId` — UUID, the version to use
+- `versionId` — UUID, the version to use
 - `message` — string, the user's input text (substituted into `{input}` placeholder of `userPrompt`)
 
 **Playground follow-up message (sent to API)**
 
-- `promptVersionId` — UUID, the version to use
+- `versionId` — UUID, the version to use
 - `messages` — the full conversation history (system prompt derived from version, all user and assistant messages)
 
 **Playground response (streamed from API)**

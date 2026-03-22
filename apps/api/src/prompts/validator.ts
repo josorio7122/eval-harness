@@ -1,5 +1,25 @@
 import { z } from 'zod'
 
+export const playgroundSchema = z
+  .object({
+    versionId: z.string().uuid(),
+    messages: z
+      .array(
+        z.object({
+          role: z.enum(['user', 'assistant']),
+          content: z.string(),
+        }),
+      )
+      .min(1, 'Messages required'),
+    isFirstMessage: z.boolean(),
+  })
+  .refine(
+    (data) =>
+      data.messages.length === 0 ||
+      data.messages[data.messages.length - 1].role === 'user',
+    { message: 'Last message must be from user' },
+  )
+
 export const modelParamsSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.int().min(1).optional(),
