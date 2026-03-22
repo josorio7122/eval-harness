@@ -1,4 +1,4 @@
-import { fail, tryCatch } from '@eval-harness/shared'
+import { fail, ok, tryCatch } from '@eval-harness/shared'
 import { type createPromptRepository } from './repository.js'
 
 type PromptRepository = ReturnType<typeof createPromptRepository>
@@ -16,6 +16,17 @@ type CreateVersionInput = {
   userPrompt: string
   modelId: string
   modelParams?: { temperature?: number; maxTokens?: number; topP?: number }
+}
+
+type ChatMessage = {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
+
+type BuildPlaygroundMessagesInput = {
+  promptId: string
+  versionId: string
+  messages: ChatMessage[]
 }
 
 export function createPromptService(repo: PromptRepository) {
@@ -53,5 +64,23 @@ export function createPromptService(repo: PromptRepository) {
     },
 
     deletePrompt: repo.remove.bind(repo),
+
+    buildPlaygroundMessages(input: BuildPlaygroundMessagesInput) {
+      return tryCatch(async () => {
+        const versionResult = await repo.findVersionById(input.promptId, input.versionId)
+        if (!versionResult.success) return versionResult
+
+        const version = versionResult.data
+        const firstUserContent = version.userPrompt.replace(/\{input\}/g, input.messages[0].content)
+
+        const llmMessages: ChatMessage[] = [
+          { role: 'system', content: version.systemPrompt },
+          { role: 'user', content: firstUserContent },
+          ...input.messages.slice(1),
+        ]
+
+        return ok({ version, llmMessages })
+      })
+    },
   }
 }
