@@ -7,30 +7,23 @@ await build({
   target: 'node22',
   format: 'esm',
   outfile: 'dist/index.js',
-  // Bundle @eval-harness/* workspace packages (they're .ts source)
-  // Externalize everything else
-  external: [
-    // Prisma — WASM runtime, can't be bundled
-    '@prisma/*',
-    '@prisma/client',
-    '@prisma/adapter-pg',
-    // Node builtins
-    'node:*',
-    // npm dependencies (must stay external — installed in node_modules)
-    '@hono/*',
-    '@openrouter/*',
-    'hono',
-    'hono/*',
-    'ai',
-    'csv-parser',
-    'dotenv',
-    'dotenv/*',
-    'json-2-csv',
-    'p-queue',
-    'pg',
-    'pino',
-    'pino-pretty',
-    'zod',
+  minify: true,
+  sourcemap: 'linked',
+  plugins: [
+    {
+      name: 'bundle-workspace-packages',
+      setup(build) {
+        // Handle all non-relative imports
+        build.onResolve({ filter: /^[^./]|^\.[^./]|^\.\.[^/]/ }, (args) => {
+          // Bundle @eval-harness/* workspace packages
+          if (args.path.startsWith('@eval-harness/')) {
+            return null
+          }
+          // Everything else is external (npm packages, node builtins)
+          return { external: true }
+        })
+      },
+    },
   ],
   banner: {
     js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",
