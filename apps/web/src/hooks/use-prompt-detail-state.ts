@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { PromptWithVersions } from './use-prompts'
 
 interface ModelParamsValue {
@@ -10,7 +10,6 @@ interface ModelParamsValue {
 export function usePromptDetailState(prompt: PromptWithVersions | undefined) {
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
-  const [syncedNameId, setSyncedNameId] = useState<string | undefined>(undefined)
   const [systemPrompt, setSystemPrompt] = useState('')
   const [userPrompt, setUserPrompt] = useState('')
   const [modelId, setModelId] = useState('')
@@ -20,31 +19,22 @@ export function usePromptDetailState(prompt: PromptWithVersions | undefined) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [playgroundOpen, setPlaygroundOpen] = useState(false)
 
-  // Derived-state sync: sync server data → local only when not dirty
-  const [syncedPromptId, setSyncedPromptId] = useState(prompt?.id)
-  const [syncedIsDirty, setSyncedIsDirty] = useState(isDirty)
-  const justBecameClean = syncedIsDirty && !isDirty
-  const promptIdChanged = prompt?.id !== syncedPromptId
-
-  if (prompt && !isDirty && (promptIdChanged || justBecameClean)) {
-    const latest = prompt.versions[0]
-    setSyncedPromptId(prompt.id)
-    setSyncedIsDirty(isDirty)
-    if (latest) {
-      setSystemPrompt(latest.systemPrompt)
-      setUserPrompt(latest.userPrompt)
-      setModelId(latest.modelId)
-      setModelParams(latest.modelParams ?? {})
+  // Sync form fields from server whenever the prompt ID changes (including return visits)
+  useEffect(() => {
+    if (prompt) {
+      setName(prompt.name)
+      const latest = prompt.versions[0]
+      if (latest) {
+        setSystemPrompt(latest.systemPrompt)
+        setUserPrompt(latest.userPrompt)
+        setModelId(latest.modelId)
+        setModelParams(latest.modelParams ?? {})
+      }
+      setSelectedVersion(null)
+      setIsDirty(false)
     }
-  } else if (isDirty !== syncedIsDirty) {
-    setSyncedIsDirty(isDirty)
-  }
-
-  // Sync name from server when prompt first loads or changes
-  if (prompt && prompt.id !== syncedNameId) {
-    setSyncedNameId(prompt.id)
-    setName(prompt.name)
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompt?.id])
 
   function markDirty(
     field: 'systemPrompt' | 'userPrompt' | 'modelId' | 'modelParams',
