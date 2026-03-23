@@ -71,6 +71,33 @@ This must be present in every `tsconfig.json` that has `"outDir": "dist"` (or si
 
 **When creating a new package or app**, always add this `exclude` array to its `tsconfig.json`. Do not rely on the base config for this.
 
+## Zero-build dev — workspace package resolution
+
+This monorepo follows the autoblocks pattern: **dev, typecheck, test, and lint all work without building**. Building is only for production Docker images.
+
+**How it works:**
+- Workspace packages (`packages/shared`, `packages/db`) export `.ts` source directly via `package.json` `exports`
+- Dev server uses `tsx watch` which resolves `.ts` imports natively
+- Vitest resolves `.ts` source directly — no build artifacts needed
+- `tsc --noEmit` typechecks against `.ts` source via exports
+- Production build uses **esbuild** (`apps/api/build.mjs`) to bundle all `@eval-harness/*` workspace code into a single `dist/index.js`
+
+**Rules:**
+- **Never point `exports`, `main`, or `types` to `dist/`** in workspace packages — always point to `./src/*.ts`
+- **Library packages have no `build` script** — they are consumed as source in dev and bundled by esbuild for production
+- **Only app packages have `build` scripts** — they produce the final bundled output via esbuild
+- **`turbo.json` `test` task must NOT have `dependsOn: ["^build"]`** — tests resolve source directly
+- **When adding a new workspace package**, follow this pattern in its `package.json`:
+  ```json
+  {
+    "exports": { ".": "./src/index.ts" },
+    "main": "./src/index.ts",
+    "types": "./src/index.ts"
+  }
+  ```
+- **When adding a new npm dependency to the API**, add it to the `external` array in `apps/api/build.mjs` — esbuild must not bundle npm packages, only workspace packages
+- **Prisma client** is generated via `postinstall` in `packages/db` — runs automatically on `pnpm install`
+
 ## Architecture
 
 - **API layers**: validator → repository → service → router (see global AGENTS.md for patterns)
@@ -133,6 +160,34 @@ const dataset = await prisma.dataset.findUnique({
 ```
 
 Exception: when you genuinely need every field on the model and all fields on the relation (rare). In that case, add a `// SELECT-EXCEPTION:` comment explaining why `include` is justified.
+
+### React state sync — no refs for derived state
+
+When syncing component state from server data (e.g., TanStack Query), use a single `useEffect` keyed on the data identity. Never use refs or render-time conditionals to track "has this data been synced."
+
+```typescript
+// ❌ Wrong — render-time sync with tracking ref (breaks on re-navigation)
+const [syncedId, setSyncedId] = useState<string>()
+if (data && data.id !== syncedId) {
+  setSyncedId(data.id)
+  setFormField(data.value)  // sets state during render
+}
+
+// ✅ Right — useEffect keyed on data identity
+useEffect(() => {
+  if (data) {
+    setFormField(data.value)
+  }
+}, [data?.id])
+```
+
+**Why:** The render-time pattern breaks when React Router reuses the component instance across navigations. The tracking ref/state persists the old ID, so on return visits the sync guard evaluates to `false` and form fields stay empty. A `useEffect` keyed on the data ID fires every time the ID changes — including return visits with cached data.
+
+**Rules:**
+- One `useEffect` per data source, keyed on the entity ID
+- No refs (`useRef`) for tracking sync state — they're invisible to React's render cycle
+- No `useState` for tracking "last synced ID" — it's unnecessary indirection
+- Reset ALL dependent form state in the same effect (name, fields, dirty flag, selected version, etc.)
 
 ### TDD — Non-Negotiable
 
